@@ -1,0 +1,7 @@
+fig9 2 250/360 2666
+fig9.dat 16 200 11 1024 819 -7482 0 MLII
+fig9.dat 16 200 11 1024 903 26100 0 V1
+# 54 M 903 654 x2
+# Digoxin, Pronestyl
+# There is S-T segment depression in the upper channel.
+#Produced by xform from record 112, beginning at s297360

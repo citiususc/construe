@@ -1,0 +1,7 @@
+fig3 2 250/360 2666
+fig3.dat 16 200 11 1024 845 -9533 0 MLII
+fig3.dat 16 200 11 1024 904 11958 0 V5
+# 63 F 1482 694 x2
+# Digoxin, Inderal
+# The PVCs are uniform and interpolated.
+#Produced by xform from record 123, beginning at s263520
