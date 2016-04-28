@@ -14,18 +14,29 @@ import construe.acquisition.obs_buffer as obs_buffer
 import construe.acquisition.signal_buffer as sig_buf
 import construe.inference.searching as searching
 import time
+import argparse
+from pprint import pprint as pp
 from construe.model.interpretation import Interpretation
 from construe.utils.units_helper import (msec2samples as ms2sp,
                                             samples2msec as sp2ms)
 
-#Record to interpret
-REC = 'examples/fig10'
-#Annotator used for the initial evidence
-ANNOTATOR = 'qrs'
-#Initial position and length for the interpretation (in samples)
-INIT = 0
-#Length has to be multiple of IN._STEP
-LENGTH = 3840
+#Argument parsing
+parser = argparse.ArgumentParser(description=
+        'Interprets a fragment of an ECG record, visually showing the result.')
+parser.add_argument('-r', metavar='record', required=True,
+                    help='Record to be processed')
+parser.add_argument('-a', metavar='ann', default='qrs',
+                    help='Annotator used to set the initial evidence')
+parser.add_argument('-f', metavar='init', default=0, type=int,
+                    help='Initial time of the fragment, in samples')
+parser.add_argument('-l', metavar='length', default=3840, type=int,
+                    help=('Length of the fragment to be processed. It has to '
+                          'be multiple of 256, and the maximum value currently'
+                          ' allowed is 23040.'))
+args = parser.parse_args()
+if args.l > 23040 or args.l % IN._STEP != 0:
+    raise ValueError(('Fragment length must be multiple of ' + str(IN._STEP) +
+                      ' and the maximum value currently allowed is 23040'))
 #Searching settings
 TFACTOR = 5.0
 KFACTOR = 12
@@ -33,9 +44,9 @@ MIN_DELAY = 1750
 MAX_DELAY = int(ms2sp(20000)*TFACTOR)
 #Input system configuration
 IN.reset()
-IN.set_record(REC, ANNOTATOR)
-IN.set_offset(INIT)
-IN.set_duration(LENGTH)
+IN.set_record(args.r, args.a)
+IN.set_offset(args.f)
+IN.set_duration(args.l)
 IN.set_tfactor(TFACTOR)
 IN.start()
 print('Preloading buffer...')
@@ -80,9 +91,13 @@ while cntr.best is None:
         cntr.prune()
 print('Finished in {0:.3f} seconds'.format(time.time()-t0))
 print('Created {0} interpretations'.format(interp.counter))
+
 #Best explanation
 be = cntr.best.node
 be.recover_old()
+print('List of resulting observations:')
+pp(list(be.get_observations()))
+
 #Drawing of the best explanation
 brview = plotter.plot_observations(sig_buf.get_signal(
                                          sig_buf.get_available_leads()[0]), be)
