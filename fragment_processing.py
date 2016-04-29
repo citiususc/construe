@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # pylint: disable-msg=E1101, E0102, E0202
 """

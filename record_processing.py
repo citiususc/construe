@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # pylint: disable-msg=
 """
@@ -20,6 +21,8 @@ from construe.model.interpretation import Interpretation
 import time
 import blist
 import numpy as np
+from construe.knowledge.abstraction_patterns.rhythm.afib import (
+                                                           is_afib_rhythm_lian)
 from construe.utils.MIT.interp2annots import interp2ann
 from construe.utils.units_helper import (msec2samples as ms2sp,
                                             samples2msec as sp2ms)
@@ -75,6 +78,139 @@ def _merge_annots(annlst, interp, reftime):
                         if annlst[i].code is ECGCodes.WFON))
         offsets -= 1
     return jpt-reftime
+
+def _standardize_rhythm_annots(annots):
+    """
+    Standardizes a set of annotations obtained from the interpretation
+    procedure to make them compatible with the criteria applied in the
+    MIT-BIH Arrhythmia database in the labeling of rhythms.
+    """
+    dest = blist.sortedlist()
+    for ann in annots:
+        code = ann.code
+        if code in (ECGCodes.RHYTHM, ECGCodes.VFON):
+            #TODO remove this if not necessary
+            if code is ECGCodes.VFON:
+                newann = MITAnnotation()
+                newann.code = ECGCodes.RHYTHM
+                newann.aux = '(VFL'
+                newann.time = ann.time
+                dest.add(newann)
+            ############################################################
+            #For convention with original annotations, we only admit   #
+            #bigeminies with more than two pairs, and trigeminies with #
+            #more than two triplets,                                   #
+            ############################################################
+            if ann.aux == '(B':
+                end = next((a for a in annots if a.time > ann.time
+                           and a.code in (ECGCodes.RHYTHM, ECGCodes.VFON)),
+                                                                annots[-1])
+                nbeats = searching.ilen(a for a in annots if a.time >= ann.time
+                                        and a.time<=end.time and
+                                        MITAnnotation.is_qrs_annotation(a))
+                if nbeats < 7:
+                    continue
+            if ann.aux == '(T':
+                end = next((a for a in annots if a.time > ann.time
+                           and a.code in (ECGCodes.RHYTHM, ECGCodes.VFON)),
+                                                                annots[-1])
+                nbeats = searching.ilen(a for a in annots if a.time >= ann.time
+                                        and a.time<=end.time and
+                                        MITAnnotation.is_qrs_annotation(a))
+                if nbeats < 7:
+                    continue
+            #############################################################
+            # Pauses and missed beats are replaced by bradycardias (for #
+            # consistency with the reference annotations).              #
+            #############################################################
+            if ann.aux in ('(BK', 'P'):
+                ann.aux = '(SBR'
+            if ann.aux not in ('(EXT','(CPT'):
+                prev = next((a for a in reversed(dest)
+                                       if a.code is ECGCodes.RHYTHM), None)
+                if prev is None or prev.aux != ann.aux:
+                    dest.add(ann)
+        else:
+            dest.add(ann)
+    #################################
+    #Atrial fibrillation correction #
+    #################################
+    iterator = iter(dest)
+    afibtime = 0
+    while True:
+        try:
+            start = next(a.time for a in iterator
+                         if a.code == ECGCodes.RHYTHM and a.aux == '(AFIB')
+            end = next((a.time for a in iterator
+                              if a.code == ECGCodes.RHYTHM), dest[-1].time)
+            afibtime += end-start
+        except StopIteration:
+            break
+    #If more than 1/20 of the time of atrial fibrillation...
+    if sp2ms(afibtime) > 90000:
+        iterator = iter(dest)
+        rhythms = ('(N', '(SVTA')
+        start = next((a for a in iterator if a.code == ECGCodes.RHYTHM
+                                               and a.aux in rhythms), None)
+        while start is not None:
+            end = next((a for a in iterator if a.code == ECGCodes.RHYTHM),
+                                                                  dest[-1])
+            #All normal rhythms that satisfy the Lian method to identify
+            #afib by rhythm are now considered afib. We also check the
+            #method considering alternate RRs to avoid false positives with
+            #bigeminies.
+            fragment = dest[dest.index(start):dest.index(end)]
+            rrs = np.diff([a.time for a in fragment
+                                        if MITAnnotation.is_qrs_annotation(a)])
+            if (is_afib_rhythm_lian(rrs) and
+                            is_afib_rhythm_lian(rrs[0::2]) and
+                                           is_afib_rhythm_lian(rrs[1::2])):
+                start.aux = '(AFIB'
+            #Next rhythm
+            start = (end if end.aux in rhythms else
+                     next((a for a in iterator
+                                        if a.code == ECGCodes.RHYTHM
+                                              and a.aux in rhythms), None))
+    ##############################
+    #Paced rhythm identification #
+    ##############################
+    #To consider the presence of paced rhythms in a record, we require at
+    #least a mean of one paced beat each 10 seconds.
+    pacedrec = sum(1 for a in dest if a.code == ECGCodes.PACE) > 180
+    if pacedrec:
+        iterator = iter(dest)
+        rhythms = ('(AFIB', '(N', '(SBR', '(SVTA')
+        start = next((a for a in iterator if a.code == ECGCodes.RHYTHM
+                                               and a.aux in rhythms), None)
+        while start is not None:
+            end = next((a for a in iterator if a.code == ECGCodes.RHYTHM),
+                                                                  dest[-1])
+            #If there are paced beats in a rhythm fragment, the full
+            #rhythm is identified as paced.
+            if any([start.time < a.time < end.time
+                    and a.code == ECGCodes.PACE
+                        for a in dest[dest.index(start):dest.index(end)]]):
+                start.aux = '(P'
+            #Next rhythm
+            start = (end if end.aux in rhythms else
+                     next((a for a in iterator
+                                        if a.code == ECGCodes.RHYTHM
+                                              and a.aux in rhythms), None))
+    #########################################
+    # Redundant rhythm description removing #
+    #########################################
+    i=1
+    while i < len(dest):
+        if dest[i].code is ECGCodes.RHYTHM:
+            prev = next((a for a in reversed(dest[:i])
+                                       if a.code is ECGCodes.RHYTHM), None)
+            if prev is not None and prev.aux == dest[i].aux:
+                dest.pop(i)
+            else:
+                i += 1
+        else:
+            i += 1
+    return dest
 
 
 def process_record(path, ann='atr', tfactor=1.0, fr_len=23040, fr_overlap=1080,
@@ -176,3 +312,60 @@ def process_record(path, ann='atr', tfactor=1.0, fr_len=23040, fr_overlap=1080,
         #We introduce an overlapping between consecutive fragments
         pos += fr_len - fr_overlap
     return annots
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description=
+        'Interprets a MIT-BIH ECG record, generating as a result a set of '
+        'annotations.')
+    parser.add_argument('-r', metavar='record', required=True,
+                        help='Name of the record to be processed')
+    parser.add_argument('-a', metavar='ann', default='qrs',
+                        help= ('Annotator used to set the initial evidence '
+                              '(default: qrs)'))
+    parser.add_argument('-o', metavar='oann', default='iqrs',
+                        help= ('Save annotations as annotator oann '
+                               '(default: iqrs)'))
+    parser.add_argument('-f', metavar='init', default=0, type=int,
+                        help= ('Begin the interpretation at the "init" time, '
+                               'in samples'))
+    parser.add_argument('-l', metavar='length', default=23040, type=int,
+                        help= ('Length in samples of each independently '
+                               'interpreted fragment. It has to be multiple '
+                               'of 256. Default:23040.'))
+    parser.add_argument('--overl', default=1080, type=int,
+                        help= ('Length in samples of the overlapping between '
+                               'consecutive fragments, to prevent loss of '
+                               'information. Default: 1080'))
+    parser.add_argument('--tfactor', default=1.0, type=float,
+                        help= ('Time factor to control de duration of the '
+                               'interpretation. For example, if --tfactor = '
+                               '2.0 the interpretation can be working for two '
+                               'times the real duration of the interpreted '
+                               'record. Note: This factor cannot be '
+                               'guaranteed. Default: 1.0'))
+    parser.add_argument('-d', metavar='min_delay', default=2560, type=int,
+                        help= ('Minimum delay in samples between the '
+                               'acquisition time and the last interpretation '
+                               'time. Default: 1080'))
+    parser.add_argument('-D', metavar='max_delay', default=20.0, type=float,
+                        help= ('Maximum delay in seconds that the '
+                               'interpretation can be without moving forward. '
+                               'If this threshold is exceeded, the searching '
+                               'process is pruned. Default: 20.0'))
+    parser.add_argument('-k', default=12, type=int,
+                        help= ('Exploration factor. It is the number of '
+                               'interpretations expanded in each searching '
+                               'cycle. Default: 12'))
+    parser.add_argument('-v', action = 'store_true',
+                        help= ('Verbose mode. The algorithm will print to '
+                               'standard output the fragment being '
+                               'interpreted.'))
+    args = parser.parse_args()
+    result = _standardize_rhythm_annots(process_record(args.r, args.a,
+                                                       args.tfactor, args.l,
+                                                       args.overl, args.d,
+                                                       args.D, args.k, args.f,
+                                                       args.v))
+    MITAnnotation.save_annotations(result, args.r + '.' + args.o)
+    print('Record ' + args.r + ' succesfully processed')

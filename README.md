@@ -34,6 +34,14 @@ Use the `run_example.sh` script, selecting the figure for which you want to repr
 ./run_example.sh fig1
 ```
 
+## Interpreting external ECG records
+
+Any ECG record in [MIT-BIH format](https://www.physionet.org/physiotools/wag/header-5.htm) can be interpreted with the *Construe* algorithm. For this, we provide two convenient python modules that may be used as command-line tools. The first one (`fragment_processing.py`) is intended to visually show the result of the interpretation of a (small) ECG fragment, allowing to inspect and reproduce the interpretation process. The second one (`record_processing.py`) is intended to perform background interpretations of full records, resulting in a set of [annotations in the MIT format](https://www.physionet.org/physiotools/wag/annot-5.htm).
+
+## Known issues
+
+- The framework is prepared to interpret records with any sampling frequency, but if frequency differs from 250 Hz the value has to be manually adjusted in `construe/utils/units_helper.py`, line 13.
+
 ## License
 
 This project is licensed under the terms of the [GPL v3 license](LICENSE).
