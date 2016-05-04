@@ -20,6 +20,7 @@ import construe.knowledge.observables as o
 from construe.model.interpretation import Interpretation
 import time
 import blist
+import warnings
 import numpy as np
 from construe.knowledge.abstraction_patterns.rhythm.afib import (
                                                            is_afib_rhythm_lian)
@@ -215,7 +216,7 @@ def _standardize_rhythm_annots(annots):
 
 def process_record(path, ann='atr', tfactor=1.0, fr_len=23040, fr_overlap=1080,
                    min_delay=2560, max_delay=20.0, kfactor=12, initial_pos=0,
-                   verbose=True):
+                   final_pos=np.inf, verbose=True):
     """
     This function performs a complete interpretation of a given MIT-BIH
     formatted record, using as initial evidence an external set of annotations.
@@ -248,6 +249,10 @@ def process_record(path, ann='atr', tfactor=1.0, fr_len=23040, fr_overlap=1080,
     kfactor:
         Exploration factor. It is the number of interpretations expanded in
         each searching cycle.
+    initial_pos:
+        Time position (in samples) where the interpretation should begin.
+    final_pos:
+        Time position (in samples) where the interpretation should finish.
     verbose:
         Boolean flag. If active, the algorithm will print to standard output
         the fragment being interpreted.
@@ -258,6 +263,13 @@ def process_record(path, ann='atr', tfactor=1.0, fr_len=23040, fr_overlap=1080,
         sortedlist of annotations resulting from the interpretation, including
         segmentation and rhythm annnotations.
     """
+    if fr_len > final_pos-initial_pos:
+        fr_len = int(final_pos-initial_pos)
+        fr_overlap = 0
+    if fr_len % IN._STEP != 0:
+        fr_len += IN._STEP - (fr_len % IN._STEP)
+        warnings.warn('Fragment length is not multiple of {0}. '
+                      'Adjusted to {1}'.format(IN._STEP, fr_len))
     #Input configuration
     IN.set_record(path, ann)
     IN.set_duration(fr_len)
@@ -265,7 +277,7 @@ def process_record(path, ann='atr', tfactor=1.0, fr_len=23040, fr_overlap=1080,
     #Annotations buffer
     annots = blist.sortedlist()
     pos = initial_pos
-    while pos < IN.get_record_length():
+    while pos < min(IN.get_record_length(), final_pos):
         if verbose:
             print('Processing fragment {0}:{1}'.format(pos, pos+fr_len))
         #Input start
@@ -329,6 +341,9 @@ if __name__ == '__main__':
     parser.add_argument('-f', metavar='init', default=0, type=int,
                         help= ('Begin the interpretation at the "init" time, '
                                'in samples'))
+    parser.add_argument('-t', metavar='stop', default=np.inf, type=float,
+                        help= ('Stop the interpretation at the "stop" time, '
+                               'in samples'))
     parser.add_argument('-l', metavar='length', default=23040, type=int,
                         help= ('Length in samples of each independently '
                                'interpreted fragment. It has to be multiple '
@@ -366,6 +381,6 @@ if __name__ == '__main__':
                                                        args.tfactor, args.l,
                                                        args.overl, args.d,
                                                        args.D, args.k, args.f,
-                                                       args.v))
+                                                       args.t, args.v))
     MITAnnotation.save_annotations(result, args.r + '.' + args.o)
     print('Record ' + args.r + ' succesfully processed')
