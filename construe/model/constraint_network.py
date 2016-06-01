@@ -370,10 +370,10 @@ class ConstraintNetwork(object):
         n = len(var) + 1
         #Adjacency matrix
         A = np.empty((n, n))
+        B = np.empty_like(A)
         A.fill(np.inf)
         for i in xrange(n):
             A[i, i] = 0
-        A = np.asmatrix(A)
         #We asign a integer key to each variable, starting in 1
         keys = {}
         i = 1
@@ -391,9 +391,10 @@ class ConstraintNetwork(object):
             A[b, a] = -const.constraint.start
         #Floyd-Warshall
         for i in xrange(n):
-            A = np.minimum(A, A[i, :] + A[:, i])
+            np.add(A[i, :].reshape(1, n), A[:, i].reshape(n, 1), B)
+            np.minimum(A, B, A)
         #Rounding to avoid precision errors
-        A = np.around(A, 3)
+        np.around(A, 3, A)
         #Consistency checking (the diagonal must be all 0)
         if np.any(np.diagonal(A)):
             raise InconsistencyError()
