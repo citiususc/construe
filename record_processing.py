@@ -92,7 +92,7 @@ def _standardize_rhythm_annots(annots):
         if code in (ECGCodes.RHYTHM, ECGCodes.VFON):
             #TODO remove this if not necessary
             if code is ECGCodes.VFON:
-                newann = MITAnnotation()
+                newann = MITAnnotation.MITAnnotation()
                 newann.code = ECGCodes.RHYTHM
                 newann.aux = '(VFL'
                 newann.time = ann.time
