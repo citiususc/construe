@@ -25,6 +25,14 @@ import construe.knowledge.constants as C
 
 ANNOTS = None
 
+def reset():
+    """
+    Resets the static set of annotations, allowing to re-run the external QRS
+    detection procedure.
+    """
+    global ANNOTS
+    ANNOTS = None
+
 def _merge_annots(annotators):
     """
     Merges several sets of beat annotators, by taking the union of all of them,
