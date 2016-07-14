@@ -32,11 +32,7 @@ def ann2interp(record, anns):
     """
     interp = Interpretation()
     observations = []
-#    p = 0
     for i in xrange(len(anns)):
-#        if int(100.0*i/len(anns)) != p:
-#            p = int(100.0*i/len(anns))
-#            print '{0}% completed'.format(p)
         ann = anns[i]
         if ann.code in (C.PWAVE, C.TWAVE):
             obs = o.PWave() if ann.code == C.PWAVE else o.TWave()
