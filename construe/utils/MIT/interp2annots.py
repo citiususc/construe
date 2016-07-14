@@ -105,7 +105,7 @@ def ann2interp(record, anns):
             obs.end.value = Iv(end, end)
             observations.append(obs)
         elif ann.code is C.ARFCT:
-            obs = o.BeatAnn()
+            obs = o.RDeflection()
             obs.time.value = Iv(ann.time, ann.time)
             observations.append(obs)
     interp.observations = blist.sortedlist(observations)
@@ -170,7 +170,7 @@ def interp2ann(interp, btime=0, offset=0):
         vfon.code = C.VFON
         vfon.time = int(offset + flut.earlystart)
         annots.add(vfon)
-        for vfw in interp.get_observations(o.Energ_Int, flut.earlystart,
+        for vfw in interp.get_observations(o.Deflection, flut.earlystart,
                                            flut.lateend):
             wav = MITAnnotation.MITAnnotation()
             wav.code = C.FLWAV
@@ -198,14 +198,14 @@ def interp2ann(interp, btime=0, offset=0):
     except NameError:
         #If there are no rhythms ('rhythm' variable is undefined), we go on
         pass
-    #Unintelligible beat annotations.
-    for bann in interp.get_observations(o.BeatAnn, btime,
+    #Unintelligible R-Deflections
+    for rdef in interp.get_observations(o.RDeflection, btime,
                                         filt=lambda a:
                                         a in interp.unintelligible or
                                         a in interp.focus):
         unint = MITAnnotation.MITAnnotation()
         #We store unintelligible annotations as artifacts
         unint.code = C.ARFCT
-        unint.time = int(offset + bann.earlystart)
+        unint.time = int(offset + rdef.earlystart)
         annots.add(unint)
     return annots

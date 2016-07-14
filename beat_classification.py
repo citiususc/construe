@@ -245,9 +245,9 @@ def load_clustering(record, cluster_ext, observations):
     cluster.
     """
     clusters = collections.defaultdict(set)
-    #We get only QRS observations and uninterpreted beat annotations.
+    #We get only QRS observations and uninterpreted R-Deflections.
     observations = [ob for ob in observations
-                                         if isinstance(ob, (o.QRS, o.BeatAnn))]
+                                     if isinstance(ob, (o.QRS, o.RDeflection))]
     cluster_results = np.genfromtxt('{0}.{1}'.format(record,
                                                       cluster_ext)).astype(int)
     for idx, cl in cluster_results:
@@ -699,12 +699,12 @@ if __name__ == "__main__":
     #Reconstruction of the abductive interpretation
     annots = MIT.read_annotations('{0}.{1}'.format(args.r, args.a))
     interp = interp2annots.ann2interp(rec, annots)
-    #We remove BeatAnn observations that are close to a QRS observation
+    #We remove RDeflection observations that are close to a QRS observation
     qobs = [ob for ob in interp.observations
-                                         if isinstance(ob, (o.BeatAnn, o.QRS))]
+                                     if isinstance(ob, (o.RDeflection, o.QRS))]
     i = 0
     while i < len(qobs):
-        if (isinstance(qobs[i], o.BeatAnn) and
+        if (isinstance(qobs[i], o.RDeflection) and
                 ((i > 0 and
                     qobs[i].time.start-qobs[i-1].time.start < ms2sp(150)) or
                 (i < len(qobs)-1 and
@@ -770,7 +770,7 @@ if __name__ == "__main__":
                 b.tag = C.NORMAL
     annots = interp2annots.interp2ann(interp)
     #We also include the clustered artifacts.
-    for b in interp.get_observations(o.BeatAnn, filt=lambda ba:
+    for b in interp.get_observations(o.RDeflection, filt=lambda ba:
                     any([ba in cl.beats and any(isinstance(b, o.QRS)
                         for b in cl.beats) for cl in clusters.itervalues()])):
         a = MIT.MITAnnotation.MITAnnotation()

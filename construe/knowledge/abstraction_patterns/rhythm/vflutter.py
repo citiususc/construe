@@ -32,9 +32,9 @@ def _contains_qrs(pattern):
     #We limit the duration of the QRS to check this condition.
     if qrs.lateend-qrs.earlystart not in C.NQRS_DUR:
         return False
-    eints = pattern.evidence[o.Energ_Int]
-    if len(eints) > 1:
-        limit = (eints[-3].lateend if len(eints) > 2 else qrs.lateend)
+    defls = pattern.evidence[o.Deflection]
+    if len(defls) > 1:
+        limit = (defls[-3].lateend if len(defls) > 2 else qrs.lateend)
         sig  = {}
         #We take the signal fragment with maximum correlation with the QRS
         #signal in each lead, and we check if the two fragments can be
@@ -50,7 +50,7 @@ def _contains_qrs(pattern):
             qshape[lead].sig = sigfr-sigfr[0]
             qshape[lead].amplitude = np.ptp(qshape[lead].sig)
             sig[lead] = sig_buf.get_signal_fragment(limit,
-                                            eints[-1].earlystart, lead=lead)[0]
+                                            defls[-1].earlystart, lead=lead)[0]
             if len(sig[lead]) > 0 and len(qshape[lead].sig) > 0:
                 lcorr, ldelay = xcorr_valid(sig[lead], qshape[lead].sig)
                 if lcorr > corr:
@@ -78,20 +78,20 @@ def _prev_rhythm_tconst(pattern, rhythm):
     tnet.add_constraint(pattern.hypothesis.start, pattern.hypothesis.end,
                                                Iv(C.VFLUT_MIN_DUR, np.inf))
 
-def _eint0_tconst(pattern, eint):
-    """Temporal constraints of the first energy interval"""
+def _def0_tconst(pattern, eint):
+    """Temporal constraints of the first deflection"""
     BASIC_TCONST(pattern, eint)
     tnet = pattern.last_tnet
     tnet.add_constraint(pattern.hypothesis.start, eint.time, C.VFLUT_LIM_INTERV)
     tnet.set_before(eint.time, pattern.hypothesis.end)
 
-def _eint_tconst(pattern, eint):
-    """Temporal constraints of the posterior energy intervals"""
-    eints = pattern.evidence[o.Energ_Int]
-    idx = eints.index(eint)
+def _deflection_tconst(pattern, eint):
+    """Temporal constraints of the posterior deflections"""
+    defls = pattern.evidence[o.Deflection]
+    idx = defls.index(eint)
     hyp = pattern.hypothesis
     tnet = pattern.last_tnet
-    prev = eints[idx-1]
+    prev = defls[idx-1]
     tnet.remove_constraint(hyp.end, prev.time)
     #We create a new temporal network for the cyclic observations
     tnet = ConstraintNetwork()
@@ -116,7 +116,7 @@ def _qrs_tconst(pattern, qrs):
     """Temporal constraints of the QRS complex that determines the end of the
     flutter"""
     BASIC_TCONST(pattern, qrs)
-    eint = pattern.evidence[o.Energ_Int][-1]
+    eint = pattern.evidence[o.Deflection][-1]
     tnet = pattern.last_tnet
     tnet.add_constraint(eint.time, qrs.time, C.VFLUT_LIM_INTERV)
     tnet.set_equal(pattern.hypothesis.end, qrs.time)
@@ -193,9 +193,9 @@ def _vflut_gconst(pattern, _):
             lpos += 1
         ltot += 1
     verify(lpos/ltot > 0.5)
-    eints = pattern.evidence[o.Energ_Int]
-    if len(eints) > 1:
-        rrs = np.diff([eint.earlystart for eint in eints])
+    defls = pattern.evidence[o.Deflection]
+    if len(defls) > 1:
+        rrs = np.diff([defl.earlystart for defl in defls])
         hyp.meas = o.CycleMeasurements((np.mean(rrs), np.std(rrs)),
                                                                   (0,0), (0,0))
 
@@ -206,14 +206,14 @@ VFLUTTER_PATTERN.Hypothesis = o.Ventricular_Flutter
 VFLUTTER_PATTERN.add_transition(0, 1, o.Cardiac_Rhythm, ENVIRONMENT,
                                                            _prev_rhythm_tconst)
 VFLUTTER_PATTERN.add_transition(1, 2, o.QRS, ENVIRONMENT, _qrs0_tconst)
-VFLUTTER_PATTERN.add_transition(2, 3, o.Energ_Int, ABSTRACTED, _eint0_tconst,
+VFLUTTER_PATTERN.add_transition(2, 3, o.Deflection, ABSTRACTED, _def0_tconst,
                                                                  _vflut_gconst)
-VFLUTTER_PATTERN.add_transition(3, 3, o.Energ_Int, ABSTRACTED, _eint_tconst,
-                                                                 _vflut_gconst)
+VFLUTTER_PATTERN.add_transition(3, 3, o.Deflection, ABSTRACTED,
+                                            _deflection_tconst, _vflut_gconst)
 VFLUTTER_PATTERN.add_transition(3, 4, o.QRS, ABSTRACTED, _qrs_tconst,
                                                                  _vflut_gconst)
 VFLUTTER_PATTERN.final_states.add(4)
-VFLUTTER_PATTERN.abstractions[o.Energ_Int] = (VFLUTTER_PATTERN.transitions[2],)
+VFLUTTER_PATTERN.abstractions[o.Deflection] = (VFLUTTER_PATTERN.transitions[2],)
 VFLUTTER_PATTERN.freeze()
 
 

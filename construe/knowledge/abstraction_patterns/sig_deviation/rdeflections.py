@@ -51,7 +51,7 @@ def _merge_annots(annotators):
             return result
         idx = head.index(nxt)
         head[idx] = next(iterators[idx], dummy)
-        if result and nxt.time - result[-1].time <= C.BEATANN_MIN_DIST:
+        if result and nxt.time - result[-1].time <= C.RDEFLECTION_MIN_DIST:
             result[-1] = max(nxt, result[-1],
                                          key = lambda ann:(ann.num, -ann.time))
         else:
@@ -79,25 +79,25 @@ def _load_annots():
     for ann in _merge_annots(annotators):
         idx = refann.bisect_left(ann)
         #First we check that the annotation is not in the base evidence.
-        if (ann.time-refann[idx-1].time > C.BEATANN_MIN_DIST and
-                             (idx >= len(refann) or
-                              refann[idx].time-ann.time > C.BEATANN_MIN_DIST)):
+        if (ann.time-refann[idx-1].time > C.RDEFLECTION_MIN_DIST and
+                         (idx >= len(refann) or
+                          refann[idx].time-ann.time > C.RDEFLECTION_MIN_DIST)):
             #And now we select the most promising one between all leads.
             ANNOTS.add(ann)
     os.remove(annpath)
 
-def _beatann_gconst(pattern, _):
+def _rdef_gconst(pattern, _):
     """
-    General constraints of the beat annotation pattern, that simply looks in
+    General constraints of the R-Deflection pattern, that simply looks in
     the global list for an appropriate annotation.
     """
     if ANNOTS is None:
         _load_annots()
     leads = IN.SIG.get_available_leads()
     #We find all the annotations in the given interval.
-    beatann = pattern.hypothesis
-    beg = min(int(beatann.earlystart), IN.get_acquisition_point()) + IN._OFFSET
-    end = min(int(beatann.lateend), IN.get_acquisition_point()) + IN._OFFSET
+    rdef = pattern.hypothesis
+    beg = min(int(rdef.earlystart), IN.get_acquisition_point()) + IN._OFFSET
+    end = min(int(rdef.lateend), IN.get_acquisition_point()) + IN._OFFSET
     dummy = MITAnnotation()
     dummy.time = beg
     bidx = ANNOTS.bisect_left(dummy)
@@ -106,16 +106,16 @@ def _beatann_gconst(pattern, _):
     verify(eidx > bidx)
     selected = max(ANNOTS[bidx:eidx], key= operator.attrgetter('num'))
     time = selected.time - IN._OFFSET
-    beatann.time.value = Iv(time, time)
-    beatann.start.value = Iv(time, time)
-    beatann.end.value = Iv(time, time)
-    beatann.level = {lead : 127 for lead in leads}
-    beatann.level[leads[selected.chan]] = 127 - selected.num
+    rdef.time.value = Iv(time, time)
+    rdef.start.value = Iv(time, time)
+    rdef.end.value = Iv(time, time)
+    rdef.level = {lead : 127 for lead in leads}
+    rdef.level[leads[selected.chan]] = 127 - selected.num
 
 
-BEATANN_PATTERN = PatternAutomata()
-BEATANN_PATTERN.name = 'Beat Annotation'
-BEATANN_PATTERN.Hypothesis = o.BeatAnn
-BEATANN_PATTERN.add_transition(0, 1, gconst=_beatann_gconst)
-BEATANN_PATTERN.final_states.add(1)
-BEATANN_PATTERN.freeze()
+RDEFLECTION_PATTERN = PatternAutomata()
+RDEFLECTION_PATTERN.name = 'R-Deflection'
+RDEFLECTION_PATTERN.Hypothesis = o.RDeflection
+RDEFLECTION_PATTERN.add_transition(0, 1, gconst=_rdef_gconst)
+RDEFLECTION_PATTERN.final_states.add(1)
+RDEFLECTION_PATTERN.freeze()

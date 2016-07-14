@@ -33,7 +33,7 @@ TMARGIN = int(math.ceil(m2s(40)))
 ### Beat Annotations related constraints ###
 ############################################
 
-BEATANN_MIN_DIST = m2s(80)         #Minimum distance for different annotations
+RDEFLECTION_MIN_DIST = m2s(80)         #Minimum distance for different annotations
 
 
 #######################################
@@ -50,8 +50,8 @@ SPIKE_ECGE_DIFF = p2d(0.1)      #Maximum amplitude differences for spike edges.
 #the peak and the end
 QRS_START_PK = m2s(5)
 QRS_PK_END = m2s(40)
-#Distances between beat annotations and the starting of the complex.
-QRS_BANN_DMAX = m2s(80)
+#Distances between R-Deflections and the starting of the complex.
+QRS_RDEF_DMAX = m2s(80)
 #Maximum difference in the amplitude to consider a signal fragment as a missed
 #QRS (compared with an actual detected QRS)
 MISSED_QRS_MAX_DIFF = 0.5
@@ -63,10 +63,10 @@ MISSED_QRS_MAX_DIFF = 0.5
 PW_DURATION = Iv(m2s(40), m2s(250)) #P Wave duration limits
 PQ_INTERVAL = Iv(m2s(20), m2s(200)) #PQ Interval duration limits
 PR_INTERVAL = Iv(m2s(80), m2s(400)) #PR Interval duration limits
-PW_EINT_DUR = Iv(0, m2s(200))       #Energy interval duration for a P Wave
-PW_EINT_OVER = m2s(350)             #P and Energy interval overlapping limits
-PQ_EINT_SEP = Iv(m2s(20), m2s(240)) #P Energy interval and QRS separation
-PR_EINT_SEP = Iv(m2s(20), m2s(400))
+PW_DEF_DUR = Iv(0, m2s(200))       # Deflection duration for a P Wave
+PW_DEF_OVER = m2s(350)             #P and Deflection overlapping limits
+PQ_DEF_SEP = Iv(m2s(20), m2s(240)) #P Deflection and QRS separation
+PR_DEF_SEP = Iv(m2s(20), m2s(400))
 
 #Leads with visible P waves
 PWAVE_LEADS = (SIG.Leads.MLII, SIG.Leads.MLIII, SIG.Leads.V1,
@@ -92,10 +92,10 @@ QT_INTERVAL = Iv(m2s(250), m2s(900))#QT maximum limits (not normal)
 SQT_INTERVAL = Iv(m2s(150), m2s(750))
 #Minimum interval between the end of a T Wave and the beginning of the next QRS
 TQ_INTERVAL_MIN = m2s(40)
-TW_EINT_OVER_MIN = m2s(300)         #T and Energy interval overlapping limits
-TW_EINT_OVER_MAX = m2s(450)
-TW_EINT_ENDIFF = m2s(80)
-TW_BANN_MIN_DIST = m2s(80)    #Minimum distance from an abstracted Bann to Tend
+TW_DEF_OVER_MIN = m2s(300)         #T and Energy interval overlapping limits
+TW_DEF_OVER_MAX = m2s(450)
+TW_DEF_ENDIFF = m2s(80)
+TW_RDEF_MIN_DIST = m2s(80)    #Minimum distance from an abstracted Bann to Tend
 #Factor limiting the maximum slope of a T Wave wrt the corresponding QRS.
 TQRS_MAX_DIFFR = 0.7
 #Maximum amplitude distance between the end of the T wave and the baseline if
@@ -162,10 +162,10 @@ AFIB_RR_MINSTD = 0.08         #Minimum coefficient of variation of RR in afib
 AFIB_MAX_DELAY = m2s(10000)
 AFIB_MIN_NQRS = 8
 
-#########################################
-### Energy interval related constants ###
-#########################################
+####################################
+### Deflection related constants ###
+####################################
 
-EINT_DUR = Iv(0, m2s(500))
+DEF_DUR = Iv(0, m2s(500))
 
 

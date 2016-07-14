@@ -14,7 +14,7 @@ import construe.acquisition.signal_buffer as sig_buf
 import construe.acquisition.obs_buffer as obs_buf
 from construe.knowledge.base_evidence.energy import (get_energy_intervals,
                                                                        TWINDOW)
-from construe.knowledge.constants import EINT_DUR, TMARGIN
+from construe.knowledge.constants import DEF_DUR, TMARGIN
 from construe.model.constraint_network import verify
 from construe.model.automata import PatternAutomata
 from construe.model import Interval as Iv
@@ -22,10 +22,10 @@ import numpy as np
 import blist
 
 
-def generate_EnergInt_Patterns(npats):
+def generate_Deflection_Patterns(npats):
     """
     This function creates a set of *PatternAutomata* patterns, each one
-    responsible for obtaining the i-th relevant energy interval in a given
+    responsible for obtaining the i-th relevant deflection in a given
     scope. It allows to overcome the limitation of having a single hypothesis
     for a pattern with the same base evidence (in the case of this pattern,
     this base evidence is None, since the only transition of the pattern
@@ -45,24 +45,24 @@ def generate_EnergInt_Patterns(npats):
     pats = []
     for i in xrange(npats):
         pat = PatternAutomata()
-        pat.name = "Energy Interval"
-        pat.Hypothesis = o.Energ_Int
-        pat.add_transition(0, 1, tconst= _eint_tconst, gconst= get_gconst(i))
+        pat.name = "Deflection"
+        pat.Hypothesis = o.Deflection
+        pat.add_transition(0, 1, tconst= _def_tconst, gconst= get_gconst(i))
         pat.final_states.add(1)
         pat.freeze()
         pats.append(pat)
     return pats
 
-def _eint_tconst(pattern, _):
+def _def_tconst(pattern, _):
     """Temporal constraints for the energy interval abstraction pattern"""
-    eint = pattern.hypothesis
-    pattern.last_tnet.add_constraint(eint.start, eint.end, EINT_DUR)
+    deflection = pattern.hypothesis
+    pattern.last_tnet.add_constraint(deflection.start, deflection.end, DEF_DUR)
 
 def get_gconst(int_idx):
     """
     Obtains the general constraints function for a specific level.
     """
-    def _eint_gconst(pattern, _):
+    def _def_gconst(pattern, _):
         """General constraints for the energy interval abstraction pattern"""
         verify(pattern.hypothesis.lateend < np.inf)
         #The margin to group consecutive fragments is 1 mm
@@ -79,7 +79,7 @@ def get_gconst(int_idx):
             return 0.0
         #We get the already published fragments affecting our temporal support.
         conflictive = []
-        published = blist.sortedlist(obs_buf.get_observations(o.Energ_Int))
+        published = blist.sortedlist(obs_buf.get_observations(o.Deflection))
         idx = published.bisect_left(pattern.hypothesis)
         if idx > 0 and published[idx-1].lateend > beg:
             idx -= 1
@@ -115,4 +115,4 @@ def get_gconst(int_idx):
                                        interval.end + beg - fbeg)
         for lead in sig_buf.get_available_leads():
             pattern.hypothesis.level[lead] = lev
-    return _eint_gconst
+    return _def_gconst

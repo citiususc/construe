@@ -164,10 +164,10 @@ def _t_eint_tconst(pattern, eint):
     twave = pattern.hypothesis
     tc = pattern.last_tnet
     tc.add_constraint(eint.start, eint.end, Iv(0, C.TW_DURATION.end))
-    tc.add_constraint(twave.start, eint.start, Iv(-C.TW_EINT_OVER_MAX,
-                                                           C.TW_EINT_OVER_MIN))
-    tc.add_constraint(twave.end, eint.end, Iv(-C.TW_EINT_OVER_MIN,
-                                                           C.TW_EINT_ENDIFF))
+    tc.add_constraint(twave.start, eint.start, Iv(-C.TW_DEF_OVER_MAX,
+                                                           C.TW_DEF_OVER_MIN))
+    tc.add_constraint(twave.end, eint.end, Iv(-C.TW_DEF_OVER_MIN,
+                                                           C.TW_DEF_ENDIFF))
     tc.set_before(eint.start, twave.end)
     tc.set_before(twave.start, eint.end)
     if qrs is not None:
@@ -225,10 +225,10 @@ def _t_gconst(pattern, eint):
     verify(Iv(twave.earlystart, twave.lateend).intersection(
                     Iv(eint.earlystart, eint.lateend)).length >=
                                             (eint.lateend-eint.earlystart)/2.0)
-    #If the energy interval is a beat annotation, we require a margin before
+    #If the Deflection is a R-Deflection, we require a margin before
     #the end of the twave.
-    if isinstance(eint, o.BeatAnn):
-        verify(twave.lateend - eint.time.end > C.TW_BANN_MIN_DIST)
+    if isinstance(eint, o.RDeflection):
+        verify(twave.lateend - eint.time.end > C.TW_RDEF_MIN_DIST)
 
 ###########################
 ### Automata definition ###
@@ -238,7 +238,7 @@ TWAVE_PATTERN = PatternAutomata()
 TWAVE_PATTERN.name = 'T Wave'
 TWAVE_PATTERN.Hypothesis = o.TWave
 TWAVE_PATTERN.add_transition(0, 1, o.QRS, ENVIRONMENT, _t_qrs_tconst)
-TWAVE_PATTERN.add_transition(1, 2, o.Energ_Int, ABSTRACTED, _t_eint_tconst,
+TWAVE_PATTERN.add_transition(1, 2, o.Deflection, ABSTRACTED, _t_eint_tconst,
                                                                      _t_gconst)
 TWAVE_PATTERN.final_states.add(2)
 TWAVE_PATTERN.freeze()

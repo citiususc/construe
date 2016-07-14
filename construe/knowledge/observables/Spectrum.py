@@ -11,14 +11,16 @@ analysis of the ECG signal.
 from construe.model import Observable
 
 
-class Energ_Int(Observable):
+class Deflection(Observable):
     """
-    This class represents a signal interval with a certain energy level,
-    derived from the wavelet transformation of the signal.
+    This class represents a signal deviation consistent with the electrical
+    activity of the cardiac muscle fibers. It is associated with a certain
+    energy level derived from the wavelet decomposition/reconstruction of the
+    signal.
     """
     def __init__(self):
-        """Creates a new energy interval instance, at level 0"""
-        super(Energ_Int, self).__init__()
+        """Creates a new Deflection instance, at level 0"""
+        super(Deflection, self).__init__()
         #The single reference will correspond to the start variable
         self.time = self.start
         self.level = {}
@@ -29,17 +31,18 @@ class Energ_Int(Observable):
         """
         level = '-' if not self.level else min(self.level.itervalues())
         lead = '-' if not self.level else min(self.level, key= self.level.get)
-        return '{0} ({1}, {2})'.format(super(Energ_Int, self).__str__(),
+        return '{0} ({1}, {2})'.format(super(Deflection, self).__str__(),
                                                                   level, lead)
 
-class BeatAnn(Energ_Int):
+class RDeflection(Deflection):
     """
-    This class specifically represents a beat annotation obtained by an
-    external algorithm.
+    This class represents a signal deviation consistent with the electrical
+    activity generated in the ventricular activation. It can be obtained by
+    any external QRS detection algorithm
     """
 
     def __init__(self):
-        """Creates a new instance of a beat annotation, that is instantaneous"""
-        super(BeatAnn, self).__init__()
+        """Creates a new instance of a R-Deflection, that is instantaneous"""
+        super(RDeflection, self).__init__()
         #Beat annotations are instantaneous observables.
         self.end = self.start

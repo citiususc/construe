@@ -10,5 +10,5 @@ on a wavelet transformation on the signal.
 @author: T. Teijeiro
 """
 
-from .energy_interval import generate_EnergInt_Patterns
-from .beat_annots import BEATANN_PATTERN
+from .deflection import generate_Deflection_Patterns
+from .rdeflections import RDEFLECTION_PATTERN

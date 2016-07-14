@@ -147,14 +147,14 @@ def _characterize_signal(beg, end):
     return siginfo
 
 
-def _find_peak(bann, siginfo, beg, interv):
+def _find_peak(rdef, siginfo, beg, interv):
     """
     Obtains an estimation of the peak situation of a QRS complex, from the
     energy interval that forms the base evidence, a fragment of signal evidence,
     a reference time point, and the interval of valid points for the peak.
     """
     llim, ulim = interv.start - beg, interv.end - beg
-    dist = lambda p : 1.0 + 2.0 * abs(beg + p - bann.earlystart)/ms2sp(150)
+    dist = lambda p : 1.0 + 2.0 * abs(beg + p - rdef.earlystart)/ms2sp(150)
     dist = np.vectorize(dist)
     peak = None
     #For each lead, the peak will be the maximum deviation point wrt the
@@ -765,7 +765,7 @@ def _get_guided_qrs_shape(signal, shape):
 ### New model QRS abstraction pattern ###
 #########################################
 
-def _qrs_tconst(pattern, bann):
+def _qrs_tconst(pattern, rdef):
     """
     Adds the temporal constraints of the QRS abstraction pattern automata.
     """
@@ -775,19 +775,19 @@ def _qrs_tconst(pattern, bann):
     tnet.add_constraint(qrs.start, qrs.end, C.QRS_DUR)
     #Constraints related to the peak of the complex.
     tnet.add_constraint(qrs.start, qrs.time, Iv(C.QRS_START_PK,
-                                                              C.QRS_BANN_DMAX))
+                                                              C.QRS_RDEF_DMAX))
     tnet.add_constraint(qrs.time, qrs.end, Iv(C.QRS_PK_END, np.inf))
-    #Constraints between QRS and beat annotation
-    tnet.add_constraint(bann.time, qrs.start, Iv(-C.QRS_BANN_DMAX,
-                                                              C.QRS_BANN_DMAX))
-    tnet.add_constraint(bann.time, qrs.end, C.QRS_DUR)
+    #Constraints between QRS and R-Deflection
+    tnet.add_constraint(rdef.time, qrs.start, Iv(-C.QRS_RDEF_DMAX,
+                                                              C.QRS_RDEF_DMAX))
+    tnet.add_constraint(rdef.time, qrs.end, C.QRS_DUR)
 
-def _qrs_gconst(pattern, bann):
+def _qrs_gconst(pattern, rdef):
     """
     Checks the general constraints of the QRS pattern transition.
     """
     #We ensure that the abstracted evidence has been observed.
-    if bann.earlystart != bann.lateend:
+    if rdef.earlystart != rdef.lateend:
         return
     #The energy level of the observed interval must be low
     hyp = pattern.hypothesis
@@ -804,7 +804,7 @@ def _qrs_gconst(pattern, bann):
     siginfo = _characterize_signal(beg, end)
     verify(siginfo is not None)
     #2. Peak point estimation.
-    peak = _find_peak(bann, siginfo, beg, hyp.time)
+    peak = _find_peak(rdef, siginfo, beg, hyp.time)
     verify(peak is not None)
     #3. QRS start and end estimation
     #For each lead, we first check if it is a paced beat, whose
@@ -838,7 +838,7 @@ def _qrs_gconst(pattern, bann):
         if len(points) < 3:
             continue
         #We define a distance function to evaluate the peaks
-        dist = (lambda p : 1.0 + 2.0 * abs(beg + start + p - bann.earlystart)
+        dist = (lambda p : 1.0 + 2.0 * abs(beg + start + p - rdef.earlystart)
                                                                    /ms2sp(150))
         dist = np.vectorize(dist)
         #We get the peak for this lead
@@ -897,10 +897,10 @@ def _qrs_gconst(pattern, bann):
 QRS_PATTERN = PatternAutomata()
 QRS_PATTERN.name = 'QRS'
 QRS_PATTERN.Hypothesis = o.QRS
-QRS_PATTERN.add_transition(0, 1, o.BeatAnn, ABSTRACTED, _qrs_tconst,
+QRS_PATTERN.add_transition(0, 1, o.RDeflection, ABSTRACTED, _qrs_tconst,
                                                                    _qrs_gconst)
 QRS_PATTERN.final_states.add(1)
-QRS_PATTERN.abstractions[o.BeatAnn] = (QRS_PATTERN.transitions[0],)
+QRS_PATTERN.abstractions[o.RDeflection] = (QRS_PATTERN.transitions[0],)
 QRS_PATTERN.freeze()
 
 

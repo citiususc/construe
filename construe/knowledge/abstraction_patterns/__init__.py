@@ -7,7 +7,7 @@ from .rhythm import (RHYTHMSTART_PATTERN, SINUS_PATTERN, TACHYCARDIA_PATTERN,
      EXTRASYSTOLE_PATTERN, BRADYCARDIA_PATTERN, RHYTHMBLOCK_PATTERN,
      VFLUTTER_PATTERN, ASYSTOLE_PATTERN, BIGEMINY_PATTERN, TRIGEMINY_PATTERN,
      COUPLET_PATTERN, AFIB_PATTERN)
-from .energy import generate_EnergInt_Patterns, BEATANN_PATTERN
+from .sig_deviation import generate_Deflection_Patterns, RDEFLECTION_PATTERN
 from .segmentation.QRS import QRS_PATTERN
 from .segmentation.pwave import PWAVE_PATTERN
 from .segmentation.twave import TWAVE_PATTERN
@@ -21,7 +21,7 @@ import numpy
 ###########################################################################
 
 #Knowledge base for rhythm interpretation
-KNOWLEDGE =  generate_EnergInt_Patterns(2) + [BEATANN_PATTERN,
+KNOWLEDGE =  generate_Deflection_Patterns(2) + [RDEFLECTION_PATTERN,
              QRS_PATTERN, TWAVE_PATTERN, PWAVE_PATTERN,
              RHYTHMSTART_PATTERN, SINUS_PATTERN, TACHYCARDIA_PATTERN,
              TRIGEMINY_PATTERN, EXTRASYSTOLE_PATTERN, COUPLET_PATTERN,
@@ -29,14 +29,14 @@ KNOWLEDGE =  generate_EnergInt_Patterns(2) + [BEATANN_PATTERN,
              VFLUTTER_PATTERN, AFIB_PATTERN, ASYSTOLE_PATTERN]
 
 #Knowledge base for atrial fibrillation detection.
-#KNOWLEDGE =  generate_EnergInt_Patterns(2) + [BEATANN_PATTERN, QRS_PATTERN,
+#KNOWLEDGE =  generate_Deflection_Patterns(2)+[RDEFLECTION_PATTERN, QRS_PATTERN,
 #            TWAVE_PATTERN, RHYTHMSTART_PATTERN, AFIB_PATTERN, ASYSTOLE_PATTERN]
 
 #Knowledge base for QRS delineation validation.
 #KNOWLEDGE = [QRS_PATTERN]
 
 #Knowledge base for beat interpretations (QT database validation)
-#KNOWLEDGE =  generate_EnergInt_Patterns(2) + [
+#KNOWLEDGE =  generate_Deflection_Patterns(2) + [
 #             QRS_PATTERN, TWAVE_PATTERN, PWAVE_PATTERN, SINUS_BEAT_PATTERN]
 
 #First, we check the consistency of every single abstraction pattern

@@ -49,13 +49,13 @@ def _get_obs_descriptor(observation):
     colors[o.Couplet]         = ('#D70751', 0.2)
     colors[o.RhythmStart]     = ('#004008', 1.0)
     colors[o.Noise]           = ('#808080', 1.0)
-    colors[o.BeatAnn]         = ('#008000', 1.0)
+    colors[o.RDeflection]     = ('#008000', 1.0)
     if isinstance(observation, o.QRS):
         col = '#0000FF' if not observation.paced else '#FF0000'
         colors[o.QRS] = (col, 0.2)
-    if isinstance(observation, o.Energ_Int):
+    if isinstance(observation, o.Deflection):
         lev = 0 if not observation.level else min(observation.level.values())
-        colors[o.Energ_Int]       = ('#800000', max(0.8 - 0.2*lev, 0.1))
+        colors[o.Deflection]       = ('#800000', max(0.8 - 0.2*lev, 0.1))
     try:
         clazz = type(observation)
         return colors[clazz] + (ap.get_obs_level(clazz), )

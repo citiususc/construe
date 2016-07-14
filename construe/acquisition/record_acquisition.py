@@ -108,16 +108,16 @@ def get_more_evidence():
         for ann in (a for a in _ANNOTS if ((is_qrs_annotation(a) or
                                             a.code is ECGCodes.FLWAV) and
                                          init <= a.time < init+nchunks*_STEP)):
-            bann = o.BeatAnn()
+            rdef = o.RDeflection()
             atime = ann.time - _OFFSET
-            bann.time.value = Iv(atime, atime)
+            rdef.time.value = Iv(atime, atime)
             #The level is established according to the annotation information.
-            bann.level = {SIG.VALID_LEAD_NAMES[lead] :
+            rdef.level = {SIG.VALID_LEAD_NAMES[lead] :
                                                     127 for lead in _REC.leads}
-            bann.level[SIG.VALID_LEAD_NAMES[_REC.leads[ann.chan]]] = (127 -
+            rdef.level[SIG.VALID_LEAD_NAMES[_REC.leads[ann.chan]]] = (127 -
                                                                        ann.num)
-            bann.freeze()
-            BUF.publish_observation(bann)
+            rdef.freeze()
+            BUF.publish_observation(rdef)
         newsize = SIG.get_signal_length()
         if newsize >= _DURATION or newsize >= len(_REC.signal[0])-_OFFSET:
             BUF.set_status(BUF.Status.STOPPED)

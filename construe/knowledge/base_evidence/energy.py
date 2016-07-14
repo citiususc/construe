@@ -65,9 +65,9 @@ def get_energy_intervals(energy, level = 0, percentile = 0.95, group = 1):
         i = i+1
     return observations
 
-def get_energy_observations(start, end, lead, max_level=0, group=ms2sp(20)):
+def get_deflection_observations(start, end, lead, max_level=0, group=ms2sp(20)):
     """
-    Obtains energy interval observations present in a signal fragment,
+    Obtains deflection observations present in a signal fragment,
     specified by their limits. The returned intervals are separated by levels,
     and grouped by a closeness parameter.
 
@@ -102,7 +102,7 @@ def get_energy_observations(start, end, lead, max_level=0, group=ms2sp(20)):
     for i in xrange(max_level + 1):
         obs[i] = []
         for interv in get_energy_intervals(energ, level = i, group = group):
-            eint = o.Energ_Int()
+            eint = o.Deflection()
             eint.start.value = Iv(interv.start, interv.start)
             eint.end.value = Iv(interv.end, interv.end)
             eint.level[lead] = i
@@ -132,7 +132,7 @@ def get_energy_observations(start, end, lead, max_level=0, group=ms2sp(20)):
 def combine_energy_intervals(dicts, margin = ms2sp(20)):
     """
     Combines the overlapping observations in several dicts in the result format
-    of the get_energy_observations() function.
+    of the get_deflection_observations() function.
 
     Parameters
     ----------
@@ -211,7 +211,7 @@ def get_combined_energy(start, end, max_level, group=ms2sp(80)):
     while idx < end:
         wfs = {}
         for lead in dicts:
-            wfs[lead] = get_energy_observations(start + idx,
+            wfs[lead] = get_deflection_observations(start + idx,
                                                 start + idx + TWINDOW,
                                                 lead = lead,
                                                 max_level = max_level,

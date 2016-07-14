@@ -135,16 +135,16 @@ def _p_eint_tconst(pattern, eint):
     #P wave duration constraint
     tnet.add_constraint(pwave.start, pwave.end, C.PW_DURATION)
     #Constraints with the energy interval
-    tnet.add_constraint(eint.start, eint.end, C.PW_EINT_DUR)
-    tnet.add_constraint(pwave.start, eint.start, Iv(-C.PW_EINT_OVER,
-                                                    C.PW_EINT_OVER))
+    tnet.add_constraint(eint.start, eint.end, C.PW_DEF_DUR)
+    tnet.add_constraint(pwave.start, eint.start, Iv(-C.PW_DEF_OVER,
+                                                    C.PW_DEF_OVER))
     tnet.add_constraint(pwave.end, eint.end,
-                        Iv(-C.PW_EINT_OVER, C.PW_EINT_OVER))
+                        Iv(-C.PW_DEF_OVER, C.PW_DEF_OVER))
     tnet.set_before(eint.start, pwave.end)
     tnet.set_before(pwave.start, eint.end)
     if qrs is not None:
-        tnet.add_constraint(eint.start, qrs.start, C.PR_EINT_SEP)
-        tnet.add_constraint(eint.end, qrs.start, C.PQ_EINT_SEP)
+        tnet.add_constraint(eint.start, qrs.start, C.PR_DEF_SEP)
+        tnet.add_constraint(eint.end, qrs.start, C.PQ_DEF_SEP)
         tnet.set_before(eint.end, qrs.start)
 
 def _p_gconst(pattern, eint):
@@ -181,7 +181,7 @@ PWAVE_PATTERN = PatternAutomata()
 PWAVE_PATTERN.name = 'P Wave'
 PWAVE_PATTERN.Hypothesis = o.PWave
 PWAVE_PATTERN.add_transition(0, 1, o.QRS, ENVIRONMENT, _p_qrs_tconst)
-PWAVE_PATTERN.add_transition(1, 2, o.Energ_Int, ABSTRACTED, _p_eint_tconst,
+PWAVE_PATTERN.add_transition(1, 2, o.Deflection, ABSTRACTED, _p_eint_tconst,
                              _p_gconst)
 PWAVE_PATTERN.final_states.add(2)
 PWAVE_PATTERN.freeze()
