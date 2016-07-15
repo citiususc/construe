@@ -214,6 +214,25 @@ def _standardize_rhythm_annots(annots):
     return dest
 
 
+def _clean_artifacts(annots):
+    """Removes those artifact annotations that are close to a QRS annotation"""
+    DISTANCE = ms2sp(150)
+    banns = [a for a in annots if MITAnnotation.is_qrs_annotation(a) or
+                                                      a.code == ECGCodes.ARFCT]
+    i = 0
+    while i < len(banns):
+        if (banns[i].code == ECGCodes.ARFCT and
+                ((i > 0 and
+                    banns[i].time-banns[i-1].time < DISTANCE) or
+                (i < len(banns)-1 and
+                    banns[i+1].time-banns[i].time < DISTANCE))):
+            annots.remove(banns[i])
+            banns.pop(i)
+        else:
+            i += 1
+    return annots
+
+
 def process_record(path, ann='atr', tfactor=1.0, fr_len=23040, fr_overlap=1080,
                    min_delay=2560, max_delay=20.0, kfactor=12, initial_pos=0,
                    final_pos=np.inf, verbose=True):
@@ -377,10 +396,10 @@ if __name__ == '__main__':
                                'standard output the fragment being '
                                'interpreted.'))
     args = parser.parse_args()
-    result = _standardize_rhythm_annots(process_record(args.r, args.a,
-                                                       args.tfactor, args.l,
-                                                       args.overl, args.d,
-                                                       args.D, args.k, args.f,
-                                                       args.t, args.v))
+    result = _clean_artifacts(
+                _standardize_rhythm_annots(
+                    process_record(args.r, args.a, args.tfactor, args.l,
+                                   args.overl, args.d, args.D, args.k, args.f,
+                                   args.t, args.v)))
     MITAnnotation.save_annotations(result, args.r + '.' + args.o)
     print('Record ' + args.r + ' succesfully processed')
