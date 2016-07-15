@@ -27,17 +27,6 @@ import collections
 import blist
 import pprint
 
-if any is np.any:
-    import __builtin__
-    any = __builtin__.any
-    all = __builtin__.all
-assert any is not np.any and all is not np.all
-
-#Definition of the database path and the annotator resulting from the
-#interpretation.
-PATH = '/tmp/mit/'
-ANN = '.rhy'
-
 #Histogram bins for the P-wave characterization
 PW_BINS = [0.0, ph2dg(0.05), ph2dg(0.1), ph2dg(0.5), ph2dg(1.0)]
 
@@ -699,20 +688,6 @@ if __name__ == "__main__":
     #Reconstruction of the abductive interpretation
     annots = MIT.read_annotations('{0}.{1}'.format(args.r, args.a))
     interp = interp2annots.ann2interp(rec, annots)
-    #We remove RDeflection observations that are close to a QRS observation
-    qobs = [ob for ob in interp.observations
-                                     if isinstance(ob, (o.RDeflection, o.QRS))]
-    i = 0
-    while i < len(qobs):
-        if (isinstance(qobs[i], o.RDeflection) and
-                ((i > 0 and
-                    qobs[i].time.start-qobs[i-1].time.start < ms2sp(150)) or
-                (i < len(qobs)-1 and
-                    qobs[i+1].time.start-qobs[i].time.start < ms2sp(150)))):
-            interp.observations.remove(qobs[i])
-            qobs.pop(i)
-        else:
-            i += 1
     #Cluster information
     clusters = load_clustering(args.r, args.c, interp.observations)
     #QRS feature extraction
