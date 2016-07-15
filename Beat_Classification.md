@@ -43,12 +43,6 @@ To reproduce the classification results shown in the paper, you have to follow t
 
 Finally, in the `mitdb_validation` you will find the full statistics of the classification results. Following we show the results for the full database:
 
-|merda|non|vai|
-|-----|---|---|
-|100|si|que|vai|
-
-
-
 | Record | Nn' | Sn' | Vn' | Fn' | On' | Ns | Ss | Vs | Fs' | Os' | Nv | Sv | Vv | Fv' | Ov' | No' | So' | Vo' | Fo' | Q Se | Q +P | V Se | V +P | S Se | S +P | RR err |
 |--------|-----|-----|-----|-----|-----|----|----|----|-----|-----|----|----|----|-----|-----|-----|-----|-----|-----|-----|------|------|------|------|------|--------|
 |100|2239|0|0|0|0|0|33|0|0|0|0|0|1|0|0|0|0|0|0|100.00|100.00|100.00|100.00|100.00|100.00|2.23|
