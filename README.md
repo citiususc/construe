@@ -2,9 +2,13 @@
 
 *Construe* is a knowledge-based abductive framework for time series interpretation. It provides a knowledge representation model and a set of algorithms for the interpretation of temporal information, implementing a hypothesize-and-test cycle guided by an attentional mechanism. The framework is fully described in the following paper:
 
-T. Teijeiro, P. Félix and J.Presedo: *On the adoption of abductive reasoning for time series interpretation*.
+ - T. Teijeiro, P. Félix and J.Presedo: *On the adoption of abductive reasoning for time series interpretation*.
 
 In this repository you will find the complete implementation of the data model and the algorithms, as well as a knowledge base for the interpretation of electrocardiogram (ECG) signals, from the basic waveforms (P, QRS, T) to complex rhythm patterns (Atrial fibrillation, Bigeminy, Trigeminy, Ventricular flutter/fibrillation, etc.). In addition, we provide some utility scripts to reproduce the interpretation of all the ECG strips shown in the paper, and to allow the interpretation of any ECG record in the MIT-BIH format.
+
+Recently, we have also included an algorithm for [automatic heartbeat classification on ECG signals](Beat_classification.md), described in the paper:
+
+ - T. Teijeiro, P. Félix, J.Presedo and D. Castro: *Heartbeat classification using abstract features from the abductive interpretation of the ECG*
 
 ## Installation
 
