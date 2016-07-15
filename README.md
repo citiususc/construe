@@ -6,7 +6,7 @@
 
 In this repository you will find the complete implementation of the data model and the algorithms, as well as a knowledge base for the interpretation of electrocardiogram (ECG) signals, from the basic waveforms (P, QRS, T) to complex rhythm patterns (Atrial fibrillation, Bigeminy, Trigeminy, Ventricular flutter/fibrillation, etc.). In addition, we provide some utility scripts to reproduce the interpretation of all the ECG strips shown in the paper, and to allow the interpretation of any ECG record in the MIT-BIH format.
 
-Recently, we have also included an algorithm for [automatic heartbeat classification on ECG signals](Beat_classification.md), described in the paper:
+Recently, we have also included an algorithm for [automatic heartbeat classification on ECG signals](Beat_Classification.md), described in the paper:
 
  - T. Teijeiro, P. Félix, J.Presedo and D. Castro: *Heartbeat classification using abstract features from the abductive interpretation of the ECG*
 
