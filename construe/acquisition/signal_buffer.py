@@ -8,7 +8,7 @@ __author__ = "T. Teijeiro"
 __date__ = "$01-dic-2011 13:59:16$"
 
 import numpy
-import construe.segmentation.wavelets.wavelet_filter as wf
+import segmentation.wavelets.wavelet_filter as wf
 from collections import OrderedDict
 
 class Leads:
