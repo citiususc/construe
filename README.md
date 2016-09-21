@@ -31,7 +31,13 @@ To support visualization of the interpretation results and the interpretations t
 
 Finally, to read ECG signal records it is necessary to have access to a proper installation of the [WFDB software package](http://www.physionet.org/physiotools/wfdb.shtml).
 
-To make easier the installation of Python dependencies, we recommend the [Anaconda Python distribution](https://www.continuum.io/anaconda-overview). Once all the dependencies are satisfied, it is enough to download the project sources and execute the proper python or bash scripts, as explained below.
+To make easier the installation of Python dependencies, we recommend the [Anaconda Python distribution](https://www.continuum.io/anaconda-overview). Alternatively, you can install them using pip with this command:
+
+```
+ ~$ pip install -r requeriments.txt
+```
+
+Once all the dependencies are satisfied, it is enough to download the project sources and execute the proper python or bash scripts, as explained below.
 
 ## Getting started
 ### *Construe* as a tool for ECG analysis
