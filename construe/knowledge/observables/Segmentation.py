@@ -22,7 +22,15 @@ class PWave(Observable):
 
 
 class TWave(Observable):
-    """Observable that represents a T Wave"""
+    """
+    Observable that represents a T Wave
+
+    Attributes
+    ----------
+    amplitude:
+        Dictionary with the amplitude in mV of the T wave in each lead, indexed
+        by lead.
+    """
     def __init__(self):
         super(TWave, self).__init__()
         #The single reference will correspond to the start time
