@@ -155,36 +155,36 @@ def _t_qrs_tconst(pattern, qrs):
     tc.add_constraint(qrs.end, twave.end, C.SQT_INTERVAL)
     tc.add_constraint(twave.start, twave.end, C.TW_DURATION)
 
-def _t_eint_tconst(pattern, eint):
+def _t_defl_tconst(pattern, defl):
     """
     Temporal constraints wrt the abstracted energy interval.
     """
-    BASIC_TCONST(pattern, eint)
+    BASIC_TCONST(pattern, defl)
     qrs = pattern.evidence[o.QRS][0] if pattern.evidence[o.QRS] else None
     twave = pattern.hypothesis
     tc = pattern.last_tnet
-    tc.add_constraint(eint.start, eint.end, Iv(0, C.TW_DURATION.end))
-    tc.add_constraint(twave.start, eint.start, Iv(-C.TW_DEF_OVER_MAX,
+    tc.add_constraint(defl.start, defl.end, Iv(0, C.TW_DURATION.end))
+    tc.add_constraint(twave.start, defl.start, Iv(-C.TW_DEF_OVER_MAX,
                                                            C.TW_DEF_OVER_MIN))
-    tc.add_constraint(twave.end, eint.end, Iv(-C.TW_DEF_OVER_MIN,
+    tc.add_constraint(twave.end, defl.end, Iv(-C.TW_DEF_OVER_MIN,
                                                            C.TW_DEF_ENDIFF))
-    tc.set_before(eint.start, twave.end)
-    tc.set_before(twave.start, eint.end)
+    tc.set_before(defl.start, twave.end)
+    tc.set_before(twave.start, defl.end)
     if qrs is not None:
         qrsdur = qrs.earlyend - qrs.latestart
         if qrsdur - C.TMARGIN <= C.TW_DURATION.end:
             tc.add_constraint(twave.start, twave.end,
                                                 Iv(qrsdur - C.TMARGIN, np.inf))
-        tc.add_constraint(qrs.start, eint.end, Iv(0, C.QT_INTERVAL.end))
-        tc.set_before(qrs.end, eint.start)
+        tc.add_constraint(qrs.start, defl.end, Iv(0, C.QT_INTERVAL.end))
+        tc.set_before(qrs.end, defl.start)
 
-def _t_gconst(pattern, eint):
+def _t_gconst(pattern, defl):
     """
     T Wave abstraction pattern general constraints, checked when all the
     evidence has been observed.
     """
     twave = pattern.hypothesis
-    if eint.earlystart != eint.latestart or not pattern.evidence[o.QRS]:
+    if defl.earlystart != defl.latestart or not pattern.evidence[o.QRS]:
         return
     qrs = pattern.evidence[o.QRS][0]
     #Wave limits
@@ -223,12 +223,12 @@ def _t_gconst(pattern, eint):
     #The overlapping between the energy interval and the T Wave must be at
     #least the half of the duration of the energy interval.
     verify(Iv(twave.earlystart, twave.lateend).intersection(
-                    Iv(eint.earlystart, eint.lateend)).length >=
-                                            (eint.lateend-eint.earlystart)/2.0)
+                    Iv(defl.earlystart, defl.lateend)).length >=
+                                            (defl.lateend-defl.earlystart)/2.0)
     #If the Deflection is a R-Deflection, we require a margin before
     #the end of the twave.
-    if isinstance(eint, o.RDeflection):
-        verify(twave.lateend - eint.time.end > C.TW_RDEF_MIN_DIST)
+    if isinstance(defl, o.RDeflection):
+        verify(twave.lateend - defl.time.end > C.TW_RDEF_MIN_DIST)
 
 ###########################
 ### Automata definition ###
@@ -238,7 +238,7 @@ TWAVE_PATTERN = PatternAutomata()
 TWAVE_PATTERN.name = 'T Wave'
 TWAVE_PATTERN.Hypothesis = o.TWave
 TWAVE_PATTERN.add_transition(0, 1, o.QRS, ENVIRONMENT, _t_qrs_tconst)
-TWAVE_PATTERN.add_transition(1, 2, o.Deflection, ABSTRACTED, _t_eint_tconst,
+TWAVE_PATTERN.add_transition(1, 2, o.Deflection, ABSTRACTED, _t_defl_tconst,
                                                                      _t_gconst)
 TWAVE_PATTERN.final_states.add(2)
 TWAVE_PATTERN.freeze()

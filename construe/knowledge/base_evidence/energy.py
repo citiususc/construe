@@ -102,11 +102,11 @@ def get_deflection_observations(start, end, lead, max_level=0, group=ms2sp(20)):
     for i in xrange(max_level + 1):
         obs[i] = []
         for interv in get_energy_intervals(energ, level = i, group = group):
-            eint = o.Deflection()
-            eint.start.value = Iv(interv.start, interv.start)
-            eint.end.value = Iv(interv.end, interv.end)
-            eint.level[lead] = i
-            obs[i].append(eint)
+            defl = o.Deflection()
+            defl.start.value = Iv(interv.start, interv.start)
+            defl.end.value = Iv(interv.end, interv.end)
+            defl.level[lead] = i
+            obs[i].append(defl)
         #We update the time of the intervals
         changeTime(obs[i], start)
     #Now we need to remove redundant observations of upper levels

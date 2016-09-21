@@ -52,7 +52,7 @@ Any ECG record in [MIT-BIH format](https://www.physionet.org/physiotools/wag/hea
 
 ### Using *Construe* in another problems and domains
 
-We will be glad if you want to use *Construe* to solve problems different from ECG interpretation, and we will help you to do so. The first step is to understand what is under the hood, and the best reference is [1]. After this, you will have to define the **Abstraction Model** for your problem, based on the **Observable** and **Abstraction Pattern** formalisms. As an example, a high-level description of the ECG abstraction model is available in [2], and its implementation is in the [`knowledge`](construe/knowledge) subdirectory.
+We will be glad if you want to use *Construe* to solve problems different from ECG interpretation, and we will help you to do so. The first step is to understand what is under the hood, and the best reference is [1]. After this, you will have to define the **Abstraction Model** for your problem, based on the **Observable** and **Abstraction Pattern** formalisms. As an example, a high-level description of the ECG abstraction model is available in [2], and its implementation is in the [`knowledge`](construe/knowledge) subdirectory. A tutorial is also available in the project [wiki](https://github.com/citiususc/construe/wiki/How-to-define-abstraction-models).
 
 Once the domain-specific knowledge base has been defined, the `fragment_processing.py` module should serve as a basis for the execution of the full hypothesize-and-test cycle with different time series and the new abstraction model.
 

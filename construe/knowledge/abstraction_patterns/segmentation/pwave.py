@@ -121,11 +121,11 @@ def _p_qrs_tconst(pattern, qrs):
     tnet.add_constraint(pwave.end, qrs.start, C.PQ_INTERVAL)
     tnet.add_constraint(pwave.start, qrs.start, C.PR_INTERVAL)
 
-def _p_eint_tconst(pattern, eint):
+def _p_defl_tconst(pattern, defl):
     """
     Temporal constraints definition wrt the abstracted energy interval.
     """
-    BASIC_TCONST(pattern, eint)
+    BASIC_TCONST(pattern, defl)
     pwave = pattern.hypothesis
     qrs = None
     if pattern.evidence[o.QRS]:
@@ -135,25 +135,25 @@ def _p_eint_tconst(pattern, eint):
     #P wave duration constraint
     tnet.add_constraint(pwave.start, pwave.end, C.PW_DURATION)
     #Constraints with the energy interval
-    tnet.add_constraint(eint.start, eint.end, C.PW_DEF_DUR)
-    tnet.add_constraint(pwave.start, eint.start, Iv(-C.PW_DEF_OVER,
+    tnet.add_constraint(defl.start, defl.end, C.PW_DEF_DUR)
+    tnet.add_constraint(pwave.start, defl.start, Iv(-C.PW_DEF_OVER,
                                                     C.PW_DEF_OVER))
-    tnet.add_constraint(pwave.end, eint.end,
+    tnet.add_constraint(pwave.end, defl.end,
                         Iv(-C.PW_DEF_OVER, C.PW_DEF_OVER))
-    tnet.set_before(eint.start, pwave.end)
-    tnet.set_before(pwave.start, eint.end)
+    tnet.set_before(defl.start, pwave.end)
+    tnet.set_before(pwave.start, defl.end)
     if qrs is not None:
-        tnet.add_constraint(eint.start, qrs.start, C.PR_DEF_SEP)
-        tnet.add_constraint(eint.end, qrs.start, C.PQ_DEF_SEP)
-        tnet.set_before(eint.end, qrs.start)
+        tnet.add_constraint(defl.start, qrs.start, C.PR_DEF_SEP)
+        tnet.add_constraint(defl.end, qrs.start, C.PQ_DEF_SEP)
+        tnet.set_before(defl.end, qrs.start)
 
-def _p_gconst(pattern, eint):
+def _p_gconst(pattern, defl):
     """
     General constraints of the P Wave abstraction pattern, once all the
     evidence has been observed.
     """
     pwave = pattern.hypothesis
-    if eint.earlystart != eint.latestart or not pattern.evidence[o.QRS]:
+    if defl.earlystart != defl.latestart or not pattern.evidence[o.QRS]:
         return
     qrs = pattern.evidence[o.QRS][0]
     beg = pwave.earlystart
@@ -181,7 +181,7 @@ PWAVE_PATTERN = PatternAutomata()
 PWAVE_PATTERN.name = 'P Wave'
 PWAVE_PATTERN.Hypothesis = o.PWave
 PWAVE_PATTERN.add_transition(0, 1, o.QRS, ENVIRONMENT, _p_qrs_tconst)
-PWAVE_PATTERN.add_transition(1, 2, o.Deflection, ABSTRACTED, _p_eint_tconst,
+PWAVE_PATTERN.add_transition(1, 2, o.Deflection, ABSTRACTED, _p_defl_tconst,
                              _p_gconst)
 PWAVE_PATTERN.final_states.add(2)
 PWAVE_PATTERN.freeze()
