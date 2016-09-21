@@ -13,9 +13,15 @@
    version="1.1"
    inkscape:version="0.91 r"
    xml:space="preserve"
+<<<<<<< HEAD
    width="278.125"
    height="40.546249"
    viewBox="0 0 278.125 40.546249"
+=======
+   width="258.125"
+   height="40.546249"
+   viewBox="0 0 258.125 40.546249"
+>>>>>>> 0dcce498dd4f40369cab4188d2442489a367139f
    sodipodi:docname="t_wave_automata.svg"><metadata
      id="metadata8"><rdf:RDF><cc:Work
          rdf:about=""><dc:format>image/svg+xml</dc:format><dc:type
@@ -285,6 +291,7 @@
      showgrid="false"
      inkscape:zoom="3.5564165"
      inkscape:cx="135.45497"
+<<<<<<< HEAD
      inkscape:cy="64.167016"
      inkscape:window-x="-2"
      inkscape:window-y="-3"
@@ -294,6 +301,13 @@
      fit-margin-left="0"
      fit-margin-right="0"
      fit-margin-bottom="0" /><g
+=======
+     inkscape:cy="64.167015"
+     inkscape:window-x="-2"
+     inkscape:window-y="-3"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="g10" /><g
+>>>>>>> 0dcce498dd4f40369cab4188d2442489a367139f
      id="g10"
      inkscape:groupmode="layer"
      inkscape:label="t_wave"
