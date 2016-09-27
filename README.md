@@ -70,7 +70,7 @@ The source code is structured in the following main modules:
  - [`inference`](construe/inference): Definition of the interpretation algorithms, including the *construe* algorithm and the reasoning modes (*abduce*, *deduce*, *subsume*, *predict* and *advance*) [1].
  - [`knowledge`](construe/knowledge): Definition of the ECG abstraction model, including *observables* and *abstraction patterns*.
  - [`model`](construe/model): General data model of the framework, including the base class for all *observables* and classes to implement *abstraction grammars* as finite automata.
- - [`util`](construe/util): Miscellaneous utility modules, including signal processing and plotting routines.
+ - [`utils`](construe/utils): Miscellaneous utility modules, including signal processing and plotting routines.
 
 ## Known issues
 
