@@ -283,7 +283,7 @@ def seems_pwave(signal, lead):
     points = DP.arrayRDP(sig, 0.001, 5)[1:]
     if len(points) < 4:
         return False
-    sample = np.concatenate((sp2ms(points), sig[points]))
+    sample = np.concatenate((sp2ms(points), sig[points])).reshape(1, -1)
     return classifier.predict(scaler.transform(sample))[0] == 1
 
 #Mapping for each lead with the corresponding classifier.
@@ -299,15 +299,20 @@ _SCALERS = [preproc.StandardScaler(), preproc.StandardScaler()]
 _SCALERS[0].mean_ = np.array(
         [3.64100119e+01,   6.27794994e+01,   8.74159714e+01,   1.18181168e+02,
          6.97318236e-02,   1.17550656e-01,   8.52205006e-02,  -1.42669845e-02])
-_SCALERS[0].std_ = np.array(
-        [18.28456548,  21.80939775,  25.19837448,  27.46293336,
-         0.06650826,   0.09788993,   0.09393059,   0.04712977])
 _SCALERS[1].mean_ = np.array(
         [3.52004505e+01,   6.13603604e+01,   8.69031532e+01,   1.17867117e+02,
          5.26295045e-02,   8.14245495e-02,   3.52759009e-02,  -1.85416667e-02])
-_SCALERS[1].std_ = np.array(
-        [16.8934232 ,  19.45625391,  23.22422215,  26.39513332,
-         0.05968984,   0.07814591,   0.08662095,   0.05071906])
+_std0 = np.array([18.28456548,  21.80939775,  25.19837448,  27.46293336,
+                  0.06650826,   0.09788993,   0.09393059,   0.04712977])
+_std1 = np.array([16.8934232 ,  19.45625391,  23.22422215,  26.39513332,
+                  0.05968984,   0.07814591,   0.08662095,   0.05071906])
+#Fix for scikit-learn > 0.16
+try:
+    _SCALERS[0].std_ = _std0
+    _SCALERS[1].std_ = _std1
+except AttributeError:
+    _SCALERS[0].scale_ = _std0
+    _SCALERS[1].scale_ = _std1
 
 #Trained classifiers. These classifiers were serialized using the pickle module
 # into the following two (long) strings.
