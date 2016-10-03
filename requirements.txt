@@ -1,7 +1,7 @@
 numpy
 blist
 scipy
-scikit-learn == 0.16
+scikit-learn
 PyWavelets
 matplotlib
 networkx

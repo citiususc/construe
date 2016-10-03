@@ -20,13 +20,13 @@ This project is implemented in pure python, so no installation is required. Howe
 In addition, the knowledge base for ECG interpretation depends on the following packages:
 
 3. [scipy](https://pypi.python.org/pypi/scipy)
-4. [scikit-learn v0.16](https://pypi.python.org/pypi/scikit-learn/0.16.1)
-5. [PyWavelets](https://pypi.python.org/pypi/PyWavelets/)
+4. [scikit-learn](https://pypi.python.org/pypi/scikit-learn)
+5. [PyWavelets](https://pypi.python.org/pypi/PyWavelets)
 
 To support visualization of the interpretation results and the interpretations tree and run the usage examples, the following packages are also needed:
 
 6. [matplotlib](https://pypi.python.org/pypi/matplotlib)
-7. [networkx](https://pypi.python.org/pypi/networkx/)
+7. [networkx](https://pypi.python.org/pypi/networkx)
 8. [pygraphviz](https://pypi.python.org/pypi/pygraphviz)
 
 Finally, to read ECG signal records it is necessary to have access to a proper installation of the [WFDB software package](http://www.physionet.org/physiotools/wfdb.shtml).
