@@ -49,13 +49,13 @@ def _zhang_tendpoint(signal, epts):
     sig = fft_filt(signal-np.mean(signal), (0.5, 250), SAMPLING_FREQ)
     mthrld = 2.0
     fratio = SAMPLING_FREQ/250.0
-    ptwin = np.ceil(4.0*fratio)
+    ptwin = int(np.ceil(4.0*fratio))
     swin = 32.0*fratio
     Tval = np.zeros_like(epts)
     for i in xrange(len(epts)):
         pt = epts[i]
         cutlevel = np.sum(sig[pt-ptwin:pt+ptwin+1])/(ptwin*2.0+1)
-        corsig = sig[(pt-swin):pt+1] - cutlevel
+        corsig = sig[int(pt-swin):pt+1] - cutlevel
         Tval[i] = np.sum(corsig)
     maxind = np.argmax(Tval)
     dum = Tval[maxind]

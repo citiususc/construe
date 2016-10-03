@@ -56,9 +56,9 @@ def fft_filt(sig, bands, sampling_freq):
     bands = (max(bands[0], 0), min(bands[1], 0.5 * sampling_freq))
     N = len(sig)
     y = np.fft.fft(sig)
-    lowicut = round(bands[0]*N/sampling_freq)
+    lowicut = int(round(bands[0]*N/sampling_freq))
     lowmirror = N-lowicut+2
-    highicut =  round(bands[1]*N/sampling_freq)
+    highicut =  int(round(bands[1]*N/sampling_freq))
     highmirror = N-highicut+2
     y[:lowicut] = 0
     y[lowmirror:] = 0

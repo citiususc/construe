@@ -123,8 +123,8 @@ def get_signal_fragment(start, end, blocksize = None, lead = Leads.MLII):
     assert lead in VALID_LEAD_NAMES, 'Unrecognized lead {0}'.format(lead)
     lead = VALID_LEAD_NAMES[lead]
     #TODO remove this!!!!
-    start = 0 if start < 0 else start
-    end = len(_SIGNAL[lead] - 1) if end >= len(_SIGNAL[lead]) else end
+    start = 0 if start < 0 else int(start)
+    end = len(_SIGNAL[lead] - 1) if end >= len(_SIGNAL[lead]) else int(end)
     #If blocksize not specified, return the requested fragment
     array = _SIGNAL[lead]
     return ((array[start:end+1], 0, end-start) if blocksize is None

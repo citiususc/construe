@@ -35,7 +35,7 @@ def _delimit_p(signal, lead, es_lim, ls_lim, ee_lim):
     """
     #shape simplification (ignoring the environment signal)
     delta = ph2dg(0.02)
-    points = DP.arrayRDP(signal[es_lim:], delta, 6) + int(es_lim)
+    points = DP.arrayRDP(signal[int(es_lim):], delta, 6) + int(es_lim)
     #If no relevant disturbances are detected, there is no a P wave
     if len(points) == 2:
         return None
@@ -48,7 +48,7 @@ def _delimit_p(signal, lead, es_lim, ls_lim, ee_lim):
             sigfr = signal[points[i]:points[j]+1]
             #We consider a good P wave environment if the signal has no
             #amplitude variations
-            beg = max(0, points[i]-C.PWAVE_ENV)
+            beg = int(max(0, points[i]-C.PWAVE_ENV))
             plainenv = not np.any(signal[beg:points[i]+1]-signal[beg])
             #The minimum threshold varies with the environment quality
             ampthres = C.PWAVE_MIN_AMP if not plainenv else delta
@@ -59,7 +59,8 @@ def _delimit_p(signal, lead, es_lim, ls_lim, ee_lim):
         if cand is not None:
             break
         i -= 1
-    return None if cand is None else Iv(cand[0]-es_lim, cand[1]-es_lim)
+    return None if cand is None else Iv(int(cand[0]-es_lim),
+                                        int(cand[1]-es_lim))
 
 def delineate_pwave(es_lim, ls_lim, ee_lim, le_lim, pwave):
     """
