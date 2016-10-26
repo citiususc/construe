@@ -17,6 +17,7 @@ from matplotlib.patches import Ellipse
 from matplotlib._pylab_helpers import Gcf
 from collections import deque
 import networkx as nx
+from networkx.drawing.nx_agraph import graphviz_layout
 import pygraphviz as pgv
 from math import sqrt
 import numpy as np
@@ -390,8 +391,7 @@ class InterpretationVisualizer(object):
             for node in self.graph.nodes_iter():
                 self.labels[key][node] = func(node)
         #Horizontal tree layout
-        self.pos = nx.graphviz_layout(self.graph, prog='dot',
-                                                           args='-Grankdir=LR')
+        self.pos = graphviz_layout(self.graph, prog='dot', args='-Grankdir=LR')
         #Event listener
         self._fig.canvas.mpl_connect('button_release_event', self.__onclick)
         self._fig.canvas.mpl_connect('key_release_event', self.__onkey)
