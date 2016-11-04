@@ -130,7 +130,7 @@ class ObservableABCMeta(ABCMeta):
             oldfields = getattr(base, '_fields', None)
             if oldfields:
                 fields = oldfields + fields
-        basetuple = namedtuple(name, fields, verbose=True)
+        basetuple = namedtuple(name + '_', fields, verbose=True)
         bases = (basetuple,) + bases
         namespace.pop('_extrafields', None)
         namespace.setdefault('__doc__', basetuple.__doc__)
