@@ -13,10 +13,6 @@ from .constraint_network import Variable
 from .interval import Interval
 from numpy import inf
 import itertools as it
-from collections import namedtuple
-from abc import ABCMeta
-
-#TODO all functions in this module have to be revised for immutable types
 
 def overlap(obs1, obs2):
     """
@@ -122,39 +118,6 @@ def is_singleton(observable):
     return getattr(observable, '__singletonobservable__', False)
 
 
-class ObservableABCMeta(ABCMeta):
-    '''The metaclass for the abstract base class + mix-in for named tuples.'''
-    def __new__(mcls, name, bases, namespace):
-        fields = namespace.get('_extrafields', ())
-        for base in bases:
-            oldfields = getattr(base, '_fields', None)
-            if oldfields:
-                fields = oldfields + fields
-        basetuple = namedtuple(name + '_', fields, verbose=True)
-        bases = (basetuple,) + bases
-        namespace.pop('_extrafields', None)
-        namespace.setdefault('__doc__', basetuple.__doc__)
-        namespace.setdefault('__slots__', ())
-        return ABCMeta.__new__(mcls, name, bases, namespace)
-
-
-class Observable(object):
-    __metaclass__ = ObservableABCMeta
-    _extrafields = ('start', 'time', 'end')
-
-
-class EventObservable(Observable):
-
-    def __new__(_cls, start, time, end):
-        assert start == time == end
-        return super(EventObservable, _cls).__new__(_cls, start, time, end)
-
-    @classmethod
-    def _make(cls, iterable, new=__new__, len=len):
-        return cls.__new__(cls, *iterable)
-
-
-#TODO old classes, remove
 class Observable(FreezableObject):
     """
     Base class for all the observables. It has three attributes:

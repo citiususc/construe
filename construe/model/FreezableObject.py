@@ -6,6 +6,22 @@ Created on Tue Jul  2 19:44:31 2013
 @author: T. Teijeiro
 """
 
+from abc import ABCMeta
+
+class FreezableMeta(ABCMeta):
+    '''The metaclass for the abstract base class of Freezable objects'''
+    def __new__(mcls, name, bases, namespace):
+        fields = namespace.get('__slots__', ())
+        for base in bases:
+            oldfields = getattr(base, '_fields', None)
+            if oldfields:
+                fields = oldfields + fields
+        #All freezable objects must use __slots__ for attribute definition.
+        namespace.setdefault('__slots__', ())
+        namespace['_fields'] = fields
+        return ABCMeta.__new__(mcls, name, bases, namespace)
+
+
 class FreezableObject(object):
     """
     This class provides utilities to "freeze" an object, this is, to guarantee
@@ -13,6 +29,11 @@ class FreezableObject(object):
     modified. If any of the attributes is also a FreezableObject, the freeze
     operation is called in depth-last order.
     """
+
+    __metaclass__ = FreezableMeta
+
+    __slots__ = ('__frozen__', )
+
     def __init__(self):
         self.__frozen__ = False
 
@@ -22,9 +43,10 @@ class FreezableObject(object):
         attributes but __frozen__
         """
         return (type(self) is type(other) and
-                set(self.__dict__) == set(other.__dict__) and
-                all(self.__dict__[k] == other.__dict__[k]
-                                  for k in self.__dict__ if k != '__frozen__'))
+                self._fields == other._fields and
+                all(getattr(self, f, None) == getattr(other, f, None)
+                                   for f in self._fields if f != '__frozen__'))
+
 
     @property
     def frozen(self):
@@ -35,7 +57,7 @@ class FreezableObject(object):
         return getattr(self, '__frozen__', False)
 
     def __setattr__(self, name, value):
-        if self.frozen:
+        if self.frozen and name != '__frozen__':
             raise AttributeError(self, 'Object {0} is now frozen'.format(self))
         return super(FreezableObject, self).__setattr__(name, value)
 
@@ -46,7 +68,8 @@ class FreezableObject(object):
         """
         if not self.frozen:
             self.__frozen__ = True
-            for attr in vars(self).itervalues():
+            for field in self._fields:
+                attr = getattr(self, field, None)
                 if isinstance(attr, FreezableObject):
                     attr.freeze()
 
@@ -55,8 +78,9 @@ class FreezableObject(object):
         Unfreezes the object, allowing for attribute modifications.
         """
         if self.frozen:
-            self.__dict__['__frozen__'] = False
-            for attr in vars(self).itervalues():
+            self.__frozen__ = False
+            for field in self._fields:
+                attr = getattr(self, field, None)
                 if isinstance(attr, FreezableObject):
                     attr.unfreeze()
 
@@ -77,6 +101,8 @@ class FreezableObject(object):
 if __name__ == "__main__":
     # pylint: disable-msg=W0201
     class FreezableTest(FreezableObject):
+        __slots__ = ('attr1', 'attr2', 'attr3')
+
         """Dummy class to test the FreezableObject hierarchy"""
         def __init__(self):
             super(FreezableTest, self).__init__()

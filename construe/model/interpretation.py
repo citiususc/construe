@@ -28,6 +28,7 @@ class PastMetrics(nt('PastMetrics', 'time, unexp, total, abstime, nhyp')):
     Tuple to store relevant information to evaluate an interpretation until
     a specific time, to allow discard old observations.
     """
+    __slots__ = ()
 
     def diff(self, other):
         """
