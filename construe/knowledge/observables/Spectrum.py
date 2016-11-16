@@ -18,6 +18,9 @@ class Deflection(Observable):
     energy level derived from the wavelet decomposition/reconstruction of the
     signal.
     """
+
+    __slots__ = ('level', )
+
     def __init__(self):
         """Creates a new Deflection instance, at level 0"""
         super(Deflection, self).__init__()

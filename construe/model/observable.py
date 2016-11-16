@@ -128,6 +128,9 @@ class Observable(FreezableObject):
     *end*:
         The finish temporal variable, of type *Variable*.
     """
+
+    __slots__ = ('start', 'time', 'end')
+
     def __init__(self):
         super(Observable, self).__init__()
         self.start = Variable(value = Interval(0, inf))

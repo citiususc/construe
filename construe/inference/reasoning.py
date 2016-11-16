@@ -114,11 +114,12 @@ def _clone_attrs(obs, ref):
     frozen = ref.frozen
     if frozen:
         ref.unfreeze()
-    for attr, value in vars(ref).iteritems():
-        if attr != '__frozen__':
-            if id(value) not in memo:
-                memo[id(value)] = copy.deepcopy(value)
-            setattr(obs, attr, memo[id(value)])
+    for field in ref._fields:
+        if field != '__frozen__':
+            attr = getattr(ref, field, None)
+            if id(attr) not in memo:
+                memo[id(attr)] = copy.deepcopy(attr)
+            setattr(obs, field, memo[id(attr)])
     if frozen:
         ref.freeze()
 

@@ -14,6 +14,9 @@ import numpy as np
 
 class PWave(Observable):
     """Observable that represents a P Wave"""
+
+    __slots__ = ('amplitude',)
+
     def __init__(self):
         super(PWave, self).__init__()
         #The single reference will correspond to the start time
@@ -31,6 +34,9 @@ class TWave(Observable):
         Dictionary with the amplitude in mV of the T wave in each lead, indexed
         by lead.
     """
+
+    __slots__ = ('amplitude',)
+
     def __init__(self):
         super(TWave, self).__init__()
         #The single reference will correspond to the start time
@@ -48,6 +54,9 @@ class QRS(Observable):
         Dictionary with the shape of the QRS complex in each lead, indexed
         by lead.
     """
+
+    __slots__ = ('shape', 'tag', 'clustered')
+
     def __init__(self):
         super(QRS, self).__init__()
         self.shape = {}
@@ -87,6 +96,8 @@ class QRSShape(FreezableObject):
     an amplitude and energy and maximum slope measures, and a numpy array
     representing the signal.
     """
+    __slots__ = ('waves', 'amplitude', 'energy', 'maxslope', 'tag', 'sig')
+
     def __init__(self):
         super(QRSShape, self).__init__()
         self.waves = ()
@@ -133,6 +144,9 @@ class RPeak(EventObservable):
     amplitude:
         Amplitude of the R Peak.
     """
+
+    __slots__ = ('amplitude',)
+
     def __init__(self):
         super(RPeak, self).__init__()
         self.amplitude = 0.0

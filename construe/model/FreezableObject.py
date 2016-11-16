@@ -47,7 +47,6 @@ class FreezableObject(object):
                 all(getattr(self, f, None) == getattr(other, f, None)
                                    for f in self._fields if f != '__frozen__'))
 
-
     @property
     def frozen(self):
         """
@@ -90,7 +89,8 @@ class FreezableObject(object):
         is an attribute of this object. If any attribute is a
         **FreezableObject** instance, then the property is checked recursively.
         """
-        for attr in vars(self).itervalues():
+        for field in self._fields:
+            attr = getattr(self, field, None)
             if attr is obj:
                 return True
             if isinstance(attr, FreezableObject) and attr.references(obj):

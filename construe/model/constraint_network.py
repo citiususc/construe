@@ -44,6 +44,8 @@ class Variable(FreezableObject):
     value constrained by an interval that can be modified according constraints
     in a network. As value, this class assumes always an Interval object.
     """
+    __slots__ = ('value', )
+
     def __init__(self, value = Interval(-np.inf, np.inf)):
         """
         Creates a new variable, with a value constrained by an interval. By

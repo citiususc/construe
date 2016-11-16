@@ -24,6 +24,9 @@ class RR(Observable):
 
 class Cardiac_Rhythm(Observable):
     """Class that represents a general and unspecified cardiac rhythm"""
+
+    __slots__ = ('meas',)
+
     def __init__(self):
         super(Cardiac_Rhythm, self).__init__()
         #The single reference will correspond to the start time
@@ -47,6 +50,9 @@ class RhythmStart(Cardiac_Rhythm):
 
 class RegularCardiacRhythm(Cardiac_Rhythm):
     """Class that represents a regular rhythm."""
+
+    __slots__ = ('morph', )
+
     def __init__(self):
         super(RegularCardiacRhythm, self).__init__()
         #A regular cardiac rhythm has a single beat morphology. To evaluate
@@ -91,6 +97,9 @@ class Couplet(Cardiac_Rhythm):
 
 class RhythmBlock(Cardiac_Rhythm):
     """Class that represents a rhythm block"""
+
+    __slots__ = ('morph',)
+
     def __init__(self):
         super(RhythmBlock, self).__init__()
         #Rhythm block must keep the same beat morphology throughout its
@@ -100,6 +109,9 @@ class RhythmBlock(Cardiac_Rhythm):
 
 class Atrial_Fibrillation(Cardiac_Rhythm):
     """Class that represents atrial fibrillation"""
+
+    __slots__ = ('morph',)
+
     def __init__(self):
         super(Atrial_Fibrillation, self).__init__()
         #Atrial fibrillation must keep the same beat morphology throughout its
