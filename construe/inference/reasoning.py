@@ -17,7 +17,7 @@ from ..model.observable import is_singleton
 from ..model import AbstractionPattern
 from ..model.interpretation import Interpretation
 from ..model.automata import NULL_PROC
-from collections import deque, Counter
+from collections import Counter
 import copy
 import itertools as it
 import numpy as np
@@ -55,6 +55,10 @@ _SUCCESSORS = weakref.WeakKeyDictionary()
 #as a dead-end reasoning path.
 _FSUCC = weakref.WeakSet()
 
+#Set containing the findings that have been successfully matched after a
+#predictive reasoning
+_MATCHED_FINDINGS = weakref.WeakSet()
+
 ###############################
 ### Global module functions ###
 ###############################
@@ -70,6 +74,7 @@ def reset():
     #We cannot clear this dict, it raises many KeyError exceptions.
     _SUCCESSORS = weakref.WeakKeyDictionary()
     _FSUCC.clear()
+    _MATCHED_FINDINGS.clear()
 
 def clear_cache(time):
     """
@@ -152,21 +157,6 @@ def _singleton_violation(pat, interpretation):
     """
     return issubclass(pat.Hypothesis, tuple(interpretation.singletons))
 
-def _finding_matched(interpretation, finding):
-    """
-    Checks if in some successor of an interpretation a given finding has been
-    successfully matched with another observation, by ensuring that the finding
-    does not appear in the global evidence list of the successor. It performs
-    a breadth-first search on the successors tree.
-    """
-    queue = deque([interpretation])
-    while queue:
-        interp = queue.popleft()
-        if finding not in interp.pat_map:
-            return True
-        queue.extend(interp.child)
-    return False
-
 def _pattern_completed(interpretation, patidx):
     """
     Checks if in some successor of an interpretation a given pattern
@@ -238,7 +228,7 @@ def firm_succ(interpretation):
                     finished = True
             except StopIteration:
                 finished = True
-                #HINT this saves memory, but penalizes _finding_matched
+                #Remove interpretations with no firm descendants
                 if node not in _FSUCC and not node.is_firm:
                     node.discard('Dead-end interpretation')
                 stack.pop()
@@ -331,6 +321,7 @@ def subsume(interpretation):
         newint = Interpretation(interpretation)
         try:
             newint.match(focus, subs)
+            _MATCHED_FINDINGS.add(focus)
             newint.focus.pop()
             newint.remove_old()
             STATS.update(['S+' + str(focus.__class__.__name__)])
@@ -350,7 +341,7 @@ def predict(interpretation):
                                   issubclass(p.Hypothesis, type(focus)) and
                                   not _singleton_violation(p, interpretation)):
         #The exploration stops at the first consistent matching of the finding
-        if _finding_matched(interpretation, focus):
+        if focus in _MATCHED_FINDINGS:
             return
         newint = Interpretation(interpretation)
         if is_singleton(pat.Hypothesis):
@@ -501,6 +492,7 @@ def advance(interpretation):
             idx = newint.delayed_idx(focus)
             finding, obs = newint.delay_match.pop(idx)
             newint.match(finding, obs)
+            _MATCHED_FINDINGS.add(finding)
             newint.focus.pop()
         except InconsistencyError as error:
             newint.discard(str(error))
