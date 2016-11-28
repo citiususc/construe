@@ -12,6 +12,7 @@ automata-based patterns, as defined in the reference document.
 
 from .constraint_network import ConstraintNetwork, InconsistencyError, verify
 from .automata import ABSTRACTED, BASIC_TCONST
+from .FreezableObject import clone_attrs
 import copy
 import bisect
 from collections import deque, Counter
@@ -85,7 +86,7 @@ class AbstractionPattern(object):
         cpy.fstate = self.fstate
         cpy.trseq = self.trseq[:]
         cpy.temporal_constraints = []
-        cpy.hypothesis = copy.deepcopy(self.hypothesis)
+        clone_attrs(cpy.hypothesis, self.hypothesis)
         #TODO remove
         cpy.hypothesis.unfreeze()
         ####End TODO

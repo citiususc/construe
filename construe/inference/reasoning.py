@@ -14,6 +14,7 @@ generation of many uninteresting interpretations.
 import construe.knowledge.abstraction_patterns as ap
 import construe.knowledge.constants as C
 from ..model.observable import is_singleton
+from ..model.FreezableObject import clone_attrs
 from ..model import AbstractionPattern
 from ..model.interpretation import Interpretation
 from ..model.automata import NULL_PROC
@@ -103,30 +104,6 @@ def _save_fsucc(interpretation):
             break
         _FSUCC.add(node)
         node = node.parent
-
-def _clone_attrs(obs, ref):
-    """
-    Performs a deep copy of the attributes of **ref**, setting them in **obs**.
-    The procedure ensures that all the attributes of **obs** are not frozen.
-
-    Parameters
-    ----------
-    obs, ref:
-        Observations. The attributes of *obs* are set to be equal that the
-        attributes of *ref*.
-    """
-    memo = {}
-    frozen = ref.frozen
-    if frozen:
-        ref.unfreeze()
-    for field in ref._fields:
-        if field != '__frozen__':
-            attr = getattr(ref, field, None)
-            if id(attr) not in memo:
-                memo[id(attr)] = copy.deepcopy(attr)
-            setattr(obs, field, memo[id(attr)])
-    if frozen:
-        ref.freeze()
 
 def _consecutive_valid(obs, rep, interpretation):
     """Checks if the consecutive restrictions of *obs* are satisfied by
@@ -348,7 +325,7 @@ def predict(interpretation):
             newint.singletons.add(pat.Hypothesis)
         pattern = AbstractionPattern(pat)
         #We set the known attributes of the new conjecture
-        _clone_attrs(pattern.hypothesis, focus)
+        clone_attrs(pattern.hypothesis, focus)
         try:
             newint.conjecture(pattern.hypothesis, pattern)
             #The matching of the finding is delayed until the new hypothesis

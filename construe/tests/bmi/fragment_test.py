@@ -28,11 +28,8 @@ from construe.utils.units_helper import (msec2samples as ms2sp,
                                             samples2msec as sp2ms,
                                             msec2bpm, bpm2msec)
 
-#ap.include_pwave(False)
-#ap.include_twave(False)
-ap.set_interpretation_level(2)
 #Signal reading
-TFACTOR = 50.0
+TFACTOR = 5.0
 LENGTH = 23040
 #Searching settings
 KFACTOR = 12
@@ -50,7 +47,7 @@ REC = ('/home/tomas/Dropbox/Investigacion/tese/estadias/2015_BMI'
        '/validation/training_dataset/MG008-2015_07_11-ECG-1')
 REC = ('/home/local/tomas.teijeiro/Dropbox/Investigacion/tese/validacions/'
        'loose_records/monitoring_160404-1003_SIM')
-REC = '/tmp/mit/103'
+REC = '/datos/tomas.teijeiro/Servando/MonitorizacionDomiciliaria/mit/250Hz/100'
 IN.set_record(REC, ANNOTATOR)
 IN.set_offset(INIT)
 IN.set_duration(LENGTH)
@@ -64,48 +61,48 @@ IN.get_more_evidence()
 interp = Interpretation()
 #The focus is initially set in the first observation
 interp.focus.append(next(obs_buffer.get_observations()))
-########################
-### PEKBFS searching ###
-########################
+##########################
+### Construe searching ###
+##########################
 print('Starting interpretation')
 t0 = time.time()
-pekbfs = searching.PEKBFS(interp, KFACTOR)
-ltime = (pekbfs.last_time, t0)
-while pekbfs.best is None:
+cntr = searching.Construe(interp, KFACTOR)
+ltime = (cntr.last_time, t0)
+#Main loop
+while cntr.best is None:
     IN.get_more_evidence()
     acq_time = IN.get_acquisition_point()
     #HINT debug code
     fstr = 'Int: {0:05d} '
-    for i in xrange(int(sp2ms(acq_time - pekbfs.last_time)/1000.0)):
+    for i in xrange(int(sp2ms(acq_time - cntr.last_time)/1000.0)):
         fstr += '-'
     fstr += ' Acq: {1}'
-    print(fstr.format(int(pekbfs.last_time), acq_time))
+    print(fstr.format(int(cntr.last_time), acq_time))
     #End of debug code
     filt = ((lambda n : acq_time + n[0][2] >= MIN_DELAY)
                 if obs_buffer.get_status() is obs_buffer.Status.ACQUIRING
                                                         else (lambda _ : True))
-    pekbfs.step(filt)
-    if pekbfs.last_time > ltime[0]:
-        ltime = (pekbfs.last_time, time.time())
+    cntr.step(filt)
+    if cntr.last_time > ltime[0]:
+        ltime = (cntr.last_time, time.time())
+    #If the distance between acquisition time and interpretation time is
+    #excessive, the search tree is pruned.
     if ms2sp((time.time()-ltime[1])*1000.0)*TFACTOR > MAX_DELAY:
         print('Pruning search')
-        if pekbfs.open:
-            prevopen = pekbfs.open
-        pekbfs.prune()
+        if cntr.open:
+            prevopen = cntr.open
+        cntr.prune()
 print('Finished in {0:.3f} seconds'.format(time.time()-t0))
 print('Created {0} interpretations'.format(interp.counter))
-be = pekbfs.best.node
-be.recover_old()
-brview = plotter.plot_observations(sig_buf.get_signal(
-                                         sig_buf.get_available_leads()[0]), be)
 
-#Branches draw
-label_fncs = {}
-label_fncs['n'] = lambda br: str(br)
-label_fncs['e'] = lambda br: ''
-brview = plotter.plot_branch(interp, label_funcs=label_fncs, target=be)
+#Best explanation
+#be = cntr.best.node
+#be.recover_old()
+#brview = plotter.plot_observations(sig_buf.get_signal(
+#                                         sig_buf.get_available_leads()[0]), be)
+##Drawing of the search tree
+#label_fncs = {}
+#label_fncs['n'] = lambda br: str(br)
+#label_fncs['e'] = lambda br: ''
+#brview = plotter.plot_branch(interp, label_funcs=label_fncs, target=be)
 
-#def get_interp_dict(itrp):
-#    return {'name':itrp.name, 'children':[get_interp_dict(c) for c in itrp.child]}
-#
-#d = get_interp_dict(interp)

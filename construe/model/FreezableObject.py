@@ -7,6 +7,7 @@ Created on Tue Jul  2 19:44:31 2013
 """
 
 from abc import ABCMeta
+import copy
 
 class FreezableMeta(ABCMeta):
     '''The metaclass for the abstract base class of Freezable objects'''
@@ -32,7 +33,7 @@ class FreezableObject(object):
 
     __metaclass__ = FreezableMeta
 
-    __slots__ = ('__frozen__', )
+    __slots__ = ('__weakref__', '__frozen__')
 
     def __init__(self):
         self.__frozen__ = False
@@ -45,7 +46,8 @@ class FreezableObject(object):
         return (type(self) is type(other) and
                 self._fields == other._fields and
                 all(getattr(self, f, None) == getattr(other, f, None)
-                                   for f in self._fields if f != '__frozen__'))
+                        for f in self._fields
+                                   if f not in  ('__frozen__', '__weakref__')))
 
     @property
     def frozen(self):
@@ -96,6 +98,31 @@ class FreezableObject(object):
             if isinstance(attr, FreezableObject) and attr.references(obj):
                 return True
         return False
+
+
+def clone_attrs(obs, ref):
+    """
+    Performs a deep copy of the attributes of **ref**, setting them in **obs**.
+    The procedure ensures that all the attributes of **obs** are not frozen.
+
+    Parameters
+    ----------
+    obs, ref:
+        Observations. The attributes of *obs* are set to be equal that the
+        attributes of *ref*.
+    """
+    memo = {}
+    frozen = ref.frozen
+    if frozen:
+        ref.unfreeze()
+    for field in ref._fields:
+        if field not in  ('__frozen__', '__weakref__'):
+            attr = getattr(ref, field, None)
+            if id(attr) not in memo:
+                memo[id(attr)] = copy.deepcopy(attr)
+            setattr(obs, field, memo[id(attr)])
+    if frozen:
+        ref.freeze()
 
 
 if __name__ == "__main__":
