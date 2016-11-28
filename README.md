@@ -47,8 +47,11 @@ Along with the general data model for knowledge description and the interpretati
 All signal strips in [1] are included as interactive examples to make it easier to understand how the interpretation algorithms work. For this, use the `run_example.sh` script, selecting the figure for which you want to reproduce the interpretation process:
 
 ```
-./run_example.sh fig3
+./run_example.sh fig4
 ```
+
+![fig4 interpretation](https://cloud.githubusercontent.com/assets/4498106/20661551/a1824bee-b54f-11e6-870f-a2aa14c43e88.png)
+
 
 Once the interpretation is finished, the resulting observations are printed to the terminal, and two interactive are shown. One plots the ECG signal with all the observations organized in abstraction levels (deflections, waves, and rhythms), and the other shows the interpretations tree explored to find the result. Each node in the tree can be selected to show the observations at a given time point during the interpretation, allowing to reproduce the *abduce*, *deduce*, *subsume* and *predict* reasoning steps [1].
 
