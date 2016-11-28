@@ -21,6 +21,7 @@ import construe.inference.reasoning as reasoning
 import time
 import itertools
 import numpy as np
+import objgraph
 from pprint import pprint as pp
 from construe.model import Interval as Iv
 from construe.model.interpretation import Interpretation
@@ -94,6 +95,8 @@ while cntr.best is None:
         cntr.prune()
 print('Finished in {0:.3f} seconds'.format(time.time()-t0))
 print('Created {0} interpretations'.format(interp.counter))
+
+
 
 #Best explanation
 #be = cntr.best.node

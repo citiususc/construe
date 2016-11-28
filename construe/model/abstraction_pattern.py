@@ -24,6 +24,9 @@ class AbstractionPattern(object):
     the allowed transitions for each state and generate all the possible
     combinations of evidence consistent with the pattern.
     """
+    __slots__ = ('automata', 'temporal_constraints', 'istate', 'fstate',
+                 'trseq', 'hypothesis', 'evidence', 'findings')
+
     def __init__(self, automata):
         """
         Creates a new AbstractionPattern instance, bounded to a specific

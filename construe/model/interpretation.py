@@ -61,6 +61,10 @@ class Interpretation(object):
     abstraction patterns. It is the basic entity in our search process, and
     the result of an interpretation process.
     """
+    __slots__ = ('name', '_parent', 'child', 'observations', 'unintelligible',
+                 'patterns', 'pat_map', 'focus', 'delay_match', 'singletons',
+                 'past_metrics', '__weakref__')
+
     counter = 0
 
     def __init__(self, parent=None):
