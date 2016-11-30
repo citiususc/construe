@@ -90,9 +90,6 @@ class AbstractionPattern(object):
         cpy.trseq = self.trseq[:]
         cpy.temporal_constraints = []
         clone_attrs(cpy.hypothesis, self.hypothesis)
-        #TODO remove
-        cpy.hypothesis.unfreeze()
-        ####End TODO
         for observable, observations in self.evidence.iteritems():
             cpy.evidence[observable] = observations[:]
         cpy.findings = self.findings.copy()
