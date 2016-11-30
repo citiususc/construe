@@ -319,6 +319,7 @@ def predict(interpretation):
                                   not _singleton_violation(p, interpretation)):
         #The exploration stops at the first consistent matching of the finding
         if focus in _MATCHED_FINDINGS:
+            _MATCHED_FINDINGS.remove(focus)
             return
         newint = Interpretation(interpretation)
         if is_singleton(pat.Hypothesis):
@@ -492,7 +493,8 @@ def advance(interpretation):
         try:
             unexp = newint.get_observations(start=focus.earlystart + 1, filt=
                  lambda ev: ev not in newint.unintelligible and
-                             newint.get_abstraction_pattern(ev) is None).next()
+                            ap.is_abducible(type(ev)) and
+                            newint.get_abstraction_pattern(ev) is None).next()
             newint.focus.append(unexp)
         except StopIteration:
             newint.discard('No unexplained evidence after the current point')
