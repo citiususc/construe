@@ -470,6 +470,8 @@ class Interpretation(object):
                 obj = (obs if conf is obs or obs.references(conf) else
                             next((o for o in pat.obs_seq
                                     if o is conf or o.references(conf)), None))
+                print obj, conf
+                raise
                 #There has been a modification attempt of the original
                 #observation, we copy the observation and retry the matching.
                 assert pat in self.patterns

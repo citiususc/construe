@@ -65,8 +65,8 @@ class AbstractionPattern(object):
         self.istate = self.fstate = automata.start_state
         self.trseq = []
         self.hypothesis = automata.Hypothesis()
-        self.evidence = { obs : [] for obs in automata.manifestations}
-        self.findings  = set()
+        self.evidence = {obs : [] for obs in automata.manifestations}
+        self.findings = set()
         self.temporal_constraints.append(ConstraintNetwork())
         #We introduce the first basic constraints (start<=time<=end)
         BASIC_TCONST(self, self.hypothesis)
@@ -282,7 +282,7 @@ class AbstractionPattern(object):
                 break
             trans.gconst(self, obs)
 
-    def check_temporal_consistency(self, variables = None):
+    def check_temporal_consistency(self, variables=None):
         """
         Checks the consistency of the temporal networks involved in this
         pattern instance, returning the set of temporal variables that have

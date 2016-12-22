@@ -6,8 +6,8 @@ Created on Mon Jun 11 18:27:22 2012
 This module contains the definition of the reasoning methods using to generate
 the successor interpretations of a given one. Several different methods are
 applied based on the internal state of the interpretation, but the result is
-equivalent to apply always the abduction process, but it allows to avoid the
-generation of many uninteresting interpretations.
+equivalent to apply always the abduction process while avoiding the generation
+of many uninteresting interpretations.
 
 @author: T. Teijeiro
 """
@@ -38,6 +38,9 @@ assert any is not np.any
 #########################
 ### Module attributes ###
 #########################
+
+#Flag to avoid dead-end branch pruning, to allow debugging of all hypotheses
+SAVE_TREE = False
 
 #Counter to measure where the interpretation process concentrates its efforts.
 STATS = Counter()
@@ -134,6 +137,7 @@ def _singleton_violation(pat, interpretation):
     """
     return issubclass(pat.Hypothesis, tuple(interpretation.singletons))
 
+#FIXME this function has to be changed in the new version
 def _pattern_completed(interpretation, patidx):
     """
     Checks if in some successor of an interpretation a given pattern
@@ -173,7 +177,7 @@ def _find_mergeable(interpretation):
 def firm_succ(interpretation):
     """
     Returns a generator of the successor interpretations of a given one, but it
-    only returns those that are firm. To do this, it performs a depth-first
+    only yields those that are firm. To do this, it performs a depth-first
     search process.
 
     **Note:** This generator will not obtain **every** node in the tree, but
@@ -206,7 +210,7 @@ def firm_succ(interpretation):
             except StopIteration:
                 finished = True
                 #Remove interpretations with no firm descendants
-                if node not in _FSUCC and not node.is_firm:
+                if not SAVE_TREE and node not in _FSUCC and not node.is_firm:
                     node.discard('Dead-end interpretation')
                 stack.pop()
 
@@ -232,6 +236,7 @@ def multicall_succ(interpretation):
         yielded.add(nxt)
         yield nxt
 
+#FIXME this function has to be changed in the new version
 def _succ(interpretation):
     """
     Returns a generator of the successor interpretations of a given one, by the
@@ -276,6 +281,7 @@ def _merge_succ(interpretation, merged):
         STATS.update(['Merge'])
         yield nxt
 
+#FIXME this function has to be changed in the new version
 def subsume(interpretation):
     """
     Obtains the interpretations that can be derived from a given one, by
@@ -306,6 +312,7 @@ def subsume(interpretation):
         except InconsistencyError as error:
             newint.discard(str(error))
 
+#FIXME this function has to be changed in the new version
 def predict(interpretation):
     """
     Obtains the interpretations that can be derived from a given one, by
@@ -341,6 +348,7 @@ def predict(interpretation):
         except InconsistencyError as error:
             newint.discard(str(error))
 
+#FIXME this function has to be changed in the new version
 def deduce(interpretation):
     """
     Extends the pattern whose hypothesis is the current inference focus of the
@@ -376,6 +384,7 @@ def deduce(interpretation):
         except InconsistencyError as error:
             newint.discard(str(error))
 
+#FIXME this function has to be changed in the new version
 def abduce(interpretation):
     """
     Continues the inference by performing an abduction operation on the current
@@ -435,6 +444,7 @@ def abduce(interpretation):
                 except InconsistencyError as error:
                     newint.discard(str(error))
 
+#FIXME this function has to be changed in the new version
 def advance(interpretation):
     """
     Continues the inference by recovering the previous inference focus of the

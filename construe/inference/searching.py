@@ -186,10 +186,14 @@ class Construe(object):
         """
         newnodes = []
         optimal = False
-        #In an optimal context, ancestor interpretations of the newly generated
-        #nodes are not expanded. The following filter is for that purpose
-        anc = (lambda n: optimal and
-               any(nn.is_ancestor(n.node) for _, nn in newnodes))
+        def anc(n):
+            """
+            In an optimal context, ancestor interpretations of the newly
+            generated nodes are not expanded. The following filter is for that
+            purpose.
+            """
+            return optimal and any(nn.is_ancestor(n.node) for _, nn in newnodes)
+
         for _ in xrange(self.K):
             node = next((n for n in self.open if filt(n) and not anc(n)), None)
             #The search stops if no nodes can be expanded or if, being in an
