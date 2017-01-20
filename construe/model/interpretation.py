@@ -602,7 +602,7 @@ class Interpretation(object):
         Determines whether an observation is a finding (a prediction of a
         pattern waiting for a consistent matching) or not.
         """
-        return any(observation in p.findings for p in self.patterns)
+        return any(observation is p.finding for p in self.patterns)
 
     def get_observations(self, clazz=Observable, start=0, end=np.inf,
                                                         filt=lambda obs: True):

@@ -280,14 +280,14 @@ def _get_measures(pattern, even = 0):
     parameters.
     """
     n = 20  #Number of observations to get the statistical measures.
-    beats = [q for q in pattern.evidence[o.QRS] if q not in pattern.findings]
+    beats = [q for q in pattern.evidence[o.QRS] if q is not pattern.finding]
     #RR
     rrs = np.diff([beats[i].time.start for i in xrange(len(beats))
                                    if i % 2 == even and len(beats)-i <= n])/2.0
     #RT
     rts = []
     for twave in pattern.evidence[o.TWave][-n:]:
-        if twave not in pattern.findings:
+        if twave is not pattern.finding:
             qrs = next(q for q in reversed(beats)
                                                if q.lateend < twave.earlystart)
             if beats.index(qrs) % 2 == even:
@@ -295,7 +295,7 @@ def _get_measures(pattern, even = 0):
     #PQ
     pqs = []
     for pwave in pattern.evidence[o.PWave][-n:]:
-        if pwave not in pattern.findings:
+        if pwave is not pattern.finding:
             qrs = next(q for q in beats if q.earlystart > pwave.lateend)
             if beats.index(qrs) % 2 == even:
                 pqs.append(qrs.earlystart - pwave.earlystart)

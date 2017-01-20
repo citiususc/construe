@@ -46,7 +46,7 @@ def _get_measures(pattern, ectopic= False):
     flag. The output tuple (rrs, pqs, rts) contains the series of these
     parameters.
     """
-    beats = [b for b in pattern.evidence[o.QRS] if b not in pattern.findings]
+    beats = [b for b in pattern.evidence[o.QRS] if b is not pattern.finding]
     #RR
     rrs = np.diff([beats[i].time.start for i in xrange(len(beats))
                                                  if _is_ectopic(i) == ectopic])
@@ -58,7 +58,7 @@ def _get_measures(pattern, ectopic= False):
     #RT
     rts = []
     for twave in pattern.evidence[o.TWave]:
-        if twave not in pattern.findings:
+        if twave is not pattern.finding:
             qrs = next(q for q in reversed(beats)
                                                if q.lateend < twave.earlystart)
             if _is_ectopic(beats.index(qrs)) == ectopic:
@@ -66,7 +66,7 @@ def _get_measures(pattern, ectopic= False):
     #PQ
     pqs = []
     for pwave in pattern.evidence[o.PWave]:
-        if pwave not in pattern.findings:
+        if pwave is not pattern.finding:
             qrs = next(q for q in beats if q.earlystart > pwave.lateend)
             if _is_ectopic(beats.index(qrs)) == ectopic:
                 pqs.append(qrs.earlystart - pwave.earlystart)

@@ -250,7 +250,7 @@ def _succ(interpretation):
     if interpretation.is_finding(focus):
         sequences.append(subsume(interpretation))
         #Past environment findings are not predicted.
-        pat = next(p for p in interpretation.patterns if focus in p.findings)
+        pat = next(p for p in interpretation.patterns if focus is p.finding)
         if focus.lateend > interpretation.time_point or pat.abstracts(focus):
             sequences.append(predict(interpretation))
     else:
@@ -358,7 +358,7 @@ def deduce(interpretation):
     assert not interpretation.is_finding(focus)
     hypat = interpretation.get_hypothesis_pattern(focus)
     pidx = interpretation.patterns.index(hypat)
-    assert not hypat.findings
+    assert hypat.finding is None
     for suc in hypat.successors():
         #Once a sufficient set of evidence has ben obtained, we don't look for
         #other alternatives. Therefore, the successors() generator should try
@@ -371,12 +371,11 @@ def deduce(interpretation):
         newint.replace_pat(hypat, suc)
         try:
             #We set the focus on the new predicted finding, if it exists.
-            if suc.findings:
-                newint.replace_obs(focus, suc.hypothesis)
-                finding = set(suc.findings).pop()
-                newint.pat_map[finding] = (None, frozenset({suc}))
-                newint.focus.append(finding)
-                newint.verify_consecutivity(finding)
+            if suc.finding is not None:
+                newint.replace_obs(focus, suc.hypothesis)                
+                newint.pat_map[suc.finding] = (None, frozenset({suc}))
+                newint.focus.append(suc.finding)
+                newint.verify_consecutivity(suc.finding)
             else:
                 newint.match(focus, suc.hypothesis)
             STATS.update(['X+' + str(hypat.automata)])

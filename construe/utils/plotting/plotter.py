@@ -204,8 +204,8 @@ class ObservationVisualizer(object):
         #Definition of a polygon for each observation
         self.trapezs = {}
         observations = (list(self.interpretation.get_observations()) +
-                                       list(it.chain.from_iterable(p.findings
-                                       for p in self.interpretation.patterns)))
+                             [p.finding for p in self.interpretation.patterns 
+                                                     if p.finding is not None])
         for obs in observations:
             level = _get_obs_descriptor(obs)[2]
             bottom = self.sig_limits[0] + level * self.lev_height
@@ -259,8 +259,8 @@ class ObservationVisualizer(object):
         #Observation drawing
         last_point = 0
         observations = (list(self.interpretation.get_observations()) +
-                                       list(it.chain.from_iterable(p.findings
-                                       for p in self.interpretation.patterns)))
+                             [p.finding for p in self.interpretation.patterns 
+                                                     if p.finding is not None])
         for obs in observations:
             color, alpha, level = _get_obs_descriptor(obs)
             if level > 0 and obs.lateend > last_point and obs.lateend < np.inf:
@@ -467,11 +467,11 @@ class InterpretationVisualizer(object):
         colors = []
         for node in self.drnodes:
             if node.is_firm:
-                colors.append('b')
+                colors.append('#348ABD')
             elif node in self.toremark:
-                colors.append('g')
+                colors.append('#8EBA42')
             else:
-                colors.append('r')
+                colors.append('#E24A33')
         nx.draw(self.graph, self.pos, axes, nodelist = self.drnodes,
                                        edgelist=self.graph.edges(self.drnodes),
                                            node_color = colors, labels = ldict)
@@ -491,11 +491,11 @@ class InterpretationVisualizer(object):
         colors = []
         for node in self.drnodes:
             if node.is_firm:
-                colors.append('b')
+                colors.append('#348ABD')
             elif node in self.toremark:
-                colors.append('g')
+                colors.append('#8EBA42')
             else:
-                colors.append('r')
+                colors.append('#E24A33')
         nx.draw(self.graph, self.pos, self._fig.gca(), nodelist = self.drnodes,
                                        edgelist=self.graph.edges(self.drnodes),
                                                            node_color = colors)

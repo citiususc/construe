@@ -25,7 +25,7 @@ class AbstractionPattern(object):
     combinations of evidence consistent with the pattern.
     """
     __slots__ = ('automata', 'temporal_constraints', 'istate', 'fstate',
-                 'trseq', 'hypothesis', 'evidence', 'findings')
+                 'trseq', 'hypothesis', 'evidence', 'finding')
 
     def __init__(self, automata):
         """
@@ -53,9 +53,9 @@ class AbstractionPattern(object):
             Dictionary that maps every observable which is a terminal symbol of
             the automata definition with a list of the observations of that
             observable as evidence of the pattern.
-        findings:
-            Set containing those findings in the evidence that have still not
-            matched to actual observations.
+        finding:
+            A finding in the evidence that has still not been matched to an 
+            actual observation, or None if there is not such finding.
         temporal_constraints:
             List with temporal networks that are used to introduce the temporal
             knowledge in the pattern.
@@ -66,7 +66,7 @@ class AbstractionPattern(object):
         self.trseq = []
         self.hypothesis = automata.Hypothesis()
         self.evidence = {obs : [] for obs in automata.manifestations}
-        self.findings = set()
+        self.finding = None
         self.temporal_constraints.append(ConstraintNetwork())
         #We introduce the first basic constraints (start<=time<=end)
         BASIC_TCONST(self, self.hypothesis)
@@ -81,7 +81,7 @@ class AbstractionPattern(object):
         """
         Perfroms a copy of this *AbstractionPattern* instance, copying
         the container types to allow further modifications. The hypothesis is
-        deeply copied, but all the evidence observations and findings are
+        deeply copied, but all the evidence observations and the finding are
         shallowed copied.
         """
         cpy = AbstractionPattern(self.automata)
@@ -92,7 +92,7 @@ class AbstractionPattern(object):
         clone_attrs(cpy.hypothesis, self.hypothesis)
         for observable, observations in self.evidence.iteritems():
             cpy.evidence[observable] = observations[:]
-        cpy.findings = self.findings.copy()
+        cpy.finding = self.finding
         for tnet in self.temporal_constraints:
             cpy.temporal_constraints.append(copy.copy(tnet))
             if cpy.last_tnet.contains_variable(self.hypothesis.start):
@@ -119,7 +119,7 @@ class AbstractionPattern(object):
             newobs = trans.observable() if trans.observable else None
             if newobs is not None:
                 pat.evidence[trans.observable].insert(0, newobs)
-                pat.findings.add(newobs)
+                pat.finding = newobs
             pat.trseq.insert(0, (trans, newobs))
             #Because we travel the transition in inverse order, we have to
             #rebuild and recheck all the constraints from the initial to the
@@ -130,7 +130,7 @@ class AbstractionPattern(object):
                     trans, obs = pat.trseq[i]
                     trans.tconst(pat, obs)
                     pat.check_temporal_consistency()
-                    if all(o not in pat.findings for _, o in pat.trseq[:i+1]):
+                    if all(o is not pat.finding for _, o in pat.trseq[:i+1]):
                         trans.gconst(pat, obs)
                 yield pat
             except InconsistencyError:
@@ -145,7 +145,7 @@ class AbstractionPattern(object):
                 newobs = trans.observable() if trans.observable else None
                 if newobs is not None:
                     pat.evidence[trans.observable].append(newobs)
-                    pat.findings.add(newobs)
+                    pat.finding = newobs
                 pat.trseq.append((trans, newobs))
                 trans.tconst(pat, newobs)
                 try:
@@ -171,8 +171,9 @@ class AbstractionPattern(object):
         Checks if the evidence subsumed to the hypothesis of this pattern is
         sufficient to support the hypothesis.
         """
-        return (not self.findings and self.istate is self.automata.start_state
-                                  and self.fstate in self.automata.final_states)
+        return (self.finding is None and 
+                self.istate is self.automata.start_state and 
+                self.fstate in self.automata.final_states)
     @property
     def obs_seq(self):
         """
@@ -256,9 +257,8 @@ class AbstractionPattern(object):
         lst[obsi] = obs2
         verify(max(Counter(lst).itervalues()) == 1, 'Duplicated observation {0}'
                                       ' in {1} pattern evidence.', (obs2, self))
-        if obs1 in self.findings:
-            self.findings.remove(obs1)
-            self.findings.add(obs2)
+        if obs1 is self.finding:
+            self.finding = obs2
 
     def match(self, finding, observation):
         """
@@ -268,7 +268,8 @@ class AbstractionPattern(object):
         self.replace(finding, observation)
         #If the observation replaced a finding, it is not considered a finding
         #anymore.
-        self.findings.discard(observation)
+        if observation is self.finding:
+            self.finding = None        
         #Once the replace is made, the temporal consistency of the pattern and
         #the general constraints of the transition have to be checked.
         self.check_temporal_consistency({observation.start, observation.time,
@@ -278,7 +279,7 @@ class AbstractionPattern(object):
         #We check all the general constraints from the matched one to the end
         for i in xrange(tri, len(self.trseq)):
             trans, obs = self.trseq[i]
-            if obs in self.findings:
+            if obs is self.finding:
                 break
             trans.gconst(self, obs)
 

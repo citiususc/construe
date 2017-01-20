@@ -265,7 +265,7 @@ def _update_measures(pattern):
     #RT
     rts = []
     for twave in pattern.evidence[o.TWave][-nobs:]:
-        if twave not in pattern.findings:
+        if twave is not pattern.finding:
             qrs = next((q for q in reversed(beats)
                                         if q.lateend < twave.earlystart), None)
             if qrs is not None:

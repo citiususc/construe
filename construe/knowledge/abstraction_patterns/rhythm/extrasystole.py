@@ -87,7 +87,7 @@ def _qrs_ext_tconst(ventricular):
             #Anticipation of at least the 10% of the reference RR, or 1mm.
             if idx == 2:
                 refrr = beats[1].time.end - beats[0].time.start
-            elif pattern.evidence[o.Cardiac_Rhythm][0] not in pattern.findings:
+            elif pattern.evidence[o.Cardiac_Rhythm][0] is not pattern.finding:
                 refrr = pattern.hypothesis.meas.rr[0]
             else:
                 refrr = None
