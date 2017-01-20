@@ -62,8 +62,8 @@ class Interpretation(object):
     the result of an interpretation process.
     """
     __slots__ = ('name', '_parent', 'child', 'observations', 'unintelligible',
-                 'patterns', 'pat_map', 'focus', 'delay_match', 'singletons',
-                 'past_metrics', '__weakref__')
+                 'patterns', 'pat_map', 'focus', 'singletons', 'past_metrics',
+                 '__weakref__')
 
     counter = 0
 
@@ -101,9 +101,6 @@ class Interpretation(object):
             Stack containing the focus of attention of the interpretation. Each
             element in this stack is an observation or a non-matched finding
             of a pattern.
-        delay_match:
-            Associations between observations that are postponed until the
-            matched observation has sufficient evidence supporting it.
         """
         self.name = str(Interpretation.counter)
         if parent is None:
@@ -116,7 +113,6 @@ class Interpretation(object):
             self.patterns = []
             self.focus = []
             self.pat_map = defaultdict(lambda: (None, frozenset()))
-            self.delay_match = []
         else:
             self._parent = weakref.ref(parent, self._on_parent_deleted)
             self.child = []
@@ -128,7 +124,6 @@ class Interpretation(object):
             self.patterns = parent.patterns[:]
             self.focus = parent.focus[:]
             self.pat_map = parent.pat_map.copy()
-            self.delay_match = parent.delay_match[:]
             #TODO remove this
             for obs in parent.pat_map:
                 obs.freeze()
@@ -152,77 +147,15 @@ class Interpretation(object):
     def _get_types(self, obs):
         """
         Obtains a tuple with the types that are used respect to an observation,
-        both as hypothesis and as evidence of different patterns. If the
-        observation is assigned to a delayed match
+        both as hypothesis and as evidence of different patterns.
         """
         types = {type(obs)}.union({p.get_evidence_type(obs)[0]
                                                 for p in self.pat_map[obs][1]})
-        idx = self.delayed_idx(obs)
-        if idx > -1:
-            dmatch = self.delay_match[idx][0]
+        dmatch = self.get_delayed_finding(obs)
+        if dmatch is not None:
             types = types.union({type(dmatch)}, {p.get_evidence_type(dmatch)[0]
                                              for p in self.pat_map[dmatch][1]})
         return tuple(types)
-
-    def _save(self, obs, memo=None):
-        """
-        Performs a safe local copy of an observation in this interpretation,
-        ensuring that modifications to the attributes of the observation will
-        not affect to any ancestor interpretation. The function returns the
-        copy observation that replaces the argument. If the copy is unnecessary
-        the function returns the same observation.
-
-        **Note:** This function may have expensive side effects, since all
-        patterns related to the observation must be copied, and that copies
-        must be propagated.
-
-        Parameters
-        ----------
-        obs:
-            Observation to be saved.
-        memo:
-            Optional dictionary (not intended to be used by first caller) to
-            avoid side effects in the recursive calls to the function.
-
-        Returns
-        -------
-        out:
-            Observation that is safe to modify withouth affecting to ancestor
-            interpretations.
-        """
-        #TODO manage circular references between patterns
-        memo = {} if memo is None else memo
-        if obs in memo:
-            return memo[obs]
-        if not self.parent or not obs in self.parent.pat_map:
-            obscp = obs
-        else:
-            assert obs in self.pat_map, self.parent
-            ev_pat = self.get_evidence_patterns(obs)
-            while True:
-                hyp = next((p.hypothesis for p in ev_pat
-                                            if p.hypothesis not in memo), None)
-                if hyp is None:
-                    break
-                self._save(hyp, memo)
-            to_update = frozenset(
-                               {self.get_hypothesis_pattern(memo[p.hypothesis])
-                                                              for p in ev_pat})
-            hypat = self.get_hypothesis_pattern(obs)
-            if hypat is None:
-                obscp = copy.deepcopy(obs)
-                self.pat_map[obscp] = (None, to_update)
-            else:
-                hypatcp = copy.copy(hypat)
-                obscp = hypatcp.hypothesis
-                self.pat_map[obscp] = (hypatcp, to_update)
-                self.replace_pat(hypat, hypatcp)
-            for pat in to_update:
-                pat.replace(obs, obscp)
-            self.replace_obs(obs, obscp)
-        obscp.unfreeze()
-        memo[obs] = obscp
-        return obscp
 
     def _get_proper_obs(self, clazz=Observable, start=0, end=np.inf,
                                                         filt=lambda obs: True):
@@ -430,15 +363,12 @@ class Interpretation(object):
             except StopIteration:
                 if not obsbuf.contains_observation(new):
                     self.observations.add(new)
-        try:
-            self.focus[self.focus.index(old)] = new
-        except ValueError:
-            pass
-        for i in xrange(len(self.delay_match)):
-            if self.delay_match[i][0] is old:
-                self.delay_match[i] = (new, self.delay_match[i][1])
-            elif self.delay_match[i][1] is old:
-                self.delay_match[i] = (self.delay_match[i][0], new)
+        #We look for a replacement in the focus (don't use index since there
+        #might be an == finding in the focus).
+        for i in xrange(len(self.focus)):
+            if self.focus[i] is old:
+                self.focus[i] = new
+                break
 
     def match(self, finding, obs):
         """
@@ -460,32 +390,10 @@ class Interpretation(object):
                   'Observation {0} is already in the evidence of {1} pattern',
                                                                     (obs, pat))
             patcp = copy.copy(pat)
-            try:
-                patcp.match(finding, obs)
-                self.pat_map[patcp.hypothesis] = (patcp, frozenset())
-                self.replace_pat(pat, patcp)
-                self.replace_obs(pat.hypothesis, patcp.hypothesis)
-            except AttributeError as err:
-                conf = err.args[0]
-                obj = (obs if conf is obs or obs.references(conf) else
-                            next((o for o in pat.obs_seq
-                                    if o is conf or o.references(conf)), None))
-                print obj, conf
-                raise
-                #There has been a modification attempt of the original
-                #observation, we copy the observation and retry the matching.
-                assert pat in self.patterns
-                memo = {}
-                if obj is obs:
-                    obs = self._save(obs, memo)
-                else:
-                    #TODO it is possible to have to copy more than one
-                    #observation, so the matching has to be retried.
-                    self._save(obj, memo)
-                hypcp = memo.get(pat.hypothesis) or self._save(pat.hypothesis)
-                patcp = self.get_hypothesis_pattern(hypcp)
-                patcp.match(finding, obs)
-                self.update_location(hypcp)
+            patcp.match(finding, obs)
+            self.pat_map[patcp.hypothesis] = (patcp, frozenset())
+            self.replace_pat(pat, patcp)
+            self.replace_obs(pat.hypothesis, patcp.hypothesis)
             self.verify_consecutivity(patcp.hypothesis)
             hyp, ev_set = self.pat_map[obs]
             self.pat_map[obs] = (hyp, ev_set.union({patcp}))
@@ -535,12 +443,10 @@ class Interpretation(object):
         if not self.is_finding(obs):
             verify(not obs_lst or not overlap_any(obs, obs_lst),
                                    '{0} overlaps another observation', (obs, ))
-        didx = self.delayed_idx(obs)
+        dmatch = self.get_delayed_finding(obs)
         for obs1 in obs_lst:
             suc = self.get_suc(obs1)
-            verify(suc is None or
-                   (didx > -1 and self.delay_match[didx][0] is suc) or
-                   not between(obs1, obs, suc),
+            verify(suc is None or suc is dmatch or not between(obs1, obs, suc),
          'Consecutivity constraint violation between {0} and {1}', (obs1, suc))
 
     def get_pred(self, obs):
@@ -589,13 +495,18 @@ class Interpretation(object):
         """
         return self.pat_map[observation][0]
 
-    def delayed_idx(self, observation):
+    def get_delayed_finding(self, observation):
         """
-        Obtains the index in the delayed_match list of associations of an
-        observation, or -1 if the observation is not a delayed match.
+        Obtains the finding that will be matched with an observation once
+        the observation is fully observed, or None if the observation will
+        not be matched with a finding.
         """
-        return next((i for i in xrange(len(self.delay_match))
-                                 if self.delay_match[i][1] is observation), -1)
+        for i in xrange(len(self.focus)):
+            if self.focus[i] is observation:
+                if i > 0 and self.is_finding(self.focus[i-1]):
+                    return self.focus[i-1]
+                break
+        return None
 
     def is_finding(self, observation):
         """

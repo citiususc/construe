@@ -336,12 +336,7 @@ def predict(interpretation):
         clone_attrs(pattern.hypothesis, focus)
         try:
             newint.conjecture(pattern.hypothesis, pattern)
-            #The matching of the finding is delayed until the new hypothesis
-            #has sufficient evidence supporting it.
-            newint.delay_match.append((focus, pattern.hypothesis))
-            #We focus on the new predicted observation, replacing the predicted
-            #finding by it.
-            newint.focus.pop()
+            #We focus on the new predicted observation.
             newint.focus.append(pattern.hypothesis)
             STATS.update(['D+' + str(pat)])
             yield newint
@@ -372,7 +367,7 @@ def deduce(interpretation):
         try:
             #We set the focus on the new predicted finding, if it exists.
             if suc.finding is not None:
-                newint.replace_obs(focus, suc.hypothesis)                
+                newint.replace_obs(focus, suc.hypothesis)
                 newint.pat_map[suc.finding] = (None, frozenset({suc}))
                 newint.focus.append(suc.finding)
                 newint.verify_consecutivity(suc.finding)
@@ -396,7 +391,7 @@ def abduce(interpretation):
     hypat = interpretation.get_hypothesis_pattern(focus)
     if ((hypat is not None and not hypat.sufficient_evidence) or
         interpretation.get_abstraction_pattern(focus) or
-                                       interpretation.delayed_idx(focus) > -1):
+                        interpretation.get_delayed_finding(focus) is not None):
         return
     hypatcp = None
     if hypat is not None and hypat.automata.obs_proc is not NULL_PROC:
@@ -473,13 +468,15 @@ def advance(interpretation):
             except InconsistencyError:
                 return
     #If the new focus is a delayed matching, we solve it at this point.
-    if interpretation.delayed_idx(interpretation.focus[-1]) > -1:
+    finding = interpretation.get_delayed_finding(interpretation.focus[-1])
+    if finding is not None:
         newint = newint or Interpretation(interpretation)
         try:
-            idx = newint.delayed_idx(focus)
-            finding, obs = newint.delay_match.pop(idx)
-            newint.match(finding, obs)
+            newint.match(finding, focus)
             _MATCHED_FINDINGS.add(finding)
+            #We remove the two last elements from the focus (the matched
+            #finding and the observation)
+            newint.focus.pop()
             newint.focus.pop()
         except InconsistencyError as error:
             newint.discard(str(error))
