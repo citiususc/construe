@@ -20,7 +20,7 @@ import weakref
 import copy
 import numpy as np
 import itertools as it
-from collections import deque, defaultdict, namedtuple as nt
+from collections import deque, namedtuple as nt
 
 
 class PastMetrics(nt('PastMetrics', 'time, unexp, total, abstime, nhyp')):
@@ -54,6 +54,105 @@ class PastMetrics(nt('PastMetrics', 'time, unexp, total, abstime, nhyp')):
         return PastMetrics(self.time, *np.array(self[1:]+patch))
 
 
+class Focus(object):
+    """
+    This class represents the focus of attention of an interpretation, and it
+    encapsulates all data and functionality related with its management.
+    """
+    __slots__ = ('_lst')
+
+    def __init__(self, parent_focus=None):
+        """
+        Initializes a new empty focus of attention, or a shallow copy of an
+        existing focus.
+
+        Instance Properties
+        -------------------
+        _lst:
+            Stack containing a number of tuples (observation_or_finding,
+            pattern). If 'observation_or_finding' is a finding, then 'pattern'
+            is the abstraction pattern generating such finding. If is an
+            observation, then 'pattern' is the pattern for which the
+            observation is its hypothesis, or None if it is an initial
+            observation.
+        """
+        if parent_focus is None:
+            self._lst = []
+        else:
+            self._lst = parent_focus._lst[:]
+
+    def __len__(self):
+        return len(self._lst)
+
+    def __contains__(self, key):
+        return any(key is v for v, _ in self._lst)
+
+    def __nonzero__(self):
+        return bool(self._lst)
+
+    def push(self, obs, pattern):
+        """
+        Inserts a new observation or finding in the focus of attention.
+        """
+        self._lst.append((obs, pattern))
+
+    def pop(self, n=1):
+        """Removes 'n' elements from the focus of attention (1 by default)"""
+        del self._lst[-n]
+
+    @property
+    def top(self):
+        """Obtains the element at the top of the focus of attention"""
+        return self._lst[-1]
+
+    @top.setter
+    def top(self, value):
+        """Modifies the element at the top of the focus of attention"""
+        self._lst[-1] = value
+
+    @property
+    def patterns(self):
+        """
+        Obtains an iterator over the patterns supporting the observations or
+        findings in the focus of attention, starting at the top of the stack.
+        """
+        return (p for _, p in reversed(self._lst))
+
+    def get_delayed_finding(self, observation):
+        """
+        Obtains the finding that will be matched with an observation once
+        the observation is fully observed, or None if the observation will
+        not be matched with a finding.
+        """
+        for i in xrange(len(self._lst)-1, 0, -1):
+            if self._lst[i][0] is observation:
+                f, p = self._lst[i-1]
+                if p is not None and f is p.finding:
+                    return f
+                break
+        return None
+
+    def match(self, finding, obs):
+        """
+        Performs a matching operation between the finding at the top of the
+        focus with a given observation, checking the time and value consistency
+        of the matching. After consistency is checked, the finding is removed
+        from the focus by means of a pop() operation.
+        """
+        f, pat = self._lst[-1]
+        assert finding is f
+        verify(obs not in pat.evidence[pat.get_evidence_type(f)[0]],
+                  'Observation {0} is already in the evidence of {1} pattern',
+                                                                    (obs, pat))
+        patcp = copy.copy(pat)
+        patcp.match(f, obs)
+        #The hypothesis generating the finding is updated
+        self._lst[-2] = (patcp.hypothesis, patcp)
+        #And the matched finding removed from the focus
+        del self._lst[-1]
+
+
+
 class Interpretation(object):
     """
     This class represents the interpretation entity, which is a consistent
@@ -62,16 +161,16 @@ class Interpretation(object):
     the result of an interpretation process.
     """
     __slots__ = ('name', '_parent', 'child', 'observations', 'unintelligible',
-                 'patterns', 'pat_map', 'focus', 'singletons', 'past_metrics',
-                 '__weakref__')
+                 'singletons', 'abstracted', 'nabd', 'focus', 'past_metrics',
+                 'pred_suc', '__weakref__')
 
     counter = 0
 
     def __init__(self, parent=None):
         """
         Creates a new empty interpretation, initializing its attributes as a
-        shallow copy of the attributes of the parent. If parent is None,
-        the attributes will be empty.
+        shallow copy or a direct assigment of the attributes of the parent. If
+        parent is None, the attributes will be empty.
 
         Instance Properties
         -------------------
@@ -82,25 +181,36 @@ class Interpretation(object):
             a root interpretation.
         child:
             List of interpretations derived from this one.
+        past_metrics:
+            Summary of old information used for heuristics calculation.
         observations:
             Sortedlist containing all the observations in the interpretation,
-            ordered by their start time.
+            ordered by their start time. NOTE: This property is directly
+            assigned from parent interpretation by default.
+        singletons:
+            Set with all Singleton hypotheses that are present in this
+            interpretation. NOTE: This property is directly assigned
+            from parent interpretation by default.
+        abstracted:
+            Set containing all the observations that are abstracted by some
+            abstraction pattern in this interpretation. NOTE: This property is
+            directly assigned from parent interpretation by default.
         unintelligible:
-            Sortedlist containing all the observations that cannot be
-            abstracted by any abstraction pattern.
-        patterns:
-            List of *AbstractionPattern* instances that have generated the
-            hypotheses in this interpretation.
-        pat_map:
-            Dictionary to map observations with abstraction patterns. Each
-            value in this dictionary is a 2-tuple *(hyp_pat,{ev_pats})*, where
-            hyp_pat is the pattern hypothesizing the key observation, and
-            ev_pats is the set of patterns for which the key observation
-            belongs to their evidence.
+            Set containing all the observations that cannot be abstracted by
+            any abstraction pattern. NOTE: This property is directly assigned
+            from parent interpretation by default.
+        nabd:
+            Number of hypotheses in the interpretation that can be abstracted
+            by a higher-level hypothesis. This value is used for the evaluation
+            of the interpretation.
         focus:
             Stack containing the focus of attention of the interpretation. Each
             element in this stack is an observation or a non-matched finding
             of a pattern.
+        pred_suc:
+            Structure to store predecessor-successor information for
+            consecutive observations. NOTE: This property is directly assigned
+            from parent interpretation by default.
         """
         self.name = str(Interpretation.counter)
         if parent is None:
@@ -108,25 +218,24 @@ class Interpretation(object):
             self.child = []
             self.observations = blist.sortedlist()
             self.singletons = set()
+            self.abstracted = set()
             self.unintelligible = set()
+            self.nabd = 0
             self.past_metrics = PastMetrics(0, 0, 0, 0, 0)
-            self.patterns = []
-            self.focus = []
-            self.pat_map = defaultdict(lambda: (None, frozenset()))
+            self.focus = Focus()
+            self.pred_suc = {}
         else:
             self._parent = weakref.ref(parent, self._on_parent_deleted)
             self.child = []
             self.parent.child.append(self)
-            self.observations = parent.observations[:]
-            self.singletons = parent.singletons.copy()
-            self.unintelligible = parent.unintelligible.copy()
+            self.observations = parent.observations
+            self.singletons = parent.singletons
+            self.abstracted = parent.abstracted
+            self.unintelligible = parent.unintelligible
+            self.nabd = parent.nabd
             self.past_metrics = parent.past_metrics
-            self.patterns = parent.patterns[:]
-            self.focus = parent.focus[:]
-            self.pat_map = parent.pat_map.copy()
-            #TODO remove this
-            for obs in parent.pat_map:
-                obs.freeze()
+            self.focus = Focus(parent.focus)
+            self.pred_suc = parent.pred_suc
         Interpretation.counter += 1
 
     def __str__(self):
@@ -196,7 +305,8 @@ class Interpretation(object):
         findings and all the abstraction patterns involved have a sufficient
         set of evidence to support their hypothesis.
         """
-        return all(p.sufficient_evidence for p in self.patterns)
+        return all(p is None or p.sufficient_evidence
+                                                  for p in self.focus.patterns)
 
     @property
     def time_point(self):
@@ -207,11 +317,10 @@ class Interpretation(object):
         interpretation, then the time point is just before the first available
         observation.
         """
-        lastfocus = (self.focus[-1].earlystart - 1 if self.focus
+        lastfocus = (self.focus.top[0].earlystart - 1 if self.focus
                              else next(self.get_observations()).earlystart - 1)
         try:
-            return max(max(o.lateend for o, v in self.pat_map.iteritems()
-                                                           if v[1]), lastfocus)
+            return max(max(o.lateend for o in self.abstracted), lastfocus)
         except ValueError:
             return lastfocus
 
@@ -247,21 +356,22 @@ class Interpretation(object):
             stack.extend(interp.child)
         return ctr
 
-    def is_mergeable(self, other):
-        """
-        Checks if two interpretations can be merged, that is, they represent
-        exactly the same interpretation from the time point in the past_metrics
-        structure.
-        """
-        nobs = len(self.observations)
-        nfocus = len(self.focus)
-        return (self is not other and
-                len(other.observations) == nobs and
-                len(other.focus) == nfocus and
-                other.singletons == self.singletons and
-                all(other.observations[i] == self.observations[i]
-                                                    for i in xrange(nobs)) and
-                all(other.focus[i] == self.focus[i] for i in xrange(nfocus)))
+    #TODO reimplement
+#    def is_mergeable(self, other):
+#        """
+#        Checks if two interpretations can be merged, that is, they represent
+#        exactly the same interpretation from the time point in the past_metrics
+#        structure.
+#        """
+#        nobs = len(self.observations)
+#        nfocus = len(self.focus)
+#        return (self is not other and
+#                len(other.observations) == nobs and
+#                len(other.focus) == nfocus and
+#                other.singletons == self.singletons and
+#                all(other.observations[i] == self.observations[i]
+#                                                    for i in xrange(nobs)) and
+#                all(other.focus[i] == self.focus[i] for i in xrange(nfocus)))
 
     def is_ancestor(self, interpretation):
         """
@@ -277,25 +387,6 @@ class Interpretation(object):
                 return False
             parent = parent.parent
 
-    def conjecture(self, observation, hyp_pattern):
-        """
-        Adds an observation as a new conjecture to this interpretation. The
-        abstraction pattern generating this conjecture as its hypothesis will
-        be also added to the pattern list, and the hypothesis binding will
-        be set.
-
-        Parameters
-        ----------
-        observation:
-            New observation that will be published in this interpretation.
-        hyp_pattern:
-            Abstraction pattern generating *observation* as its hypothesis.
-        """
-        assert hyp_pattern is not None
-        self.observations.add(observation)
-        self.pat_map[observation] = (hyp_pattern, frozenset())
-        self.patterns.append(hyp_pattern)
-
     def update_location(self, observation):
         """
         Updates the temporal location of a certain observation in the list.
@@ -304,104 +395,13 @@ class Interpretation(object):
         """
         try:
             idx = self.observations.index(observation)
+            #If it is found in its proper location, there's no need to update
+            return
         except ValueError:
             idx = next(i for i in xrange(len(self.observations))
                                         if self.observations[i] is observation)
         self.observations.pop(idx)
         self.observations.add(observation)
-
-    def replace_pat(self, old, new):
-        """
-        Replaces one abstraction pattern instance by another in the data
-        structures of this interpretation, deleting all references to the
-        replaced one.
-
-        Parameters
-        ----------
-        old:
-            Abstraction pattern to be replaced.
-        new:
-            Replacement abstraction pattern.
-        """
-        self.patterns[self.patterns.index(old)] = new
-        self.pat_map[old.hypothesis] = (new, self.pat_map[old.hypothesis][1])
-        for obs in it.chain.from_iterable(old.evidence.itervalues()):
-            hyp, ev_set = self.pat_map[obs]
-            self.pat_map[obs] = (hyp, ev_set.union({new}) - {old})
-
-    def replace_obs(self, old, new):
-        """
-        Replaces one observation by another in the data structures of this
-        interpretation, deleting all references to the replaced one.
-
-        Parameters
-        ----------
-        old:
-            Observation to be replaced.
-        new:
-            Replacement observation.
-        """
-        #We remove the old observation, if present
-        self.pat_map.pop(old, None)
-        try:
-            self.observations.remove(old)
-        except ValueError:
-            #Maybe the observation is unsorted.
-            try:
-                idx = next(i for i in xrange(len(self.observations))
-                                                if self.observations[i] is old)
-                self.observations.pop(idx)
-            except StopIteration:
-                pass
-        #We add or update the new observation, if not present
-        try:
-            self.observations.index(new)
-        except ValueError:
-            try:
-                next(o for o in self.observations if o is new)
-                self.update_location(new)
-            except StopIteration:
-                if not obsbuf.contains_observation(new):
-                    self.observations.add(new)
-        #We look for a replacement in the focus (don't use index since there
-        #might be an == finding in the focus).
-        for i in xrange(len(self.focus)):
-            if self.focus[i] is old:
-                self.focus[i] = new
-                break
-
-    def match(self, finding, obs):
-        """
-        Performs a matching for a finding, checking and propagating the
-        constraints to the pattern generating the **finding**. This function
-        assumes the reasoning scheme ensures that **finding** is only related
-        to one hypothesis at most, and this hypothesis is not still connected
-        with any other pattern.
-        """
-        ev_p = self.get_evidence_patterns(finding)
-        assert len(ev_p) <= 1
-        if ev_p:
-            #The following condition prevents cycles between patterns.
-            assert not self.get_evidence_patterns(list(ev_p)[0].hypothesis)
-            pat = tuple(ev_p)[0]
-            verify(pat.hypothesis is not obs, 'Observation {0} is at the same'
-                          'time hypothesis and evidence of a pattern', (obs, ))
-            verify(obs not in pat.evidence[pat.get_evidence_type(finding)[0]],
-                  'Observation {0} is already in the evidence of {1} pattern',
-                                                                    (obs, pat))
-            patcp = copy.copy(pat)
-            patcp.match(finding, obs)
-            self.pat_map[patcp.hypothesis] = (patcp, frozenset())
-            self.replace_pat(pat, patcp)
-            self.replace_obs(pat.hypothesis, patcp.hypothesis)
-            self.verify_consecutivity(patcp.hypothesis)
-            hyp, ev_set = self.pat_map[obs]
-            self.pat_map[obs] = (hyp, ev_set.union({patcp}))
-        self.replace_obs(finding, obs)
-        self.verify_consecutivity(obs)
-        if (obs in self.unintelligible and
-                                self.get_abstraction_pattern(obs) is not None):
-            self.unintelligible.remove(obs)
 
     def non_consecutive(self, obs1, obs2):
         """
@@ -422,8 +422,7 @@ class Interpretation(object):
         interpretation.
         """
         #First we get the declared predecessor and successor observations.
-        cons = [pat.get_consecutive(obs)
-                                       for pat in self.pat_map[obs][1]]
+        cons = [pat.get_consecutive(obs) for pat in self.pat_map[obs][1]]
         pred = next((p for p, _ in cons if p is not None), None)
         suc = next((s for _, s in cons if s is not None), None)
         verify(pred is None or not self.non_consecutive(pred, obs),
@@ -454,66 +453,14 @@ class Interpretation(object):
         Obtains the predecessor of an observation in this interpretation, or
         None if it does not exist.
         """
-        pred = {p for p in (pat.get_consecutive(obs)[0]
-                             for pat in self.pat_map[obs][1]) if p is not None}
-        verify(len(pred) <= 1, 'More than one predecessor for {0}', (obs, ))
-        return None if not pred else pred.pop()
+        return self.pred_suc.get(obs, (None, None))[0]
 
     def get_suc(self, obs):
         """
         Obtains the successor of an observation in this interpretation, or
         None if it does not exist.
         """
-        suc = {s for s in (pat.get_consecutive(obs)[1]
-                             for pat in self.pat_map[obs][1]) if s is not None}
-        verify(len(suc) <= 1, 'More than one successor for {0}', (obs, ))
-        return None if not suc else suc.pop()
-
-    def get_abstraction_pattern(self, observation):
-        """
-        Obtains the *AbstractionPattern* instance that abstracts the given
-        observation. If not such pattern exists, returns None
-        """
-        try:
-            return next(p for p in self.pat_map[observation][1]
-                                                   if p.abstracts(observation))
-        except StopIteration:
-            return None
-
-    def get_evidence_patterns(self, observation):
-        """
-        Obtains a set of *AbstractionPattern* instances for which the given
-        observation belongs to their evidence.
-        """
-        return self.pat_map[observation][1].copy()
-
-    def get_hypothesis_pattern(self, observation):
-        """
-        Obtains the *AbstractionPattern* instance for which the given
-        observation is its hypothesis, or None if the observation is not an
-        hypothesis.
-        """
-        return self.pat_map[observation][0]
-
-    def get_delayed_finding(self, observation):
-        """
-        Obtains the finding that will be matched with an observation once
-        the observation is fully observed, or None if the observation will
-        not be matched with a finding.
-        """
-        for i in xrange(len(self.focus)):
-            if self.focus[i] is observation:
-                if i > 0 and self.is_finding(self.focus[i-1]):
-                    return self.focus[i-1]
-                break
-        return None
-
-    def is_finding(self, observation):
-        """
-        Determines whether an observation is a finding (a prediction of a
-        pattern waiting for a consistent matching) or not.
-        """
-        return any(observation is p.finding for p in self.patterns)
+        return self.pred_suc.get(obs, (None, None))[1]
 
     def get_observations(self, clazz=Observable, start=0, end=np.inf,
                                                         filt=lambda obs: True):
@@ -565,10 +512,13 @@ class Interpretation(object):
             obs = self.observations[i]
             if obs.lateend < time:
                 hypat, _ = self.pat_map.pop(obs)
-                self.patterns.remove(hypat)
+                if hypat is not None:
+                    self.patterns.remove(hypat)
                 total += 1
                 if ap.get_obs_level(type(obs)) == 0:
                     abstime += obs.earlyend - obs.latestart + 1
+                if self.observations is self.parent.observations:
+                    self.observations = self.parent.observations[:]
                 self.observations.pop(i)
             else:
                 i += 1

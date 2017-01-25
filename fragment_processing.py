@@ -63,7 +63,7 @@ IN.get_more_evidence()
 #Trivial interpretation
 interp = Interpretation()
 #The focus is initially set in the first observation
-interp.focus.append(next(obs_buffer.get_observations()))
+interp.focus.push(next(obs_buffer.get_observations()), None)
 ##########################
 ### Construe searching ###
 ##########################
@@ -99,17 +99,17 @@ print('Finished in {0:.3f} seconds'.format(time.time()-t0))
 print('Created {0} interpretations'.format(interp.counter))
 
 #Best explanation
-#be = cntr.best.node
-#be.recover_old()
-#print('List of resulting observations:')
-#pp(list(be.get_observations()))
-#
-##Drawing of the best explanation
-#brview = plotter.plot_observations(sig_buf.get_signal(
-#                                         sig_buf.get_available_leads()[0]), be)
-##Drawing of the search tree
-#label_fncs = {}
-#label_fncs['n'] = lambda br: str(br)
-#label_fncs['e'] = lambda br: ''
-#brview = plotter.plot_branch(interp, label_funcs=label_fncs, target=be,
-#                             full_tree=True)
+be = cntr.best.node
+be.recover_old()
+print('List of resulting observations:')
+pp(list(be.get_observations()))
+
+#Drawing of the best explanation
+brview = plotter.plot_observations(sig_buf.get_signal(
+                                         sig_buf.get_available_leads()[0]), be)
+#Drawing of the search tree
+label_fncs = {}
+label_fncs['n'] = lambda br: str(br)
+label_fncs['e'] = lambda br: ''
+brview = plotter.plot_branch(interp, label_funcs=label_fncs, target=be,
+                             full_tree=True)
