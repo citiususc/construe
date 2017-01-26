@@ -9,7 +9,7 @@ basic unit of the search process which tries to solve interpretation problems.
 @author: T. Teijeiro
 """
 from .observable import (Observable, EventObservable, non_consecutive, between,
-                         overlap_any)
+                         overlap_any, overlap)
 from .interval import Interval as Iv
 from .constraint_network import verify
 import construe.knowledge.abstraction_patterns as ap
@@ -415,6 +415,26 @@ class Interpretation(object):
         obs_lst = self.get_observations(start=llim, end=ulim,
                                        filt=lambda obs: isinstance(obs, types))
         return non_consecutive(obs1, obs2, obs_lst)
+
+    def verify_exclusion(self, obs):
+        """
+        Checks if an observation violates the exclusion relation in this
+        interpretation.
+        """
+        excluded = ap.get_excluded(type(obs))
+        other = obsbuf.find_overlapping(obs, excluded)
+        verify(other is None,
+              'Exclusion relation violation between {0} and {1}', (other, obs))
+        dummy = EventObservable()
+        dummy.start.value = Iv(obs.earlyend, obs.earlyend)
+        ux = self.observations.bisect_left(dummy) - 1
+        while ux >= 0:
+            other = self.observations[ux]
+            verify(other is obs or not isinstance(other, excluded)
+                   or not overlap(other, obs),
+                   'Exclusion relation violation between {0} and {1}',
+                   (other, obs))
+            ux -= 1
 
     def verify_consecutivity(self, obs):
         """

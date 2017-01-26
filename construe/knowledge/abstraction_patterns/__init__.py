@@ -12,6 +12,7 @@ from .segmentation.QRS import QRS_PATTERN
 from .segmentation.pwave import PWAVE_PATTERN
 from .segmentation.twave import TWAVE_PATTERN
 from .segmentation.beats import SINUS_BEAT_PATTERN
+from ..observables import *
 from construe.model import Interval, ConstraintNetwork, Variable
 from construe.model.automata import ABSTRACTED
 import numpy
@@ -92,6 +93,21 @@ _CNET.minimize_network()
 for q in _OBSERVABLES:
     _LMAP[q] = int(_LMAP[q].start)
 
+#Manual definition of the exclusion relation between observables.
+_EXCLUSION = { Deflection:(Deflection,),
+               QRS:(QRS,),
+               TWave:(TWave,),
+               PWave:(PWave,),
+               Cardiac_Rhythm:(Cardiac_Rhythm,)
+              }
+
+#Automatic expansion of the exclusion relation.
+for q, qexc in _EXCLUSION.iteritems():
+    _EXCLUSION[q] = tuple((q2 for q2 in _OBSERVABLES if issubclass(q2, qexc)))
+for q in sorted(_OBSERVABLES, key=_LMAP.get, reverse=True):
+    _EXCLUSION[q] = tuple(set.union(*(set(_EXCLUSION[q2])
+                                   for q2 in _EXCLUSION if issubclass(q, q2))))
+
 def get_obs_level(observable):
     """Obtains the abstraction level of an observable"""
     return _LMAP[observable]
@@ -99,6 +115,10 @@ def get_obs_level(observable):
 def is_abducible(observable):
     """Checks if an observable is abducible"""
     return issubclass(observable, _ABDUCIBLES)
+
+def get_excluded(observable):
+    """Obtains the tuple of observables excluded by a given one"""
+    return _EXCLUSION[observable]
 
 def get_max_level():
     """Obtains the maximum abstraction level of the domain."""

@@ -80,6 +80,26 @@ def get_observations(clazz = Observable, start = 0, end = np.inf,
 def contains_observation(observation):
     return observation in _OBS
 
+def find_overlapping(observation, clazz = Observable):
+    """
+    Utility function used by the interpretation module to check the
+    satisfaction of the exclusion relation. This function makes the following
+    assumptions to speed-up the process: 1) 'observation' is not in the
+    observation buffer, and 2) in the observations buffer, if
+    obs1.start < obs2.start, then obs1.end < obs2.end.
+    """
+    dummy = EventObservable()
+    dummy.start.value = Iv(observation.earlyend, observation.earlyend)
+    ux = _OBS.bisect_left(dummy) - 1
+    while ux >= 0:
+        other = _OBS[ux]
+        if isinstance(other, excluded) and overlap(other, observation):
+            return other
+        elif other.lateend < observation.latestart:
+            return None
+        ux -= 1
+    return None
+
 def get_status():
     """Obtains the status of the observations buffer"""
     return _STATUS

@@ -407,6 +407,7 @@ def abduce(interp, focus, pattern):
                         newint.nabd += 1
                     newint.focus.pop()
                     newint.focus.push(pattern.hypothesis, pattern)
+                    newint.verify_exclusion(pattern.hypothesis)
                     newint.verify_consecutivity(pattern.hypothesis)
                     STATS.update(['A+' + str(pat)])
                     yield newint

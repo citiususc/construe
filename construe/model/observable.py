@@ -16,8 +16,8 @@ import itertools as it
 
 def overlap(obs1, obs2):
     """
-    Determine if two observations overlap. Returns True only if we are 100%
-    sure that the observations overlap.
+    Determine if two observations overlap. Returns True only if we are sure
+    that the observations overlap.
     """
     return (not obs1.earlyend <= obs2.latestart and
                                            not obs2.earlyend <= obs1.latestart)
