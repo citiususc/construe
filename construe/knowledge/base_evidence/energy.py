@@ -17,7 +17,7 @@ from scipy.stats.mstats import mquantiles
 import numpy as np
 import itertools as it
 import bisect
-from blist import sortedlist
+from sortedcontainers import SortedList
 
 ############################
 ### Constants definition ###
@@ -229,7 +229,7 @@ def get_combined_energy(start, end, max_level, group=ms2sp(80)):
     combine_energy_intervals(dicts.values())
     #Now we flatten the dictionaries, putting all the intervals in a sequence
     #sorted by the earlystart value.
-    return sortedlist(w for w in it.chain.from_iterable(it.chain.from_iterable(
+    return SortedList(w for w in it.chain.from_iterable(it.chain.from_iterable(
                                       dic.values() for dic in dicts.values())))
 
 

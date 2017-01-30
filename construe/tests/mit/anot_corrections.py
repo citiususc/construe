@@ -12,7 +12,7 @@ from the application of the *bxb* utility.
 import construe.utils.MIT.MITAnnotation as MIT
 import construe.utils.MIT.ECGCodes as CODES
 import construe.utils.units_helper as UNITS
-from blist import sortedlist
+from sortedcontainers import SortedList
 
 def correct_bxb():
     ANNOTS_DIR = ('/home/remoto/tomas.teijeiro/Escritorio/anots_dani/')
@@ -51,7 +51,7 @@ def correct_bxc_bxd():
         REF = ANNOTS_DIR + str(rec) + '.atr'
         TEST = ANNOTS_DIR + str(rec) + '.bxd'
         OUT = ANNOTS_DIR + str(rec) + '.bxD'
-        ref = sortedlist(MIT.read_annotations(REF))
+        ref = SortedList(MIT.read_annotations(REF))
         test = MIT.read_annotations(TEST)
         for tann in test:
             dummy = MIT.MITAnnotation()

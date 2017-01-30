@@ -20,7 +20,7 @@ from construe.model.interpretation import Interpretation
 from construe.model.interval import Interval as Iv
 from ..signal_processing.wave_extraction import Wave
 import json
-import blist
+import sortedcontainers
 import numpy as np
 import warnings
 
@@ -108,7 +108,7 @@ def ann2interp(record, anns):
             obs = o.RDeflection()
             obs.time.value = Iv(ann.time, ann.time)
             observations.append(obs)
-    interp.observations = blist.sortedlist(observations)
+    interp.observations = sortedcontainers.SortedList(observations)
     return interp
 
 def interp2ann(interp, btime=0, offset=0):
@@ -118,7 +118,7 @@ def interp2ann(interp, btime=0, offset=0):
     the observations after a specific time point, and *offset* allows to define
     a constant time to be added to the time point of each annotation.
     """
-    annots = blist.sortedlist()
+    annots = sortedcontainers.SortedList()
     beats = list(interp.get_observations(o.QRS,
                                          filt=lambda q: q.time.start >= btime))
     #We get the beat observations in the best explanation branch.

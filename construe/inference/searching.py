@@ -17,7 +17,7 @@ import construe.inference.reasoning as reasoning
 import numpy as np
 import itertools as it
 import weakref
-from blist import sortedlist
+from sortedcontainers import SortedList
 from operator import attrgetter
 from collections import namedtuple
 
@@ -124,8 +124,8 @@ class Construe(object):
         self.last_time = root_node.time_point
         ocov, scov, nhyp = valuation(root_node)
         heur = Heuristic(ocov, scov, -self.last_time, nhyp)
-        self.open = sortedlist([Node(heur, root_node)], key=attrgetter('h'))
-        self.closed = sortedlist(key=attrgetter('h'))
+        self.open = SortedList([Node(heur, root_node)], key=attrgetter('h'))
+        self.closed = SortedList(key=attrgetter('h'))
         self.best = None
 
     def _add_closed(self, interp, nodelist, tpoint=None):
@@ -156,7 +156,7 @@ class Construe(object):
                                                   self.closed[:i])),
                           'uninteresting interpretation')
         #And now we recalculate the value of all the still interesting
-        newclosed = sortedlist(key=attrgetter('h'))
+        newclosed = SortedList(key=attrgetter('h'))
         for (ocov, scov, ntime, nhyp), iclosed in self.closed:
             if -ntime < self.last_time:
                 ocov, scov, nhyp = valuation(iclosed, self.last_time)
@@ -234,7 +234,7 @@ class Construe(object):
         only to the K best.
         """
         #Now we get the best nodes with a common valuation.
-        newopened = sortedlist(key=attrgetter('h'))
+        newopened = SortedList(key=attrgetter('h'))
         for h, node in self.open:
             ocov, scov, nhyp = valuation(node, self.last_time)
             newopened.add(Node(Heuristic(ocov, scov, h.time, nhyp), node))

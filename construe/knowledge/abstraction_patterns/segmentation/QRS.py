@@ -31,7 +31,7 @@ from construe.model.automata import PatternAutomata, ABSTRACTED
 import operator
 import numpy as np
 import math
-import blist
+import sortedcontainers
 import bisect
 from collections import OrderedDict
 from scipy.cluster.vq import kmeans2, whiten
@@ -134,7 +134,7 @@ def _characterize_signal(beg, end):
         samples, the baseline level estimation for the fragment, and the
         quality of the fragment in that lead.
     """
-    siginfo = blist.sortedlist(key= lambda v: -v[4])
+    siginfo = sortedcontainers.SortedList(key=lambda v: -v[4])
     for lead in sig_buf.get_available_leads():
         baseline, quality = characterize_baseline(lead, beg, end)
         sig = sig_buf.get_signal_fragment(beg, end, lead=lead)[0]

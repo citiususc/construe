@@ -16,7 +16,7 @@ from construe.utils.MIT import get_leads
 from construe.model.constraint_network import verify
 import construe.acquisition.record_acquisition as IN
 import subprocess
-import blist
+import sortedcontainers
 import os
 import numpy as np
 import operator
@@ -65,8 +65,8 @@ def _load_annots():
     """
     global ANNOTS
     annotator = 'gqrs01'
-    refann = blist.sortedlist(IN._ANNOTS)
-    ANNOTS = blist.sortedlist()
+    refann = sortedcontainers.SortedList(IN._ANNOTS)
+    ANNOTS = sortedcontainers.SortedList()
     rec = IN.get_record_name()
     leads = get_leads(rec)
     annotators = []

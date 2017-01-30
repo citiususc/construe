@@ -19,7 +19,7 @@ import construe.inference.reasoning as reasoning
 import construe.knowledge.observables as o
 from construe.model.interpretation import Interpretation
 import time
-import blist
+import sortedcontainers
 import warnings
 import numpy as np
 from construe.knowledge.abstraction_patterns.rhythm.afib import (
@@ -86,7 +86,7 @@ def _standardize_rhythm_annots(annots):
     procedure to make them compatible with the criteria applied in the
     MIT-BIH Arrhythmia database in the labeling of rhythms.
     """
-    dest = blist.sortedlist()
+    dest = sortedcontainers.SortedList()
     for ann in annots:
         code = ann.code
         if code in (ECGCodes.RHYTHM, ECGCodes.VFON):
@@ -294,7 +294,7 @@ def process_record(path, ann='atr', tfactor=1.0, fr_len=23040, fr_overlap=1080,
     IN.set_duration(fr_len)
     IN.set_tfactor(tfactor)
     #Annotations buffer
-    annots = blist.sortedlist()
+    annots = sortedcontainers.SortedList()
     pos = initial_pos
     while pos < min(IN.get_record_length(), final_pos):
         if verbose:

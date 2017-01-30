@@ -15,12 +15,23 @@ from .constraint_network import verify
 import construe.knowledge.abstraction_patterns as ap
 import construe.knowledge.constants as C
 import construe.acquisition.obs_buffer as obsbuf
-import blist
+import sortedcontainers
 import weakref
 import copy
 import numpy as np
 import itertools as it
 from collections import deque, namedtuple as nt
+
+def obs_cmp_key(observation):
+    """
+    Function to generate the key for observation comparison. It is used
+    to keep an order based on the 'end' time of observations in the
+    observations list of an interpretation, instead of an order based on the
+    'start' time. This provides a better performance for most of the operations
+    during the interpretation.
+    """
+    return ((observation.lateend, observation.earlyend, observation.latestart,
+             observation.earlystart, type(observation).__name__))
 
 
 class PastMetrics(nt('PastMetrics', 'time, unexp, total, abstime, nhyp')):
@@ -118,6 +129,10 @@ class Focus(object):
         """
         return (p for _, p in reversed(self._lst))
 
+    @property
+    def earliest_time(self):
+        return min(o.earlystart for o, _ in self._lst)
+
     def get_delayed_finding(self, observation):
         """
         Obtains the finding that will be matched with an observation once
@@ -162,7 +177,7 @@ class Interpretation(object):
     """
     __slots__ = ('name', '_parent', 'child', 'observations', 'unintelligible',
                  'singletons', 'abstracted', 'nabd', 'focus', 'past_metrics',
-                 'pred_suc', '__weakref__')
+                 'predinfo', '__weakref__')
 
     counter = 0
 
@@ -207,23 +222,25 @@ class Interpretation(object):
             Stack containing the focus of attention of the interpretation. Each
             element in this stack is an observation or a non-matched finding
             of a pattern.
-        pred_suc:
-            Structure to store predecessor-successor information for
-            consecutive observations. NOTE: This property is directly assigned
-            from parent interpretation by default.
+        predinfo:
+            Dictionary to store predecessor information for consecutive
+            observations. Each entry is a 2-tuple (observation, type) with
+            the predecessor observation and the type declared by the pattern
+            for the consecutivity relation. NOTE: This property is directly
+            assigned from parent interpretation by default.
         """
         self.name = str(Interpretation.counter)
         if parent is None:
             self._parent = None
             self.child = []
-            self.observations = blist.sortedlist()
+            self.observations = sortedcontainers.SortedList(key=obs_cmp_key)
             self.singletons = set()
             self.abstracted = set()
             self.unintelligible = set()
             self.nabd = 0
             self.past_metrics = PastMetrics(0, 0, 0, 0, 0)
             self.focus = Focus()
-            self.pred_suc = {}
+            self.predinfo = {}
         else:
             self._parent = weakref.ref(parent, self._on_parent_deleted)
             self.child = []
@@ -235,7 +252,7 @@ class Interpretation(object):
             self.nabd = parent.nabd
             self.past_metrics = parent.past_metrics
             self.focus = Focus(parent.focus)
-            self.pred_suc = parent.pred_suc
+            self.predinfo = parent.predinfo
         Interpretation.counter += 1
 
     def __str__(self):
@@ -288,15 +305,19 @@ class Interpretation(object):
             filter are returned.
         """
         dummy = EventObservable()
-        dummy.start.value = Iv(start, start)
-        idx = self.observations.bisect_left(dummy)
+        if start == 0:
+            idx = 0
+        else:
+            dummy.start.value = Iv(start, start)
+            idx = self.observations.bisect_left(dummy)
         if end == np.inf:
             udx = len(self.observations)
         else:
             dummy.start.value = Iv(end, end)
             udx = self.observations.bisect_right(dummy)
-        return (obs for obs in it.islice(self.observations, idx, udx)
-                if obs.lateend <= end and isinstance(obs, clazz) and filt(obs))
+        return (obs for obs in self.observations.islice(idx, udx)
+                if obs.earlystart >= start
+                and isinstance(obs, clazz) and filt(obs))
 
     @property
     def is_firm(self):
@@ -426,61 +447,49 @@ class Interpretation(object):
         verify(other is None,
               'Exclusion relation violation between {0} and {1}', (other, obs))
         dummy = EventObservable()
-        dummy.start.value = Iv(obs.earlyend, obs.earlyend)
-        ux = self.observations.bisect_left(dummy) - 1
-        while ux >= 0:
-            other = self.observations[ux]
+        dummy.end.value = Iv(obs.latestart, obs.latestart)
+        idx = self.observations.bisect_right(dummy)
+        while idx < len(self.observations):
+            other = self.observations[idx]
             verify(other is obs or not isinstance(other, excluded)
                    or not overlap(other, obs),
                    'Exclusion relation violation between {0} and {1}',
                    (other, obs))
-            ux -= 1
+            idx += 1
 
-    def verify_consecutivity(self, obs):
+    def verify_consecutivity_violation(self, obs):
         """
         Checks if an observation violates the consecutivity constraints in this
         interpretation.
         """
-        #First we get the declared predecessor and successor observations.
-        cons = [pat.get_consecutive(obs) for pat in self.pat_map[obs][1]]
-        pred = next((p for p, _ in cons if p is not None), None)
-        suc = next((s for _, s in cons if s is not None), None)
-        verify(pred is None or not self.non_consecutive(pred, obs),
-         'Consecutivity constraint violation between {0} and {1}', (pred, obs))
-        verify(suc is None or not self.non_consecutive(obs, suc),
-         'Consecutivity constraint violation between {0} and {1}', (obs, suc))
-        #Now we check if the observation violates third-party consecutivities
-        #and if there is any overlapping of same-observable observations.
-        types = self._get_types(obs)
-        #TODO filter more to reduce the size of this list. If we need two lists,
-        #its OK, but for the overlapping
-        #TODO test line
-        start = obs.earlystart - 2560
-        obs_lst = list(self.get_observations(start=start, filt=lambda ev:
-            obs is not ev and
-                         (isinstance(obs, type(ev)) or isinstance(ev, types))))
-        if not self.is_finding(obs):
-            verify(not obs_lst or not overlap_any(obs, obs_lst),
-                                   '{0} overlaps another observation', (obs, ))
-        dmatch = self.get_delayed_finding(obs)
-        for obs1 in obs_lst:
-            suc = self.get_suc(obs1)
-            verify(suc is None or suc is dmatch or not between(obs1, obs, suc),
-         'Consecutivity constraint violation between {0} and {1}', (obs1, suc))
+        idx = self.observations.bisect_left(obs)
+        for obs2 in (o for o in self.observations[idx:] if o in self.predinfo
+                                     and isinstance(obs, self.predinfo[o][1])):
+            verify(not between(self.predinfo[obs2][0], obs, obs2),
+               '{1} violates the consecutivity constraint between {0} and {2}',
+               (self.predinfo[obs2][0], obs, obs2))
 
-    def get_pred(self, obs):
+    def verify_consecutivity_satisfaction(self, obs1, obs2, clazz):
         """
-        Obtains the predecessor of an observation in this interpretation, or
-        None if it does not exist.
+        Checks if a consecutivity constraint defined by two observations is
+        violated by some observation in this interpretation or in the
+        observations buffer.
         """
-        return self.pred_suc.get(obs, (None, None))[0]
-
-    def get_suc(self, obs):
-        """
-        Obtains the successor of an observation in this interpretation, or
-        None if it does not exist.
-        """
-        return self.pred_suc.get(obs, (None, None))[1]
+        idx = self.observations.bisect_right(obs1)
+        dummy = EventObservable()
+        dummy.end.value = Iv(obs2.earlystart, obs2.earlystart)
+        udx = self.observations.bisect_left(dummy)+1
+        for obs in self.observations.islice(idx, udx):
+            verify(obs is obs1 or not isinstance(obs, clazz),
+            '{1} violates the consecutivity constraint between {0} and {2}',
+            (obs1, obs, obs2))
+        hole = Observable()
+        hole.start.value = Iv(obs1.lateend, obs1.lateend)
+        hole.end.value = Iv(obs2.earlystart, obs2.earlystart)
+        other = obsbuf.find_overlapping(hole, clazz)
+        verify(other is None,
+               '{1} violates the consecutivity constraint between {0} and {2}',
+               (obs1, other, obs2))
 
     def get_observations(self, clazz=Observable, start=0, end=np.inf,
                                                         filt=lambda obs: True):
@@ -568,7 +577,7 @@ class Interpretation(object):
         while interp is not None:
             allobs |= set(interp.observations) - set(interp.focus)
             interp = interp.parent
-        allobs = blist.sortedlist(allobs)
+        allobs = sortedcontainers.SortedList(allobs)
         #Duplicate removal (set only prevents same references, not equality)
         i = 0
         while i < len(allobs)-1:
@@ -578,7 +587,7 @@ class Interpretation(object):
                 if i == len(allobs)-1:
                     break
             i += 1
-        self.observations = blist.sortedlist(allobs)
+        self.observations = sortedcontainers.SortedList(allobs)
         self.unintelligible |= set(obsbuf.get_observations(
                                                     end=self.past_metrics.time,
                      filt=lambda ob: self.get_abstraction_pattern(ob) is None))

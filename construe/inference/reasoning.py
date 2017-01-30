@@ -23,7 +23,7 @@ import copy
 import itertools as it
 import numpy as np
 import weakref
-import blist
+import sortedcontainers
 from ..model.constraint_network import InconsistencyError
 #FIXME debug import
 import construe.knowledge.observables as OBS
@@ -46,7 +46,7 @@ SAVE_TREE = False
 STATS = Counter()
 
 #Sorted list of interpretations to find merge situations.
-_INCACHE = blist.sortedset(key=lambda interp: len(interp.observations))
+_INCACHE = sortedcontainers.SortedSet(key=lambda i: len(i.observations))
 
 #Dictionary to map merged interpretations
 _MERGED = weakref.WeakKeyDictionary()
@@ -87,7 +87,8 @@ def clear_cache(time):
     merging.
     """
     global _INCACHE
-    _INCACHE = blist.sortedset((i for i in _INCACHE if i.time_point >= time),
+    _INCACHE = sortedcontainers.SortedSet((i for i in _INCACHE
+                                           if i.time_point >= time),
                                key=lambda interp: len(interp.observations))
 
 
@@ -278,8 +279,9 @@ def subsume(interp, finding, pattern):
             filt=lambda ev: (ev.earlystart in finding.start.value
                              and  ev.time.start in finding.time.value
                              and  ev.lateend in finding.end.value
-                             and (ev not in interp.unintelligible and ev not in
-                                  interp.abstracted if is_abstr else True)
+                             and  ev not in interp.unintelligible
+                             and (ev not in interp.abstracted
+                                  if is_abstr else True)
                              and _consecutive_valid(finding, ev, interp)))
     for subs in opt:
         newint = Interpretation(interp)
@@ -349,9 +351,21 @@ def deduce(interp, focus, pattern):
             newint.focus.top = (suc.hypothesis, suc)
             #We set the focus on the new predicted finding, if it exists.
             if suc.finding is not None:
+                bef, aft = suc.get_consecutive(suc.finding)
+                if bef is not None:
+                    newint.verify_consecutivity_satisfaction(bef, suc.finding,
+                                                             type(suc.finding))
+                elif aft is not None:
+                    newint.verify_consecutivity_satisfaction(suc.finding, aft,
+                                                             type(suc.finding))
                 newint.focus.push(suc.finding, suc)
-                newint.verify_consecutivity(suc.finding)
-            newint.verify_consecutivity(suc.hypothesis)
+            #If the hypothesis timing changes, consecutivity and exclusion
+            #constraints have to be checked.
+            if (suc.hypothesis.end.value != focus.end.value
+                    or suc.hypothesis.time.value != focus.time.value
+                    or suc.hypothesis.start.value != focus.start.value):
+                newint.verify_exclusion(suc.hypothesis)
+                newint.verify_consecutivity_violation(suc.hypothesis)
             STATS.update(['X+' + str(pattern.automata)])
             yield newint
         except InconsistencyError as error:
@@ -386,7 +400,7 @@ def abduce(interp, focus, pattern):
                     newint = Interpretation(interp)
                     if hypatcp is not None:
                         focus = hypatcp.hypothesis
-                        newint.observations = newint.observations[:]
+                        newint.observations = newint.observations.copy()
                         newint.observations.add(focus)
                     #Pattern consistency checking
                     pattern = AbstractionPattern(pat)
@@ -408,7 +422,7 @@ def abduce(interp, focus, pattern):
                     newint.focus.pop()
                     newint.focus.push(pattern.hypothesis, pattern)
                     newint.verify_exclusion(pattern.hypothesis)
-                    newint.verify_consecutivity(pattern.hypothesis)
+                    newint.verify_consecutivity_violation(pattern.hypothesis)
                     STATS.update(['A+' + str(pat)])
                     yield newint
                 except InconsistencyError as error:
@@ -434,7 +448,7 @@ def advance(interp, focus, pattern):
             try:
                 patcp.finish()
                 newint = Interpretation(interp)
-                newint.observations = newint.observations[:]
+                newint.observations = newint.observations.copy()
                 newint.observations.add(patcp.hypothesis)
                 focus = patcp.hypothesis
             except InconsistencyError:
@@ -482,7 +496,7 @@ def advance(interp, focus, pattern):
     #won't be used in following reasoning steps, and they affect the
     #performance of the searching procedure.
     oldtime = max(newint.past_metrics.time,
-                  min(o.earlystart for o in newint.focus) - C.FORGET_TIMESPAN)
+                  newint.focus.earliest_time) - C.FORGET_TIMESPAN
     #We always have to keep at least the last observation of the highest
     #abstraction level.
     max_ap_time = [o.earlystart for o in newint.observations

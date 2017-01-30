@@ -21,7 +21,7 @@ from construe.utils.units_helper import (samples2msec as s2m,
 import dateutil
 import datetime as dt
 import xml.etree.ElementTree as ET
-import blist
+import sortedcontainers
 import glob
 import copy
 
@@ -39,9 +39,9 @@ DEVIDS = ['MG007', 'MG008', 'MG030']
 
 for devid in DEVIDS:
     #The comparison will be done during intervals with available signal.
-    sig_episodes = blist.sortedlist()
+    sig_episodes = sortedcontainers.SortedList()
 
-    mbg = blist.sortedlist()
+    mbg = sortedcontainers.SortedList()
     tree = ET.parse(DB_DIR + devid + '_episodes.xml')
     ep_seq = tree.find('ns:return/mg_di:diResponse/mg_di:additionalInfo', NS)
     for episode in ep_seq.findall('ns2:observationResult', NS):
@@ -55,7 +55,7 @@ for devid in DEVIDS:
         rhythm.end = end.replace(tzinfo=None)
         mbg.add(rhythm)
 
-    abd = blist.sortedlist()
+    abd = sortedcontainers.SortedList()
     for f in glob.glob(DB_DIR+devid + '*' + ANN):
         reftime = MIT.get_datetime(f[:-len(ANN)])
         annots = MIT.read_annotations(f)
@@ -75,12 +75,12 @@ for devid in DEVIDS:
             abd.add(rhythm)
 
     #We get only the sessions in common with the two annotators.
-    sig_episodes = blist.sortedlist([e for e in sig_episodes
+    sig_episodes = sortedcontainers.SortedList([e for e in sig_episodes
                                      if any([e.overlap(rh.iv) for rh in mbg])])
     #And we filter both lists.
-    mbg = blist.sortedlist([rh for rh in mbg
+    mbg = sortedcontainers.SortedList([rh for rh in mbg
                             if any([e.overlap(rh.iv) for e in sig_episodes])])
-    abd = blist.sortedlist([rh for rh in abd
+    abd = sortedcontainers.SortedList([rh for rh in abd
                             if any([e.overlap(rh.iv) for e in sig_episodes])])
 
     #HINT interval join in mobiguide if they are consecutive.
@@ -99,8 +99,8 @@ for devid in DEVIDS:
 
     #Now we need to transform all timestamps to absolute references in terms of
     #samples, to compare the sequences using our epicmp implementation.
-    rmbg = blist.sortedlist()
-    rabd = blist.sortedlist()
+    rmbg = sortedcontainers.SortedList()
+    rabd = sortedcontainers.SortedList()
     for lst in (mbg, abd):
         dst = rmbg if lst is mbg else rabd
         for rh in lst:

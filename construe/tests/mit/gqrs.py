@@ -24,7 +24,7 @@ import os
 import copy
 import bisect
 import numpy as np
-import blist
+import sortedcontainers
 
 def H(data):
     """Entropy calculation for amplitudes"""
@@ -187,7 +187,7 @@ for record in RECORDS:
     #TODO only for CinC challenge 2015
     ###########################################################################
     if record.startswith('a'):
-        annots = blist.sortedlist(annots)
+        annots = sortedcontainers.SortedList(annots)
         #We look for all annotations in the last 20 seconds of the record
         for lead in leads:
             command = ['gqrs', '-r', rec, '-outputName', tmpann,
