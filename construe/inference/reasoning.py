@@ -434,11 +434,11 @@ def abduce(interp, focus, pattern):
         or focus in interp.abstracted
         or interp.focus.get_delayed_finding(focus) is not None):
         return
-    hypatcp = None
     if pattern is not None and pattern.automata.obs_proc is not NULL_PROC:
-        hypatcp = copy.copy(pattern)
+        pattern = copy.copy(pattern)
         try:
-            hypatcp.finish()
+            pattern.finish()
+            focus = pattern.hypothesis
         except InconsistencyError as error:
             return
     qobs = type(focus)
@@ -450,8 +450,7 @@ def abduce(interp, focus, pattern):
             for trans in pat.abstractions[typ]:
                 try:
                     newint = Interpretation(interp)
-                    if hypatcp is not None:
-                        focus = hypatcp.hypothesis
+                    if pattern is not None:
                         newint.observations = newint.observations.copy()
                         newint.observations.add(focus)
                     #Pattern consistency checking
@@ -500,8 +499,6 @@ def advance(interp, focus, pattern):
             try:
                 patcp.finish()
                 newint = Interpretation(interp)
-                newint.observations = newint.observations.copy()
-                newint.observations.add(patcp.hypothesis)
                 if (focus.end.value != patcp.hypothesis.end.value
                         or focus.start.value != patcp.hypothesis.start.value):
                     newint.verify_consecutivity_violation(patcp.hypothesis)
@@ -521,6 +518,9 @@ def advance(interp, focus, pattern):
                            pattern.hypothesis.start.value,
                            pattern.hypothesis.end.value, pred, succ,
                            pattern.abstracts(finding))
+            #The matched hypothesis is included in the observations list
+            newint.observations = newint.observations.copy()
+            newint.observations.add(focus)
         except InconsistencyError as error:
             newint.discard(str(error))
             return
