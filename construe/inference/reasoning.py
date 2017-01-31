@@ -109,18 +109,28 @@ def _save_fsucc(interpretation):
         _FSUCC.add(node)
         node = node.parent
 
-def _consecutive_valid(obs, rep, interpretation):
-    """Checks if the consecutive restrictions of *obs* are satisfied by
-    *rep*."""
-    obs_p, obs_s = interpretation.get_pred(obs), interpretation.get_suc(obs)
-    #We exclude the original observation from the checking operation
-    if obs_p is not None:
-        if interpretation.non_consecutive(obs_p, rep):
+def _consecutive_valid(finding, rep, pat, interp):
+    """
+    Checks if the consecutive restrictions of *obs* are satisfied by
+    *rep*.
+    """
+    pred, succ = pat.get_consecutive(finding)
+    if pred is None and succ is None:
+        return True
+    if pred is not None:
+        if rep in interp.predinfo:
+            return interp.predinfo[rep][0] is pred
+        try:
+            interp.verify_consecutivity_satisfaction(pred, rep, type(finding))
+            return True
+        except InconsistencyError:
             return False
-    if obs_s is not None:
-        if interpretation.non_consecutive(rep, obs_s):
+    if succ is not None:
+        try:
+            interp.verify_consecutivity_satisfaction(rep, succ, type(finding))
+            return True
+        except InconsistencyError:
             return False
-    return True
 
 def _singleton_violation(pat, interpretation):
     """
@@ -156,6 +166,52 @@ def _find_mergeable(interpretation):
             return other
         idx += 1
     return None
+
+def _finding_match(interp, finding, obs, start, end, pred, succ, is_abstr):
+    """
+    Performs a matching operation between a finding and an observation in a
+    given interpretation, checking some constraints set by some additional
+    parameters.
+
+    Parameters
+    ----------
+    interp:
+        Interpretation in which the matching is performed.
+    finding:
+        Finding to match.
+    obs:
+        Matched observation.
+    start:
+        Previous start time of the hypothesis of the pattern that generated
+        *finding*.
+    end:
+        Previous end time of the hypothesis of the pattern that generated
+        *finding*.
+    pred:
+        Predecessor of *finding* according to the consecutivity constraints.
+    succ:
+        Sucessor of *finding* according to the consecutivity constraints.
+    is_abstr:
+        Flag indicating if *finding* is abstracted.
+    """
+    interp.focus.match(finding, obs)
+    newhyp = interp.focus.top[0]
+    #Exclusion and consecutivity violations of the hypothesis are
+    #checked only if the value changes.
+    if newhyp.end.value != end or newhyp.start.value != start:
+        interp.verify_exclusion(newhyp)
+        interp.verify_consecutivity_violation(newhyp)
+    _MATCHED_FINDINGS.add(finding)
+    if is_abstr:
+        #Lazy copy of the parent reference
+        interp.abstracted = interp.abstracted.copy()
+        interp.abstracted.add(obs)
+    if pred is not None or succ is not None:
+        interp.predinfo = interp.predinfo.copy()
+        if pred is not None:
+            interp.predinfo[obs] = (pred, type(finding))
+        if succ is not None:
+            interp.predinfo[succ] = (obs, type(finding))
 
 ###########################
 ### Reasoning functions ###
@@ -273,6 +329,8 @@ def subsume(interp, finding, pattern):
     the interpretation through a subsumption operation.
     """
     is_abstr = pattern.abstracts(finding)
+    start, end = pattern.hypothesis.start.value, pattern.hypothesis.end.value
+    pred, succ = pattern.get_consecutive(finding)
     #First we test all the subsumption options
     opt = interp.get_observations(clazz=type(finding),
                                   start=finding.earlystart, end=finding.lateend,
@@ -282,21 +340,14 @@ def subsume(interp, finding, pattern):
                              and  ev not in interp.unintelligible
                              and (ev not in interp.abstracted
                                   if is_abstr else True)
-                             and _consecutive_valid(finding, ev, interp)))
+                             and _consecutive_valid(finding, ev, pattern,
+                                                    interp)))
     for subs in opt:
         newint = Interpretation(interp)
         try:
-            newint.focus.match(finding, subs)
-            _MATCHED_FINDINGS.add(finding)
-            #Consecutivity constraints are checked for the updated hypothesis,
-            #now at the top of the stack, and for the matched observation.
-            newint.verify_consecutivity(newint.focus.top[0])
-            newint.verify_consecutivity(subs)
+            _finding_match(newint, finding, subs, start, end, pred, succ,
+                           is_abstr)
             newint.remove_old()
-            if is_abstr:
-                #Lazy copy of the parent reference
-                newint.abstracted = newint.abstracted.copy()
-                newint.abstracted.add(subs)
             STATS.update(['S+' + str(finding.__class__.__name__)])
             yield newint
         except InconsistencyError as error:
@@ -325,6 +376,8 @@ def predict(interp, finding, pattern):
         try:
             #The new predicted observation is focused.
             newint.focus.push(pattern.hypothesis, pattern)
+            newint.verify_consecutivity_violation(pattern.hypothesis)
+            newint.verify_exclusion(pattern.hypothesis)
             #And the number of abducible observations is increased.
             if ap.is_abducible(pat.Hypothesis):
                 newint.nabd += 1
@@ -362,7 +415,6 @@ def deduce(interp, focus, pattern):
             #If the hypothesis timing changes, consecutivity and exclusion
             #constraints have to be checked.
             if (suc.hypothesis.end.value != focus.end.value
-                    or suc.hypothesis.time.value != focus.time.value
                     or suc.hypothesis.start.value != focus.start.value):
                 newint.verify_exclusion(suc.hypothesis)
                 newint.verify_consecutivity_violation(suc.hypothesis)
@@ -450,6 +502,10 @@ def advance(interp, focus, pattern):
                 newint = Interpretation(interp)
                 newint.observations = newint.observations.copy()
                 newint.observations.add(patcp.hypothesis)
+                if (focus.end.value != patcp.hypothesis.end.value
+                        or focus.start.value != patcp.hypothesis.start.value):
+                    newint.verify_consecutivity_violation(patcp.hypothesis)
+                    newint.verify_exclusion(patcp.hypothesis)
                 focus = patcp.hypothesis
             except InconsistencyError:
                 return
@@ -459,11 +515,12 @@ def advance(interp, focus, pattern):
         newint = newint or Interpretation(interp)
         try:
             newint.focus.pop()
-            if newint.focus.top[1].abstracts(finding):
-                newint.abstracted = newint.abstracted.copy()
-                newint.abstracted.add(focus)
-            newint.focus.match(finding, focus)
-            _MATCHED_FINDINGS.add(finding)
+            pattern = newint.focus.top[1]
+            pred, succ = pattern.get_consecutive(finding)
+            _finding_match(newint, finding, focus,
+                           pattern.hypothesis.start.value,
+                           pattern.hypothesis.end.value, pred, succ,
+                           pattern.abstracts(finding))
         except InconsistencyError as error:
             newint.discard(str(error))
             return
@@ -497,12 +554,6 @@ def advance(interp, focus, pattern):
     #performance of the searching procedure.
     oldtime = max(newint.past_metrics.time,
                   newint.focus.earliest_time) - C.FORGET_TIMESPAN
-    #We always have to keep at least the last observation of the highest
-    #abstraction level.
-    max_ap_time = [o.earlystart for o in newint.observations
-                                  if ap.get_obs_level(type(o)) == max_ap_level]
-    if max_ap_time and max_ap_time[-1] < oldtime:
-        oldtime = max_ap_time[-1]
     newint.remove_old(oldtime)
     yield newint
 

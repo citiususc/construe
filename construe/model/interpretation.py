@@ -9,7 +9,7 @@ basic unit of the search process which tries to solve interpretation problems.
 @author: T. Teijeiro
 """
 from .observable import (Observable, EventObservable, non_consecutive, between,
-                         overlap_any, overlap)
+                         overlap, end_cmp_key)
 from .interval import Interval as Iv
 from .constraint_network import verify
 import construe.knowledge.abstraction_patterns as ap
@@ -19,22 +19,10 @@ import sortedcontainers
 import weakref
 import copy
 import numpy as np
-import itertools as it
 from collections import deque, namedtuple as nt
 
-def obs_cmp_key(observation):
-    """
-    Function to generate the key for observation comparison. It is used
-    to keep an order based on the 'end' time of observations in the
-    observations list of an interpretation, instead of an order based on the
-    'start' time. This provides a better performance for most of the operations
-    during the interpretation.
-    """
-    return ((observation.lateend, observation.earlyend, observation.latestart,
-             observation.earlystart, type(observation).__name__))
 
-
-class PastMetrics(nt('PastMetrics', 'time, unexp, total, abstime, nhyp')):
+class PastMetrics(nt('PastMetrics', 'time, abst, abstime, nhyp')):
     """
     Tuple to store relevant information to evaluate an interpretation until
     a specific time, to allow discard old observations.
@@ -47,8 +35,7 @@ class PastMetrics(nt('PastMetrics', 'time, unexp, total, abstime, nhyp')):
         as a numpy array with three components. *time* attribute is excluded
         from diff.
         """
-        return np.array((self.unexp - other.unexp,
-                         self.total - other.total,
+        return np.array((self.abst - other.abst,
                          self.abstime - other.abstime,
                          self.nhyp - other.nhyp))
 
@@ -207,13 +194,13 @@ class Interpretation(object):
             interpretation. NOTE: This property is directly assigned
             from parent interpretation by default.
         abstracted:
-            Set containing all the observations that are abstracted by some
-            abstraction pattern in this interpretation. NOTE: This property is
-            directly assigned from parent interpretation by default.
+            SortedList containing all the observations that are abstracted by
+            some abstraction pattern in this interpretation. NOTE: This
+            property is directly assigned from parent interpretation by default
         unintelligible:
-            Set containing all the observations that cannot be abstracted by
-            any abstraction pattern. NOTE: This property is directly assigned
-            from parent interpretation by default.
+            SortedList containing all the observations that cannot be
+            abstracted by any abstraction pattern. NOTE: This property is
+            directly assigned from parent interpretation by default.
         nabd:
             Number of hypotheses in the interpretation that can be abstracted
             by a higher-level hypothesis. This value is used for the evaluation
@@ -233,12 +220,12 @@ class Interpretation(object):
         if parent is None:
             self._parent = None
             self.child = []
-            self.observations = sortedcontainers.SortedList(key=obs_cmp_key)
+            self.observations = sortedcontainers.SortedList(key=end_cmp_key)
             self.singletons = set()
-            self.abstracted = set()
-            self.unintelligible = set()
+            self.abstracted = sortedcontainers.SortedList(key=end_cmp_key)
+            self.unintelligible = sortedcontainers.SortedList(key=end_cmp_key)
             self.nabd = 0
-            self.past_metrics = PastMetrics(0, 0, 0, 0, 0)
+            self.past_metrics = PastMetrics(0, 0, 0, 0)
             self.focus = Focus()
             self.predinfo = {}
         else:
@@ -308,12 +295,12 @@ class Interpretation(object):
         if start == 0:
             idx = 0
         else:
-            dummy.start.value = Iv(start, start)
+            dummy.time.value = Iv(start, start)
             idx = self.observations.bisect_left(dummy)
         if end == np.inf:
             udx = len(self.observations)
         else:
-            dummy.start.value = Iv(end, end)
+            dummy.time.value = Iv(end, end)
             udx = self.observations.bisect_right(dummy)
         return (obs for obs in self.observations.islice(idx, udx)
                 if obs.earlystart >= start
@@ -534,37 +521,28 @@ class Interpretation(object):
         """Removes old observations from the interpretation."""
         if time is None:
             time = max(self.past_metrics.time,
-                     min(o.earlystart for o in self.focus) - C.FORGET_TIMESPAN)
-        i = 0
-        unexp = total = abstime = 0.0
-        while i < len(self.observations):
-            obs = self.observations[i]
-            if obs.lateend < time:
-                hypat, _ = self.pat_map.pop(obs)
-                if hypat is not None:
-                    self.patterns.remove(hypat)
-                total += 1
-                if ap.get_obs_level(type(obs)) == 0:
-                    abstime += obs.earlyend - obs.latestart + 1
-                if self.observations is self.parent.observations:
-                    self.observations = self.parent.observations[:]
-                self.observations.pop(i)
-            else:
-                i += 1
-        nhyp = total
-        for obs in obsbuf.get_observations(end=time-1,
-                         filt=lambda ob: ob.lateend >= self.past_metrics.time):
-            total += 1
-            if self.get_abstraction_pattern(obs) is not None:
-                abstime += obs.earlyend - obs.latestart + 1
-            else:
-                unexp += 1
-        self.unintelligible = {obs for obs in self.unintelligible
-                                                        if obs.lateend >= time}
-        self.past_metrics = PastMetrics(time, self.past_metrics.unexp + unexp,
-                                           self.past_metrics.total + total,
-                                           self.past_metrics.abstime + abstime,
-                                           self.past_metrics.nhyp + nhyp)
+                       self.focus.earliest_time) - C.FORGET_TIMESPAN
+        dummy = EventObservable()
+        dummy.end.value = Iv(time, time)
+        nhyp = abst = abstime = 0.0
+        #Old observations are removed from all lists.
+        for lstname in ('observations', 'abstracted', 'unintelligible'):
+            lst = getattr(self, lstname)
+            idx = lst.bisect_right(dummy)
+            if (idx > 0 and self.parent is not None
+                    and getattr(self.parent, lstname) is lst):
+                lst = lst.copy()
+                setattr(self, lstname, lst)
+            if lstname == 'observations':
+                nhyp = idx
+            elif lstname == 'abstracted':
+                abstime = sum(o.earlyend - o.latestart + 1 for o in lst[:idx]
+                              if ap.get_obs_level(type(o)) == 0)
+                abst = idx
+            del lst[:idx]
+        self.past_metrics = PastMetrics(time, self.past_metrics.abst+abst,
+                                        self.past_metrics.abstime+abstime,
+                                        self.past_metrics.nhyp + nhyp)
 
     def recover_old(self):
         """
@@ -575,7 +553,7 @@ class Interpretation(object):
         allobs = set(self.observations)
         interp = self.parent
         while interp is not None:
-            allobs |= set(interp.observations) - set(interp.focus)
+            allobs |= set(interp.observations)
             interp = interp.parent
         allobs = sortedcontainers.SortedList(allobs)
         #Duplicate removal (set only prevents same references, not equality)
@@ -588,9 +566,6 @@ class Interpretation(object):
                     break
             i += 1
         self.observations = sortedcontainers.SortedList(allobs)
-        self.unintelligible |= set(obsbuf.get_observations(
-                                                    end=self.past_metrics.time,
-                     filt=lambda ob: self.get_abstraction_pattern(ob) is None))
 
     def detach(self, reason=''):
         """

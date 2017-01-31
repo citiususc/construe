@@ -203,9 +203,8 @@ class ObservationVisualizer(object):
         self.lev_height = (self.sig_limits[1] - self.sig_limits[0]) / LEVELS
         #Definition of a polygon for each observation
         self.trapezs = {}
-        observations = (list(self.interpretation.get_observations()) +
-                             [p.finding for p in self.interpretation.patterns 
-                                                     if p.finding is not None])
+        observations = list(self.interpretation.get_observations()) + [
+                                   o for o,_ in self.interpretation.focus._lst]
         for obs in observations:
             level = _get_obs_descriptor(obs)[2]
             bottom = self.sig_limits[0] + level * self.lev_height
@@ -258,9 +257,8 @@ class ObservationVisualizer(object):
             ypos += self.lev_height
         #Observation drawing
         last_point = 0
-        observations = (list(self.interpretation.get_observations()) +
-                             [p.finding for p in self.interpretation.patterns 
-                                                     if p.finding is not None])
+        observations = list(self.interpretation.get_observations()) + [
+                                   o for o,_ in self.interpretation.focus._lst]
         for obs in observations:
             color, alpha, level = _get_obs_descriptor(obs)
             if level > 0 and obs.lateend > last_point and obs.lateend < np.inf:
@@ -275,7 +273,7 @@ class ObservationVisualizer(object):
                                  [bottom, bottom+self.lev_height], color=color)
         #Focus draw
         if self.interpretation.focus:
-            focus = self.interpretation.focus[-1]
+            focus = self.interpretation.focus.top[0]
             color, _, level = _get_obs_descriptor(focus)
             y = self.sig_limits[0] + (level+0.5) * self.lev_height
             xmin = min(focus.latestart, focus.earlyend)

@@ -59,6 +59,17 @@ def overlap_any(obs, obs_lst):
         i+=1
     return False
 
+def end_cmp_key(obs):
+    """
+    Function to generate the key for observation comparison by end time. It is
+    used to keep an order based on the 'end' time of observations in the
+    observations list of an interpretation, instead of an order based on the
+    'start' time. This provides a better performance for most of the operations
+    during the interpretation.
+    """
+    return ((obs.lateend, obs.earlyend, obs.latestart, obs.earlystart,
+             type(obs).__name__))
+
 
 #TODO maybe this is not the best place for this function
 def non_consecutive(obs1, obs2, observations):

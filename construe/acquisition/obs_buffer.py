@@ -11,10 +11,9 @@ to all interpretations.
 """
 
 from ..model import Observable, EventObservable, Interval as Iv
-from ..model.observable import overlap
+from ..model.observable import overlap, end_cmp_key
 import sortedcontainers
 import numpy as np
-import itertools as it
 
 class Status(object):
     """
@@ -24,7 +23,7 @@ class Status(object):
     STOPPED = 0
     ACQUIRING = 1
 
-_OBS = sortedcontainers.SortedList()
+_OBS = sortedcontainers.SortedList(key=end_cmp_key)
 _STATUS = Status.STOPPED
 
 def reset():
@@ -67,20 +66,32 @@ def get_observations(clazz=Observable, start=0, end=np.inf,
         observation as a parameter. Only the observations satisfying this
         filter are returned.
     """
-    dummy = Observable()
-    dummy.start.value = Iv(start, start)
-    idx = _OBS.bisect_left(dummy)
-    if end == np.inf:
+    dummy = EventObservable()
+    if start == 0:
+        idx = 0
+    else:
+        dummy.time.value = Iv(start, start)
+        idx = _OBS.bisect_left(dummy)
+    if end ==np.inf:
         udx = len(_OBS)
     else:
-        dummy.start.value = Iv(end, end)
+        dummy.time.value = Iv(end, end)
         udx = _OBS.bisect_right(dummy)
-    return (obs for obs in it.islice(_OBS, idx, udx)
-            if obs.lateend <= end and isinstance(obs, clazz) and filt(obs))
+    return (obs for obs in _OBS.islice(idx, udx)
+            if obs.earlystart >= start and isinstance(obs, clazz) and filt(obs))
 
 def contains_observation(observation):
     """Checks if an observation is in the observations buffer"""
     return observation in _OBS
+
+def nobs_before(time):
+    """
+    Obtains the number of observations in the observation buffer before a
+    given time.
+    """
+    dummy = EventObservable()
+    dummy.time.value = Iv(time, time)
+    return _OBS.bisect_right(dummy)
 
 def find_overlapping(observation, clazz=Observable):
     """
@@ -91,15 +102,15 @@ def find_overlapping(observation, clazz=Observable):
     obs1.start < obs2.start, then obs1.end < obs2.end.
     """
     dummy = EventObservable()
-    dummy.start.value = Iv(observation.earlyend, observation.earlyend)
-    idx = _OBS.bisect_left(dummy) - 1
-    while idx >= 0:
+    dummy.time.value = Iv(observation.latestart, observation.latestart)
+    idx = _OBS.bisect_right(dummy)
+    while idx < len(_OBS):
         other = _OBS[idx]
         if isinstance(other, clazz) and overlap(other, observation):
             return other
-        elif other.lateend < observation.latestart:
+        elif other.latestart > observation.earlyend:
             return None
-        idx -= 1
+        idx += 1
     return None
 
 def get_status():

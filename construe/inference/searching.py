@@ -46,25 +46,18 @@ def valuation(node, time=None):
     number of hypotheses in the interpretation.
     """
     time = time or node.time_point
-    tp, unexp, total, abstime, nhyp = node.past_metrics
+    tp, abst, abstime, nhyp = node.past_metrics
     assert time >= tp
     if time > tp:
-        for obs in node.get_observations(end=time,
-                                         filt=(lambda o:
-                                               ap.is_abducible(type(o)) and
-                                               o.lateend >= tp)):
-            total += 1
-            if obs in node.observations:
-                nhyp += 1
-            if (node.get_abstraction_pattern(obs) is None
-                    and obs not in node.focus):
-                unexp += 1
-            elif ap.get_obs_level(type(obs)) == 0:
-                abstime += obs.earlyend - obs.latestart +1
+        abstime += sum(o.earlyend - o.latestart + 1 for o in node.abstracted
+                       if ap.get_obs_level(type(o)) == 0)
+        abst += len(node.abstracted)
+        nhyp += len(node.observations)
+    total = IN.BUF.nobs_before(time) + node.nabd
     if total == 0:
         return (0.0, 0.0, 0.0)
     else:
-        return (unexp/float(total), -abstime, nhyp)
+        return (1.0 - abst/float(total), -abstime, nhyp)
 
 def goal(node):
     """

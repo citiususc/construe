@@ -47,7 +47,7 @@ TFACTOR = 5.0
 KFACTOR = 12
 MIN_DELAY = 1750
 MAX_DELAY = int(ms2sp(20000)*TFACTOR)
-searching.reasoning.SAVE_TREE = args.full_tree
+searching.reasoning.SAVE_TREE = True#args.full_tree
 #Input system configuration
 IN.reset()
 IN.set_record(args.r, args.a)
