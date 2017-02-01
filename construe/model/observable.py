@@ -67,8 +67,7 @@ def end_cmp_key(obs):
     'start' time. This provides a better performance for most of the operations
     during the interpretation.
     """
-    return ((obs.lateend, obs.earlyend, obs.latestart, obs.earlystart,
-             type(obs).__name__))
+    return (obs.lateend, obs.earlyend, obs.latestart, obs.earlystart)
 
 
 #TODO maybe this is not the best place for this function

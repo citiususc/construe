@@ -464,10 +464,10 @@ class Interpretation(object):
         """
         idx = self.observations.bisect_right(obs1)
         dummy = EventObservable()
-        dummy.end.value = Iv(obs2.earlystart, obs2.earlystart)
-        udx = self.observations.bisect_left(dummy)+1
+        dummy.end.value = Iv(obs2.earlyend, obs2.earlyend)
+        udx = self.observations.bisect_left(dummy)
         for obs in self.observations.islice(idx, udx):
-            verify(obs is obs1 or not isinstance(obs, clazz),
+            verify(obs is obs2 or not isinstance(obs, clazz),
             '{1} violates the consecutivity constraint between {0} and {2}',
             (obs1, obs, obs2))
         hole = Observable()

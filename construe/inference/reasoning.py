@@ -536,6 +536,10 @@ def advance(interp, focus, pattern):
         if ap.get_obs_level(type(focus)) == 0:
             newint.unintelligible = newint.unintelligible.copy()
             newint.unintelligible.add(focus)
+        #If the focus is a hypothesis, it is added to the observations list
+        if pattern is not None:
+            newint.observations = newint.observations.copy()
+            newint.observations.add(focus)
         newint.focus.pop()
     #If we have reached the top of the stack, we go ahead to the next
     #unexplained observation.
