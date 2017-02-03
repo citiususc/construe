@@ -148,7 +148,7 @@ def _standardize_rhythm_annots(annots):
         except StopIteration:
             break
     #If more than 1/20 of the time of atrial fibrillation...
-    if sp2ms(afibtime) > 90000:
+    if afibtime > (annots[-1].time-annots[0].time)/20.0:
         iterator = iter(dest)
         rhythms = ('(N', '(SVTA')
         start = next((a for a in iterator if a.code == ECGCodes.RHYTHM
@@ -160,7 +160,7 @@ def _standardize_rhythm_annots(annots):
             #afib by rhythm are now considered afib. We also check the
             #method considering alternate RRs to avoid false positives with
             #bigeminies.
-            fragment = dest[dest.index(start):dest.index(end)]
+            fragment = dest[dest.bisect_left(start):dest.bisect_right(end)]
             rrs = np.diff([a.time for a in fragment
                                         if MITAnnotation.is_qrs_annotation(a)])
             if (is_afib_rhythm_lian(rrs) and
@@ -309,7 +309,7 @@ def process_record(path, ann='atr', tfactor=1.0, fr_len=23040, fr_overlap=1080,
         #Reasoning and interpretation
         root = Interpretation()
         try:
-            root.focus.append(next(IN.BUF.get_observations()))
+            root.focus.push(next(IN.BUF.get_observations()), None)
             cntr = searching.Construe(root, kfactor)
         except (StopIteration, ValueError):
             pos += fr_len - fr_overlap
@@ -327,7 +327,7 @@ def process_record(path, ann='atr', tfactor=1.0, fr_len=23040, fr_overlap=1080,
             if time.time()-ltime[1] > max_delay:
                 cntr.prune()
         best_explanation = cntr.best.node
-        best_explanation.recover_old()
+        best_explanation.recover_all()
         #End of reasoning
         #We resolve possible conflicts on joining two fragments, selecting the
         #interpretation higher coverage.
@@ -396,10 +396,9 @@ if __name__ == '__main__':
                                'standard output the fragment being '
                                'interpreted.'))
     args = parser.parse_args()
-    result = _clean_artifacts(
-                _standardize_rhythm_annots(
-                    process_record(args.r, args.a, args.tfactor, args.l,
-                                   args.overl, args.d, args.D, args.k, args.f,
-                                   args.t, args.v)))
+    result = _clean_artifacts(process_record(args.r, args.a, args.tfactor,
+                                             args.l, args.overl, args.d,
+                                             args.D, args.k, args.f, args.t,
+                                             args.v))
     MITAnnotation.save_annotations(result, args.r + '.' + args.o)
     print('Record ' + args.r + ' succesfully processed')

@@ -88,6 +88,9 @@ class Focus(object):
     def __nonzero__(self):
         return bool(self._lst)
 
+    def __cmp__(self, other):
+        return cmp(self._lst, other._lst)
+
     def push(self, obs, pattern):
         """
         Inserts a new observation or finding in the focus of attention.
@@ -117,7 +120,17 @@ class Focus(object):
         return (p for _, p in reversed(self._lst))
 
     @property
+    def nhyp(self):
+        """Returns the number of abstraction hypotheses in this focus"""
+        return sum(1 for o, p in self._lst
+                   if p is not None and o is p.hypothesis)
+
+    @property
     def earliest_time(self):
+        """
+        Returns the minimum starting time of observations or findings in
+        this focus of attention.
+        """
         return min(o.earlystart for o, _ in self._lst)
 
     def get_delayed_finding(self, observation):
@@ -364,22 +377,26 @@ class Interpretation(object):
             stack.extend(interp.child)
         return ctr
 
-    #TODO reimplement
-#    def is_mergeable(self, other):
-#        """
-#        Checks if two interpretations can be merged, that is, they represent
-#        exactly the same interpretation from the time point in the past_metrics
-#        structure.
-#        """
-#        nobs = len(self.observations)
-#        nfocus = len(self.focus)
-#        return (self is not other and
-#                len(other.observations) == nobs and
-#                len(other.focus) == nfocus and
-#                other.singletons == self.singletons and
-#                all(other.observations[i] == self.observations[i]
-#                                                    for i in xrange(nobs)) and
-#                all(other.focus[i] == self.focus[i] for i in xrange(nfocus)))
+    def is_mergeable(self, other):
+        """
+        Checks if two interpretations can be merged, that is, they represent
+        exactly the same interpretation from the time point in the past_metrics
+        structure.
+        """
+        nobs = len(self.observations)
+        nabs = len(self.abstracted)
+        nunint = len(self.unintelligible)
+        nfocus = len(self.focus)
+        return (self is not other and
+                len(other.observations) == nobs and
+                len(other.abstracted) == nabs and
+                len(other.unintelligible) == nunint and
+                len(other.focus) == nfocus and
+                self.singletons == other.singletons and
+                self.focus == other.focus and
+                self.unintelligible == other.unintelligible and
+                self.abstracted == other.abstracted and
+                self.observations == other.observations)
 
     def is_ancestor(self, interpretation):
         """
@@ -544,17 +561,19 @@ class Interpretation(object):
                                         self.past_metrics.abstime+abstime,
                                         self.past_metrics.nhyp + nhyp)
 
-    def recover_old(self):
+    def recover_all(self):
         """
-        Recovers old observations from the ancestor interpretations,
+        Recovers all observations from the ancestor interpretations,
         in order to have the full interpretation from the beginning of the
-        process.
+        process. Hypotheses in the focus of attention are also included in the
+        *observations* attribute.
         """
         allobs = set(self.observations)
         interp = self.parent
         while interp is not None:
             allobs |= set(interp.observations)
             interp = interp.parent
+        allobs.update((o for o, p in self.focus._lst if o is p.hypothesis))
         allobs = sortedcontainers.SortedList(allobs)
         #Duplicate removal (set only prevents same references, not equality)
         i = 0

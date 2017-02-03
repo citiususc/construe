@@ -50,6 +50,7 @@ VALID_LEAD_NAMES = {
     'V1-V2' : Leads.V2,
     'V2-V3' : Leads.V2,
     'V4-V5' : Leads.V4,
+    'ECG ': Leads.MLII,
     'ECG1': Leads.MLII,
     'ECG2': Leads.V1,
     'D3'  : Leads.MLIII,

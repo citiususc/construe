@@ -35,6 +35,8 @@ class Wave(object):
     This class provides the model of a Peak as is defined in the paper in which
     this module is based. We have added an amplitude attribute.
     """
+    __slots__ = ('pts', 'e', 'amp')
+
     def __init__(self):
         #X coordinates for the left bound, peak, and right bound.
         self.pts = (0, 0, 0)

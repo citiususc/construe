@@ -100,7 +100,7 @@ print('Created {0} interpretations'.format(interp.counter))
 
 #Best explanation
 be = cntr.best.node
-be.recover_old()
+be.recover_all()
 print('List of resulting observations:')
 pp(list(be.get_observations()))
 

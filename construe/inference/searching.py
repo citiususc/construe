@@ -52,7 +52,7 @@ def valuation(node, time=None):
         abstime += sum(o.earlyend - o.latestart + 1 for o in node.abstracted
                        if ap.get_obs_level(type(o)) == 0)
         abst += len(node.abstracted)
-        nhyp += len(node.observations)
+        nhyp += len(node.observations) + node.focus.nhyp
     total = IN.BUF.nobs_before(time) + node.nabd
     if total == 0:
         return (0.0, 0.0, 0.0)

@@ -46,7 +46,10 @@ SAVE_TREE = False
 STATS = Counter()
 
 #Sorted list of interpretations to find merge situations.
-_INCACHE = sortedcontainers.SortedSet(key=lambda i: len(i.observations))
+_INCACHE = sortedcontainers.SortedSet(key=lambda i: (len(i.observations),
+                                                     len(i.focus),
+                                                     len(i.unintelligible),
+                                                     len(i.abstracted)))
 
 #Dictionary to map merged interpretations
 _MERGED = weakref.WeakKeyDictionary()
@@ -89,7 +92,10 @@ def clear_cache(time):
     global _INCACHE
     _INCACHE = sortedcontainers.SortedSet((i for i in _INCACHE
                                            if i.time_point >= time),
-                               key=lambda interp: len(interp.observations))
+                                          key=lambda i: (len(i.observations),
+                                                         len(i.focus),
+                                                         len(i.unintelligible),
+                                                         len(i.abstracted)))
 
 
 #########################
@@ -157,10 +163,15 @@ def _find_mergeable(interpretation):
     return None
     idx = _INCACHE.bisect_left(interpretation)
     nobs = len(interpretation.observations)
+    nfoc = len(interpretation.focus)
+    nunint = len(interpretation.unintelligible)
+    nabs = len(interpretation.abstracted)
     mergeable = interpretation.is_mergeable
     while idx < len(_INCACHE):
         other = _INCACHE[idx]
-        if len(other.observations) > nobs:
+        if (len(other.observations) > nobs or len(other.focus) != nfoc
+                or len(other.unintelligible) != nunint
+                or len(other.abstracted) != nabs):
             break
         if mergeable(other):
             return other

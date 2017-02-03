@@ -21,7 +21,6 @@ from networkx.drawing.nx_agraph import graphviz_layout
 import pygraphviz as pgv
 from math import sqrt
 import numpy as np
-import itertools as it
 import construe.acquisition.signal_buffer as sig_buf
 
 LEVELS = ap.get_max_level() + 1
