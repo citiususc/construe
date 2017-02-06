@@ -89,7 +89,8 @@ class Focus(object):
         return bool(self._lst)
 
     def __cmp__(self, other):
-        return cmp(self._lst, other._lst)
+        return all(self._lst[i][0] == other._lst[i][0]
+                   for i in xrange(len(self._lst)))
 
     def push(self, obs, pattern):
         """
@@ -387,16 +388,19 @@ class Interpretation(object):
         nabs = len(self.abstracted)
         nunint = len(self.unintelligible)
         nfocus = len(self.focus)
-        return (self is not other and
-                len(other.observations) == nobs and
-                len(other.abstracted) == nabs and
-                len(other.unintelligible) == nunint and
-                len(other.focus) == nfocus and
-                self.singletons == other.singletons and
-                self.focus == other.focus and
-                self.unintelligible == other.unintelligible and
-                self.abstracted == other.abstracted and
-                self.observations == other.observations)
+        return (self is not other
+                and len(other.observations) == nobs
+                and len(other.abstracted) == nabs
+                and len(other.unintelligible) == nunint
+                and len(other.focus) == nfocus
+                and self.singletons == other.singletons
+                and self.focus == other.focus
+                and all(self.unintelligible[i] == other.unintelligible[i]
+                        for i in xrange(nunint))
+                and all(self.abstracted[i] == other.abstracted[i]
+                        for i in xrange(nabs))
+                and all(self.observations[i] == other.observations[i]
+                        for i in xrange(nobs)))
 
     def is_ancestor(self, interpretation):
         """
@@ -573,7 +577,8 @@ class Interpretation(object):
         while interp is not None:
             allobs |= set(interp.observations)
             interp = interp.parent
-        allobs.update((o for o, p in self.focus._lst if o is p.hypothesis))
+        allobs.update((o for o, p in self.focus._lst if p is not None
+                                                        and o is p.hypothesis))
         allobs = sortedcontainers.SortedList(allobs)
         #Duplicate removal (set only prevents same references, not equality)
         i = 0

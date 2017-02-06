@@ -39,7 +39,7 @@ parser.add_argument('--full-tree', action = 'store_true',
                                'keeping them in the interpretation tree'))
 
 args = parser.parse_args()
-if args.l > 23040 or args.l % IN._STEP != 0:
+if args.l > 32512 or args.l % IN._STEP != 0:
     raise ValueError(('Fragment length must be multiple of ' + str(IN._STEP) +
                       ' and the maximum value currently allowed is 23040'))
 #Searching settings
@@ -80,7 +80,8 @@ while cntr.best is None:
     for i in xrange(int(sp2ms(acq_time - cntr.last_time)/1000.0)):
         fstr += '-'
     fstr += ' Acq: {1}'
-    print(fstr.format(int(cntr.last_time), acq_time))
+    if interp.counter > 100:
+        print(fstr.format(int(cntr.last_time), acq_time))
     #End of debug code
     filt = ((lambda n : acq_time + n[0][2] >= MIN_DELAY)
                 if obs_buffer.get_status() is obs_buffer.Status.ACQUIRING
@@ -99,17 +100,18 @@ print('Finished in {0:.3f} seconds'.format(time.time()-t0))
 print('Created {0} interpretations'.format(interp.counter))
 
 #Best explanation
+print(cntr.best)
 be = cntr.best.node
 be.recover_all()
-print('List of resulting observations:')
-pp(list(be.get_observations()))
+#print('List of resulting observations:')
+#pp(list(be.get_observations()))
 
 #Drawing of the best explanation
-brview = plotter.plot_observations(sig_buf.get_signal(
-                                         sig_buf.get_available_leads()[0]), be)
-#Drawing of the search tree
-label_fncs = {}
-label_fncs['n'] = lambda br: str(br)
-label_fncs['e'] = lambda br: ''
-brview = plotter.plot_branch(interp, label_funcs=label_fncs, target=be,
-                             full_tree=True)
+#brview = plotter.plot_observations(sig_buf.get_signal(
+#                                         sig_buf.get_available_leads()[0]), be)
+##Drawing of the search tree
+#label_fncs = {}
+#label_fncs['n'] = lambda br: str(br)
+#label_fncs['e'] = lambda br: ''
+#brview = plotter.plot_branch(interp, label_funcs=label_fncs, target=be,
+#                             full_tree=True)

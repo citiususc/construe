@@ -160,7 +160,7 @@ def _find_mergeable(interpretation):
     interpretations.
     """
     #TODO temporal disable this feature
-    return None
+    #return None
     idx = _INCACHE.bisect_left(interpretation)
     nobs = len(interpretation.observations)
     nfoc = len(interpretation.focus)
@@ -319,6 +319,7 @@ def _merge_succ(interpretation, merged):
     interpretation.
     """
     diff = interpretation.past_metrics.diff(merged.past_metrics)
+    nabdiff = interpretation.nabd - merged.nabd
     for succ in multicall_succ(merged):
         #Successors are shallow copies of the merged successors, changing
         #the tree structure references and the past_metrics.
@@ -328,6 +329,7 @@ def _merge_succ(interpretation, merged):
         nxt.parent = interpretation
         nxt.child = []
         nxt.past_metrics = nxt.past_metrics.patch(diff)
+        nxt.nabd += nabdiff
         #We already flag the successors as merged.
         _MERGED[nxt] = succ
         STATS.update(['Merge'])

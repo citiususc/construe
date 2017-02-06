@@ -53,7 +53,8 @@ class Wave(object):
         return str(self)
 
     def __eq__(self, other):
-        return type(self) is type(other) and self.__dict__ == other.__dict__
+        return (type(self) is type(other) and self.e == other.e
+                and self.amp == other.amp and  self.pts == other.pts)
 
     @property
     def sign(self):
