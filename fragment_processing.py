@@ -93,8 +93,6 @@ while cntr.best is None:
     #excessive, the search tree is pruned.
     if ms2sp((time.time()-ltime[1])*1000.0)*TFACTOR > MAX_DELAY:
         print('Pruning search')
-        if cntr.open:
-            prevopen = cntr.open
         cntr.prune()
 print('Finished in {0:.3f} seconds'.format(time.time()-t0))
 print('Created {0} interpretations'.format(interp.counter))

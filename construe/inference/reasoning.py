@@ -42,6 +42,9 @@ assert any is not np.any
 #Flag to avoid dead-end branch pruning, to allow debugging of all hypotheses
 SAVE_TREE = False
 
+#Flag to avoid the merging strategy exploration.
+MERGE_STRATEGY = True
+
 #Counter to measure where the interpretation process concentrates its efforts.
 STATS = Counter()
 
@@ -102,17 +105,16 @@ def clear_cache(time):
 ### Utility functions ###
 #########################
 
-def _save_fsucc(interpretation):
+def save_hierarchy(interpretation, sset):
     """
-    This function is called when an interpretation is found to have a firm
-    successor, and then all the hierarchy up is properly marked.
+    This function adds all the hierarchy of a given *interpretation* in *sset*.
     """
     node = interpretation
     while node is not None:
         #When an interpretation is already found in the set, we can stop.
-        if node in _FSUCC:
+        if node in sset:
             break
-        _FSUCC.add(node)
+        sset.add(node)
         node = node.parent
 
 def _consecutive_valid(finding, rep, pat, interp):
@@ -159,8 +161,8 @@ def _find_mergeable(interpretation):
     Searches the interpretation cache in order to find mergeable
     interpretations.
     """
-    #TODO temporal disable this feature
-    #return None
+    if not MERGE_STRATEGY:
+        return None
     idx = _INCACHE.bisect_left(interpretation)
     nobs = len(interpretation.observations)
     nfoc = len(interpretation.focus)
@@ -241,7 +243,7 @@ def firm_succ(interpretation):
     """
     #Check merge possibilities
     if interpretation not in _SUCCESSORS:
-        mrg = _find_mergeable(interpretation)
+        mrg = _MERGED.get(interpretation) or _find_mergeable(interpretation)
         if mrg is not None:
             _SUCCESSORS[interpretation] = _merge_succ(interpretation, mrg)
             _MERGED[interpretation] = mrg
@@ -256,7 +258,7 @@ def firm_succ(interpretation):
                     #Only original interpretations are cached.
                     if interpretation not in _MERGED:
                         _INCACHE.add(suc)
-                    _save_fsucc(node)
+                    save_hierarchy(node, _FSUCC)
                     yield suc
                 else:
                     stack.append((suc, multicall_succ(suc)))
