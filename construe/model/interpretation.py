@@ -21,6 +21,32 @@ import copy
 import numpy as np
 from collections import deque, namedtuple as nt
 
+##################################################
+## Utility functions to detect merge situations ##
+##################################################
+
+def _pat_mergeable(p1, p2):
+    """
+    Compare two *AbstractionPattern* instances for equality regarding an
+    interpretation merging operation. Evidence and hypothesis comparison is
+    assumed to be positive, so only the automata and the initial and final
+    states are compared.
+    """
+    if p1 is None or p2 is None:
+        return p1 is p2
+    return (p1.automata is p2.automata and p1.istate == p2.istate
+            and p1.fstate == p2.fstate)
+
+def _focus_mergeable(f1, f2):
+    """
+    Compare two focuses of attention for equality regarding an interpretation
+    merging operation. The length of the lists within the two focuses are
+    assumed to be equal, but this has to be tested separately.
+    """
+    return all(f1._lst[i][0] == f2._lst[i][0]
+               and _pat_mergeable(f1._lst[i][1], f2._lst[i][1])
+                                       for i in xrange(len(f1._lst)-1, -1, -1))
+
 
 class PastMetrics(nt('PastMetrics', 'time, abst, abstime, nhyp')):
     """
@@ -87,10 +113,6 @@ class Focus(object):
 
     def __nonzero__(self):
         return bool(self._lst)
-
-    def __cmp__(self, other):
-        return all(self._lst[i][0] == other._lst[i][0]
-                   for i in xrange(len(self._lst)-1, -1, -1))
 
     def push(self, obs, pattern):
         """
@@ -392,7 +414,7 @@ class Interpretation(object):
                 and len(other.unintelligible) == nunint
                 and len(other.focus) == nfocus
                 and self.singletons == other.singletons
-                and self.focus == other.focus
+                and _focus_mergeable(self.focus, other.focus)
                 and all(self.unintelligible[i] == other.unintelligible[i]
                         for i in xrange(nunint-1, -1, -1))
                 and all(self.abstracted[i] == other.abstracted[i]

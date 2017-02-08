@@ -42,9 +42,8 @@ parser.add_argument('--no-merge', action = 'store_true',
                                ' interpretation exploration.'))
 
 args = parser.parse_args()
-if args.l > 32512 or args.l % IN._STEP != 0:
-    raise ValueError(('Fragment length must be multiple of ' + str(IN._STEP) +
-                      ' and the maximum value currently allowed is 23040'))
+if args.l % IN._STEP != 0:
+    raise ValueError('Fragment length must be multiple of ' + str(IN._STEP))
 #Searching settings
 TFACTOR = 5.0
 KFACTOR = 12
@@ -100,7 +99,7 @@ while cntr.best is None:
         print('Pruning search')
         cntr.prune()
 print('Finished in {0:.3f} seconds'.format(time.time()-t0))
-print('Created {0} interpretations ({1} consistent)'.format(interp.counter,
+print('Created {0} interpretations ({1} kept alive)'.format(interp.counter,
                                                           interp.ndescendants))
 
 #Best explanation
@@ -111,11 +110,11 @@ be.recover_all()
 #pp(list(be.get_observations()))
 
 #Drawing of the best explanation
-brview = plotter.plot_observations(sig_buf.get_signal(
-                                         sig_buf.get_available_leads()[0]), be)
-#Drawing of the search tree
-label_fncs = {}
-label_fncs['n'] = lambda br: str(br)
-label_fncs['e'] = lambda br: ''
-brview = plotter.plot_branch(interp, label_funcs=label_fncs, target=be,
-                             full_tree=True)
+#brview = plotter.plot_observations(sig_buf.get_signal(
+#                                         sig_buf.get_available_leads()[0]), be)
+##Drawing of the search tree
+#label_fncs = {}
+#label_fncs['n'] = lambda br: str(br)
+#label_fncs['e'] = lambda br: ''
+#brview = plotter.plot_branch(interp, label_funcs=label_fncs, target=be,
+#                             full_tree=True)
