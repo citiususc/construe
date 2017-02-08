@@ -37,6 +37,9 @@ parser.add_argument('-l', metavar='length', default=3840, type=int,
 parser.add_argument('--full-tree', action = 'store_true',
                         help= ('Does not remove dead-end interpretations, '
                                'keeping them in the interpretation tree'))
+parser.add_argument('--no-merge', action = 'store_true',
+                        help= ('Avoids the use of a branch-merging strategy for'
+                               ' interpretation exploration.'))
 
 args = parser.parse_args()
 if args.l > 32512 or args.l % IN._STEP != 0:
@@ -48,6 +51,8 @@ KFACTOR = 12
 MIN_DELAY = 1750
 MAX_DELAY = int(ms2sp(20000)*TFACTOR)
 searching.reasoning.SAVE_TREE = args.full_tree
+searching.reasoning.MERGE_STRATEGY = not args.no_merge
+
 #Input system configuration
 IN.reset()
 IN.set_record(args.r, args.a)
@@ -95,7 +100,8 @@ while cntr.best is None:
         print('Pruning search')
         cntr.prune()
 print('Finished in {0:.3f} seconds'.format(time.time()-t0))
-print('Created {0} interpretations'.format(interp.counter))
+print('Created {0} interpretations ({1} consistent)'.format(interp.counter,
+                                                          interp.ndescendants))
 
 #Best explanation
 print(cntr.best)
@@ -105,11 +111,11 @@ be.recover_all()
 #pp(list(be.get_observations()))
 
 #Drawing of the best explanation
-#brview = plotter.plot_observations(sig_buf.get_signal(
-#                                         sig_buf.get_available_leads()[0]), be)
-##Drawing of the search tree
-#label_fncs = {}
-#label_fncs['n'] = lambda br: str(br)
-#label_fncs['e'] = lambda br: ''
-#brview = plotter.plot_branch(interp, label_funcs=label_fncs, target=be,
-#                             full_tree=True)
+brview = plotter.plot_observations(sig_buf.get_signal(
+                                         sig_buf.get_available_leads()[0]), be)
+#Drawing of the search tree
+label_fncs = {}
+label_fncs['n'] = lambda br: str(br)
+label_fncs['e'] = lambda br: ''
+brview = plotter.plot_branch(interp, label_funcs=label_fncs, target=be,
+                             full_tree=True)

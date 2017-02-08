@@ -90,7 +90,7 @@ class Focus(object):
 
     def __cmp__(self, other):
         return all(self._lst[i][0] == other._lst[i][0]
-                   for i in xrange(len(self._lst)))
+                   for i in xrange(len(self._lst)-1, -1, -1))
 
     def push(self, obs, pattern):
         """
@@ -339,12 +339,10 @@ class Interpretation(object):
         interpretation, then the time point is just before the first available
         observation.
         """
-        lastfocus = (self.focus.top[0].earlystart - 1 if self.focus
-                             else next(self.get_observations()).earlystart - 1)
-        try:
-            return max(max(o.lateend for o in self.abstracted), lastfocus)
-        except ValueError:
-            return lastfocus
+        lastfocus = max(0, (self.focus.top[0].earlystart - 1 if self.focus
+                            else next(self.get_observations()).earlystart - 1))
+        return (max(self.abstracted[-1].lateend, lastfocus)
+                                             if self.abstracted else lastfocus)
 
     @property
     def parent(self):
@@ -396,11 +394,11 @@ class Interpretation(object):
                 and self.singletons == other.singletons
                 and self.focus == other.focus
                 and all(self.unintelligible[i] == other.unintelligible[i]
-                        for i in xrange(nunint))
+                        for i in xrange(nunint-1, -1, -1))
                 and all(self.abstracted[i] == other.abstracted[i]
-                        for i in xrange(nabs))
+                        for i in xrange(nabs-1, -1, -1))
                 and all(self.observations[i] == other.observations[i]
-                        for i in xrange(nobs)))
+                        for i in xrange(nobs-1, -1, -1)))
 
     def is_ancestor(self, interpretation):
         """

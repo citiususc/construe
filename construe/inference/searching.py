@@ -195,30 +195,31 @@ class Construe(object):
             ocov, scov, nhyp = valuation(node, self.last_time)
             newopened.add(Node(Heuristic(ocov, scov, h.time, nhyp), node))
         self.open = newopened
-        #We track all interesting nodes in the hierarchy.
-        saved = set()
-        stop = set()
         n = min(len(self.open), self.K)
-        for i in xrange(n):
-            node = self.open[i].node
-            reasoning.save_hierarchy(node, saved)
-            stop.add(node)
-            mrg = reasoning._MERGED.get(node)
-            if mrg is not None:
-                reasoning.save_hierarchy(mrg, saved)
-                stop.add(mrg)
-        for _, node in self.closed:
-            reasoning.save_hierarchy(node, saved)
-        if self.best is not None:
-            reasoning.save_hierarchy(self.best.node, saved)
-        #And we prune all nodes outside the saved hierarchy
-        stack = [self.root]
-        while stack:
-            node = stack.pop()
-            if node not in saved:
-                node.discard('Sacrificed interpretation')
-            elif node not in stop:
-                stack.extend(node.child)
+        if not reasoning.SAVE_TREE:
+            #We track all interesting nodes in the hierarchy.
+            saved = set()
+            stop = set()
+            for i in xrange(n):
+                node = self.open[i].node
+                reasoning.save_hierarchy(node, saved)
+                stop.add(node)
+                mrg = reasoning._MERGED.get(node)
+                if mrg is not None:
+                    reasoning.save_hierarchy(mrg, saved)
+                    stop.add(mrg)
+            for _, node in self.closed:
+                reasoning.save_hierarchy(node, saved)
+            if self.best is not None:
+                reasoning.save_hierarchy(self.best.node, saved)
+            #And we prune all nodes outside the saved hierarchy
+            stack = [self.root]
+            while stack:
+                node = stack.pop()
+                if node not in saved:
+                    node.discard('Sacrificed interpretation')
+                elif node not in stop:
+                    stack.extend(node.child)
         del self.open[n:]
         #We also clear the reasoning cache, since some interpretations cannot
         #be eligible for merging anymore.

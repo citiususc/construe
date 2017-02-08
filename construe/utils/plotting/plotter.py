@@ -388,7 +388,8 @@ class InterpretationVisualizer(object):
             for node in self.graph.nodes_iter():
                 self.labels[key][node] = func(node)
         #Horizontal tree layout
-        self.pos = graphviz_layout(self.graph, prog='dot', args='-Grankdir=LR')
+        prog = 'dot' if len(self.graph) < 5000 else 'sfdp'
+        self.pos = graphviz_layout(self.graph, prog=prog, args='-Grankdir=LR')
         #Event listener
         self._fig.canvas.mpl_connect('button_release_event', self.__onclick)
         self._fig.canvas.mpl_connect('key_release_event', self.__onkey)
