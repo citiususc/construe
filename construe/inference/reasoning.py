@@ -256,7 +256,7 @@ def firm_succ(interpretation):
                 suc = generator.next()
                 if suc.is_firm:
                     #Only original interpretations are cached.
-                    if interpretation not in _MERGED:
+                    if MERGE_STRATEGY and interpretation not in _MERGED:
                         _INCACHE.add(suc)
                     save_hierarchy(node, _FSUCC)
                     yield suc

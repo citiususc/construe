@@ -140,17 +140,12 @@ class Construe(object):
         """
         newopen = []
         newclosed = []
+        ancestors = set()
         optimal = False
-        def anc(n):
-            """
-            In an optimal context, ancestor interpretations of the newly
-            generated nodes are not expanded. The following filter is for that
-            purpose.
-            """
-            return optimal and any(nn.is_ancestor(n.node) for _, nn in newopen)
 
         for _ in xrange(self.K):
-            node = next((n for n in self.open if filt(n) and not anc(n)), None)
+            node = next((n for n in self.open if filt(n)
+                              and not (optimal and n.node in ancestors)), None)
             #The search stops if no nodes can be expanded or if, being in an
             #optimal context, we need to expand a non-optimal node.
             if node is None or (optimal and node.h.ocov > 0.0):
@@ -170,6 +165,7 @@ class Construe(object):
             for n in (node, nxt):
                 if self.successors[n.node].hasnext():
                     newopen.append(n)
+                    reasoning.save_hierarchy(n.node, ancestors)
                 else:
                     newclosed.append(n)
                     if (n is nxt and n.h.ocov == 0.0 and goal(n.node) and

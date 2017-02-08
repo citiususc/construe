@@ -428,6 +428,8 @@ class Interpretation(object):
         this interpretation. The same interpretation is not considered an
         ancestor.
         """
+        if int(self.name) < int(interpretation.name):
+            return False
         parent = self.parent
         while True:
             if parent is interpretation:
