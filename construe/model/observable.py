@@ -69,35 +69,6 @@ def end_cmp_key(obs):
     """
     return (obs.lateend, obs.earlyend, obs.latestart, obs.earlystart)
 
-
-#TODO maybe this is not the best place for this function
-def non_consecutive(obs1, obs2, observations):
-    """
-    Checks if two observations are non consecutive in a list, this is, there is
-    another observation between *obs1* and *obs2* in the *observations* list.
-
-    Parameters
-    ----------
-    obs1:
-        First observation
-    obs2:
-        Second observation
-    observations:
-        Iterable of observations (maybe containing obs1 and obs2).
-
-    Returns
-    -------
-    out:
-        True if it is guaranteed that there is a third observation in
-        *observations* (different from *obs1* and *obs2*) that is between
-        *obs1* and *obs2*.
-    """
-    tocheck = it.ifilter(lambda obs : obs.earlystart >= obs1.earlystart and
-                                    obs.lateend <= obs2.lateend, observations)
-    return any(obs is not obs1 and obs is not obs2 and between(obs1, obs, obs2)
-                                                            for obs in tocheck)
-
-
 def singleton_observable(observable):
     """
     This function defines a decorator to declare some observable classes as

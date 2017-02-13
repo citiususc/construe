@@ -8,8 +8,8 @@ basic unit of the search process which tries to solve interpretation problems.
 
 @author: T. Teijeiro
 """
-from .observable import (Observable, EventObservable, non_consecutive, between,
-                         overlap, end_cmp_key)
+from .observable import (Observable, EventObservable, between, overlap,
+                         end_cmp_key)
 from .interval import Interval as Iv
 from .constraint_network import verify
 import construe.knowledge.abstraction_patterns as ap
@@ -437,35 +437,6 @@ class Interpretation(object):
             elif parent is None:
                 return False
             parent = parent.parent
-
-    def update_location(self, observation):
-        """
-        Updates the temporal location of a certain observation in the list.
-        This operation may be necessary when an observation changes its
-        temporal variables values.
-        """
-        try:
-            idx = self.observations.index(observation)
-            #If it is found in its proper location, there's no need to update
-            return
-        except ValueError:
-            idx = next(i for i in xrange(len(self.observations))
-                                        if self.observations[i] is observation)
-        self.observations.pop(idx)
-        self.observations.add(observation)
-
-    def non_consecutive(self, obs1, obs2):
-        """
-        Checks if two observations are not consecutive. This function returns
-        true if it is guaranteed that in this interpretation, *obs1* and *obs2*
-        are not consecutive.
-        """
-        types = (type(obs1), type(obs2))
-        llim = obs1.earlystart
-        ulim = obs2.lateend
-        obs_lst = self.get_observations(start=llim, end=ulim,
-                                       filt=lambda obs: isinstance(obs, types))
-        return non_consecutive(obs1, obs2, obs_lst)
 
     def verify_exclusion(self, obs):
         """
