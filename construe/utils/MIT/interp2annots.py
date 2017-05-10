@@ -14,6 +14,7 @@ import construe.utils.MIT.MITAnnotation as MITAnnotation
 import construe.utils.MIT as MIT
 import construe.knowledge.observables as o
 import construe.knowledge.constants as K
+from construe.acquisition.signal_buffer import VALID_LEAD_NAMES
 from construe.knowledge.abstraction_patterns.segmentation.QRS import _tag_qrs
 from ..units_helper import msec2samples as ms2sp
 from construe.model.interpretation import Interpretation
@@ -36,7 +37,8 @@ def ann2interp(record, anns):
         ann = anns[i]
         if ann.code in (C.PWAVE, C.TWAVE):
             obs = o.PWave() if ann.code == C.PWAVE else o.TWave()
-            beg = next(a for a in reversed(anns[:i]) if a.code == C.WFON).time
+            beg = next(a for a in reversed(anns[:i]) if a.time < ann.time
+                                                     and a.code == C.WFON).time
             obs.start.value = Iv(beg, beg)
             end = beg+(ann.time-beg)*2
             obs.end.value = Iv(end, end)
@@ -44,7 +46,11 @@ def ann2interp(record, anns):
                      else set(K.PWAVE_LEADS).intersection(set(record.leads)))
             for lead in leads:
                 sidx = record.leads.index(lead)
-                obs.amplitude[lead] = np.ptp(record.signal[sidx][beg:end+1])
+                s = record.signal[sidx][beg:end+1]
+                mx, mn = np.amax(s), np.amin(s)
+                pol = (1.0 if max(mx-s[0], mx-s[-1]) >= -min(mn-s[0],mn-s[1])
+                       else -1.0)
+                obs.amplitude[lead] = pol * np.ptp(s)
             observations.append(obs)
         elif MIT.is_qrs_annotation(ann):
             obs = o.QRS()
@@ -55,6 +61,13 @@ def ann2interp(record, anns):
             #info. If not present, it is done according to delineation
             #annotations.
             if delin:
+                for l in delin.keys():
+                    if l not in record.leads:
+                        compatible = next((l2 for l2 in VALID_LEAD_NAMES
+                                          if VALID_LEAD_NAMES[l2] == l), None)
+                        if compatible is None:
+                            raise ValueError('Unrecognized lead {0}'.format(l))
+                        delin[compatible] = delin.pop(l)
                 beg = ann.time + min(d[0] for d in delin.itervalues())
                 end = ann.time + max(d[-1] for d in delin.itervalues())
             else:

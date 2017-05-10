@@ -231,13 +231,11 @@ def _p_qrs_tconst(pattern, pwave):
         #PR interval
         tnet.add_constraint(pwave.start, qrs.start, C.N_PR_INTERVAL)
         tnet.set_before(pwave.end, qrs.start)
-        pqmean, pqstd = pattern.hypothesis.meas.pq
-        if pqmean > 0:
+        if len(pattern.evidence[o.PWave]) > 10:
             #The mean and standard deviation of the PQ measurements will
             #influence the following observations.
-            maxdiff = (C.TMARGIN if len(pattern.evidence[o.PWave]) < 10
-                                                                  else 2*pqstd)
-            interv = Iv(int(pqmean-maxdiff), int(pqmean+maxdiff))
+            pqmean, pqstd = pattern.hypothesis.meas.pq
+            interv = Iv(int(pqmean-2*pqstd), int(pqmean+2*pqstd))
             if interv.overlap(C.N_PR_INTERVAL):
                 tnet.add_constraint(pwave.start, qrs.start, interv)
 

@@ -194,19 +194,18 @@ def get_p_tconst(qrsidx):
             tnet.set_before(beats[qidx-1].end, pwave.start)
         tnet.add_constraint(pwave.start, qrs.start, C.N_PR_INTERVAL)
         tnet.set_before(pwave.end, qrs.start)
-        if qidx % 2 == 0:
-            pqmean, pqstd = pattern.hypothesis.meas.pq
-        else:
-            pqs = _get_measures(pattern, True)[2]
-            pqmean, pqstd = np.mean(pqs), np.std(pqs)
-        if pqmean > 0:
+        if len(pattern.evidence[o.PWave]) > 10:
             #The mean and standard deviation of the PQ measurements will
             #influence the following observations.
-            maxdiff = (C.TMARGIN if len(pattern.evidence[o.PWave]) < 10
-                                                                  else 2*pqstd)
-            interv = Iv(int(pqmean-maxdiff), int(pqmean+maxdiff))
-            if interv.overlap(C.N_PR_INTERVAL):
-                tnet.add_constraint(pwave.start, qrs.start, interv)
+            if qidx % 2 == 0:
+                pqmean, pqstd = pattern.hypothesis.meas.pq
+            else:
+                pqs = _get_measures(pattern, True)[2]
+                pqmean, pqstd = np.mean(pqs), np.std(pqs)
+            if not np.isnan(pqmean) and not np.isnan(pqstd):
+                interv = Iv(int(pqmean-2*pqstd), int(pqmean+2*pqstd))
+                if interv.overlap(C.N_PR_INTERVAL):
+                    tnet.add_constraint(pwave.start, qrs.start, interv)
     return _p_tconst
 
 def get_t_tconst(qrsidx):

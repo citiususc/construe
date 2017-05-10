@@ -48,6 +48,9 @@ QRS_SHAPES = {
     'QRs' : set(('qRs', 'QRs', 'R'  , 'RS' , 'Rs' , 'QR' , 'qR' , 'Qr' , 'qr' ,
                  'rsR', 'Rr' , 'r'
            )),
+    'QRS' : set(('qRs', 'QRs', 'R'  , 'RS' , 'Rs' , 'QR' , 'qR' , 'Qr' , 'qr' ,
+                 'rsR', 'Rr' , 'r'
+           )),
     'QS'  : set(('QrS', 'QRs', 'rS' , 'rSr', 'Q'  , 'QS' , 'qS' , 'Qs' , 'Qr' ,
                  'rs'
            )),
@@ -538,8 +541,8 @@ def _reference_wave(shape):
         if shape.tag in ('R',   'r',  'RS', 'Rs', 'rs', 'RSR', 'rsr', 'RsR',
                          'RrS', 'RR', 'Rr', 'rr', 'Q', 'Qr'):
             return 0
-        elif shape.tag in ('qRs', 'QRs', 'rS', 'rSr', 'rR', 'qR', 'QR', 'qr',
-                           'Qs',  'qS'):
+        elif shape.tag in ('qRs', 'QRs', 'QRS', 'rS', 'rSr', 'rR', 'qR', 'QR',
+                           'qr', 'Qs',  'qS'):
             return 1
         elif shape.tag in ('QrS', 'rsR'):
             return 2
