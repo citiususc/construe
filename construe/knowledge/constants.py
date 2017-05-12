@@ -19,8 +19,10 @@ import math
 ### Global constants ###
 ########################
 
-#Time span after which we can forget old observations.
-FORGET_TIMESPAN = m2s(10000)
+#Time span after which we can forget old observations, but always keeping a
+#minimum number.
+FORGET_TIMESPAN = m2s(1000)
+MIN_NOBS = 10
 
 #####################################
 ### Precision related constraints ###
@@ -69,11 +71,12 @@ PQ_DEF_SEP = Iv(m2s(20), m2s(240)) #P Deflection and QRS separation
 PR_DEF_SEP = Iv(m2s(20), m2s(400))
 
 #Leads with visible P waves
-PWAVE_LEADS = (SIG.Leads.MLII, SIG.Leads.MLIII, SIG.Leads.V1,
+PWAVE_LEADS = (SIG.Leads.MLI, SIG.Leads.MLII, SIG.Leads.MLIII, SIG.Leads.V1,
                SIG.Leads.V2, SIG.Leads.V3, SIG.Leads.V4, SIG.Leads.V5)
 
 #P wave amplitude limits
-PWAVE_AMP = {SIG.Leads.MLII : p2d(0.75), SIG.Leads.MLIII: p2d(0.75),
+PWAVE_AMP = {SIG.Leads.MLI : p2d(0.75), SIG.Leads.MLII : p2d(0.75),
+             SIG.Leads.MLIII: p2d(0.75),
              SIG.Leads.V1 : p2d(0.5), SIG.Leads.V2 : p2d(0.5),
              SIG.Leads.V3 : p2d(0.5), SIG.Leads.V4 : p2d(0.5),
              SIG.Leads.V5 : p2d(0.5)}

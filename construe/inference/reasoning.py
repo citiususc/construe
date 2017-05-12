@@ -117,29 +117,6 @@ def save_hierarchy(interpretation, sset):
         sset.add(node)
         node = node.parent
 
-def _consecutive_valid(finding, rep, pat, interp):
-    """
-    Checks if the consecutive restrictions of *obs* are satisfied by
-    *rep*.
-    """
-    pred, succ = pat.get_consecutive(finding)
-    if pred is None and succ is None:
-        return True
-    if pred is not None:
-        if rep in interp.predinfo:
-            return interp.predinfo[rep][0] is pred
-        try:
-            interp.verify_consecutivity_satisfaction(pred, rep, type(finding))
-            return True
-        except InconsistencyError:
-            return False
-    if succ is not None:
-        try:
-            interp.verify_consecutivity_satisfaction(rep, succ, type(finding))
-            return True
-        except InconsistencyError:
-            return False
-
 def _singleton_violation(pat, interpretation):
     """
     Checks if an abstraction pattern violates the singleton constraints in a
@@ -346,17 +323,40 @@ def subsume(interp, finding, pattern):
     is_abstr = pattern.abstracts(finding)
     start, end = pattern.hypothesis.start.value, pattern.hypothesis.end.value
     pred, succ = pattern.get_consecutive(finding)
-    #First we test all the subsumption options
-    opt = interp.get_observations(clazz=type(finding),
-                                  start=finding.earlystart, end=finding.lateend,
-            filt=lambda ev: (ev.earlystart in finding.start.value
-                             and  ev.time.start in finding.time.value
-                             and  ev.lateend in finding.end.value
-                             and  ev not in interp.unintelligible
-                             and (ev not in interp.abstracted
-                                  if is_abstr else True)
-                             and _consecutive_valid(finding, ev, pattern,
-                                                    interp)))
+    def valid_subsumption(ev):
+        """Constraints that can be checked before subsumption"""
+        return (ev.earlystart in finding.start.value
+                and ev.time.start in finding.time.value
+                and ev.lateend in finding.end.value
+                and ev not in interp.unintelligible
+                and (ev not in interp.abstracted if is_abstr else True))
+    opt = []
+    if pred is not None:
+        subs = next(interp.get_observations(clazz=type(finding),
+                                            start=pred.earlyend,
+                                            end=finding.lateend,
+                                            filt=valid_subsumption), None)
+        if subs is not None:
+            opt = [subs]
+    elif succ is not None:
+        if succ:
+            if succ in interp.predinfo:
+                subs = interp.predinfo[succ][0]
+                if valid_subsumption(subs):
+                    opt = [subs]
+            else:
+                subs = next(interp.get_observations(clazz=type(finding),
+                                                   start=finding.earlystart,
+                                                   end=succ.latestart,
+                                                   filt=valid_subsumption,
+                                                   reverse=True), None)
+            if subs is not None:
+                opt = [subs]
+    else:
+        opt = interp.get_observations(clazz=type(finding),
+                                      start=finding.earlystart,
+                                      end=finding.lateend,
+                                      filt=valid_subsumption)
     for subs in opt:
         newint = Interpretation(interp)
         try:

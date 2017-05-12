@@ -46,7 +46,7 @@ def publish_observation(observation):
 
 
 def get_observations(clazz=Observable, start=0, end=np.inf,
-                                                        filt=lambda obs: True):
+                                         filt=lambda obs: True, reverse=False):
     """
     Obtains a list of observations matching the search criteria, ordered
     by the earliest time of the observation.
@@ -65,6 +65,9 @@ def get_observations(clazz=Observable, start=0, end=np.inf,
         General filter provided as a boolean function that accepts an
         observation as a parameter. Only the observations satisfying this
         filter are returned.
+    reverse:
+        Boolean parameter. If True, observations are returned in reversed
+        order, from last to first.
     """
     dummy = EventObservable()
     if start == 0:
@@ -77,7 +80,7 @@ def get_observations(clazz=Observable, start=0, end=np.inf,
     else:
         dummy.time.value = Iv(end, end)
         udx = _OBS.bisect_right(dummy)
-    return (obs for obs in _OBS.islice(idx, udx)
+    return (obs for obs in _OBS.islice(idx, udx, reverse)
             if obs.earlystart >= start and isinstance(obs, clazz) and filt(obs))
 
 def contains_observation(observation):

@@ -307,7 +307,7 @@ class Interpretation(object):
         return tuple(types)
 
     def _get_proper_obs(self, clazz=Observable, start=0, end=np.inf,
-                                                        filt=lambda obs: True):
+                                         filt=lambda obs: True, reverse=False):
         """
         Obtains a list of observations matching the search criteria, ordered
         by the earliest time of the observation.
@@ -326,6 +326,9 @@ class Interpretation(object):
             General filter provided as a boolean function that accepts an
             observation as a parameter. Only the observations satisfying this
             filter are returned.
+        reverse:
+            Boolean parameter. If True, observations are returned in reversed
+            order, from last to first.
         """
         dummy = EventObservable()
         if start == 0:
@@ -338,7 +341,7 @@ class Interpretation(object):
         else:
             dummy.time.value = Iv(end, end)
             udx = self.observations.bisect_right(dummy)
-        return (obs for obs in self.observations.islice(idx, udx)
+        return (obs for obs in self.observations.islice(idx, udx, reverse)
                 if obs.earlystart >= start
                 and isinstance(obs, clazz) and filt(obs))
 
@@ -493,7 +496,7 @@ class Interpretation(object):
                (obs1, other, obs2))
 
     def get_observations(self, clazz=Observable, start=0, end=np.inf,
-                                                        filt=lambda obs: True):
+                                         filt=lambda obs: True, reverse=False):
         """
         Obtains a list of observations matching the search criteria, ordered
         by the earliest time of the observation.
@@ -512,11 +515,14 @@ class Interpretation(object):
             General filter provided as a boolean function that accepts an
             observation as a parameter. Only the observations satisfying this
             filter are returned.
+        reverse:
+            Boolean parameter. If True, observations are returned in reversed
+            order, from last to first.
         """
         #We perform a combination of the observations from the global buffer
         #and from the interpretation.
-        geng = obsbuf.get_observations(clazz, start, end, filt)
-        genl = self._get_proper_obs(clazz, start, end, filt)
+        geng = obsbuf.get_observations(clazz, start, end, filt, reverse)
+        genl = self._get_proper_obs(clazz, start, end, filt, reverse)
         dummy = EventObservable()
         dummy.start.value = Iv(np.inf, np.inf)
         nxtg = next(geng, dummy)
@@ -536,6 +542,11 @@ class Interpretation(object):
         if time is None:
             time = max(self.past_metrics.time,
                        self.focus.earliest_time) - C.FORGET_TIMESPAN
+        #A minimum number of observations is kept
+        nmin = min(C.MIN_NOBS, len(self.observations))
+        if nmin > 0:
+            time = max(self.past_metrics.time,
+                       min(time, self.observations[-nmin].lateend-1))
         dummy = EventObservable()
         dummy.end.value = Iv(time, time)
         nhyp = abst = abstime = 0.0
