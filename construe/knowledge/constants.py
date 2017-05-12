@@ -21,8 +21,8 @@ import math
 
 #Time span after which we can forget old observations, but always keeping a
 #minimum number.
-FORGET_TIMESPAN = m2s(1000)
-MIN_NOBS = 10
+FORGET_TIMESPAN = m2s(10000)
+MIN_NOBS = 30
 
 #####################################
 ### Precision related constraints ###
