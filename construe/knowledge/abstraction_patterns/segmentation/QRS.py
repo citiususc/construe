@@ -723,6 +723,12 @@ def _guided_qrs_observation(hyp):
                     newshape[lead] = shape
             verify(signal_match(hyp.shape, newshape))
             hyp.shape = newshape
+            #The detected shapes may constrain the delineation area.
+            llim = min(hyp.shape[lead].waves[0].l for lead in hyp.shape)
+            if llim > 0:
+                start = start + llim
+                for lead in hyp.shape:
+                    hyp.shape[lead].move(-llim)
             end = start + max(s.waves[-1].r for s in hyp.shape.itervalues())
             peak = start + min(s.waves[_reference_wave(s)].m
                                                for s in hyp.shape.itervalues())
@@ -797,6 +803,7 @@ def _qrs_gconst(pattern, rdef):
     #First we try a guided QRS observation
     _guided_qrs_observation(hyp)
     if hyp.shape:
+        hyp.freeze()
         return
     #Hypothesis initial limits
     beg = int(hyp.earlystart)
@@ -892,6 +899,7 @@ def _qrs_gconst(pattern, rdef):
     verify(len(hyp.shape) > len(sig_buf.get_available_leads())/2.0 or
                 ph2dg(0.5) <= max(s.amplitude for s in hyp.shape.itervalues())
                                                                 <= ph2dg(6.5))
+    hyp.freeze()
 
 #########################
 ## Automata definition ##

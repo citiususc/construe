@@ -148,7 +148,7 @@ def _standardize_rhythm_annots(annots):
         except StopIteration:
             break
     #If more than 1/20 of the time of atrial fibrillation...
-    if afibtime > (annots[-1].time-annots[0].time)/20.0:
+    if annots and afibtime > (annots[-1].time-annots[0].time)/20.0:
         iterator = iter(dest)
         rhythms = ('(N', '(SVTA')
         start = next((a for a in iterator if a.code == ECGCodes.RHYTHM
@@ -226,7 +226,11 @@ def _clean_artifacts(annots):
                     banns[i].time-banns[i-1].time < DISTANCE) or
                 (i < len(banns)-1 and
                     banns[i+1].time-banns[i].time < DISTANCE))):
-            annots.remove(banns[i])
+            #We cannot use 'remove' due to a bug in SortedList.
+            j = annots.bisect_left(banns[i])
+            while annots[j] is not banns[i]:
+                j += 1
+            annots.pop(j)
             banns.pop(i)
         else:
             i += 1
@@ -395,7 +399,11 @@ if __name__ == '__main__':
                         help= ('Verbose mode. The algorithm will print to '
                                'standard output the fragment being '
                                'interpreted.'))
+    parser.add_argument('--no-merge', action = 'store_true',
+                        help= ('Avoids the use of a branch-merging strategy for'
+                               ' interpretation exploration.'))
     args = parser.parse_args()
+    reasoning.MERGE_STRATEGY = not args.no_merge
     result = _clean_artifacts(process_record(args.r, args.a, args.tfactor,
                                              args.l, args.overl, args.d,
                                              args.D, args.k, args.f, args.t,

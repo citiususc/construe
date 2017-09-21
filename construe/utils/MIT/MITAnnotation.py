@@ -91,7 +91,7 @@ def read_annotations(path):
         List for annotation objects
     """
     result = []
-    f = open(path, 'r')
+    f = open(path, 'rb')
     num = 0
     chan = 0
     displ = 0

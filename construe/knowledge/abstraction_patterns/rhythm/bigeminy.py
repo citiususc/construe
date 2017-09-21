@@ -252,9 +252,10 @@ def get_t_tconst(qrsidx):
         if rtmean > 0:
             #The mean and standard deviation of the PQ measurements will
             #influence the following observations.
-            maxdiff = (C.TMARGIN if len(pattern.evidence[o.TWave]) < 10
-                                                                 else  2*rtstd)
-            interv = Iv(int(rtmean-maxdiff), int(rtmean+maxdiff))
+            maxdiff = (C.QT_ERR_STD if len(pattern.evidence[o.TWave]) < 10
+                                                                   else rtstd)
+            maxdiff = max(maxdiff, C.MIN_QT_STD)
+            interv = Iv(int(rtmean-2.5*maxdiff), int(rtmean+2.5*maxdiff))
             #We avoid possible inconsistencies with constraint introduced by
             #the rhythm information.
             try:
@@ -288,14 +289,14 @@ def _get_measures(pattern, even = 0):
     for twave in pattern.evidence[o.TWave][-n:]:
         if twave is not pattern.finding:
             qrs = next(q for q in reversed(beats)
-                                               if q.lateend < twave.earlystart)
+                                              if q.lateend <= twave.earlystart)
             if beats.index(qrs) % 2 == even:
                 rts.append(twave.lateend - qrs.time.start)
     #PQ
     pqs = []
     for pwave in pattern.evidence[o.PWave][-n:]:
         if pwave is not pattern.finding:
-            qrs = next(q for q in beats if q.earlystart > pwave.lateend)
+            qrs = next(q for q in beats if q.earlystart >= pwave.lateend)
             if beats.index(qrs) % 2 == even:
                 pqs.append(qrs.earlystart - pwave.earlystart)
     return (rrs, pqs, rts)
@@ -309,9 +310,21 @@ def _cycle_finished_gconst(pattern, _):
     #We update the measurements of the rhythm taking the measures of the
     #regular cycles.
     rrs, pqs, rts = _get_measures(pattern, 0)
+    if len(pqs) == 0:
+        pqm, pqst = 0, 0
+    elif len(pqs) == 1:
+        #TODO use specific deviations for PQ rather than QT
+        pqm, pqst = pqs[0], C.QT_ERR_STD
+    else:
+        pqm, pqst = np.mean(pqs), max(np.std(pqs), C.MIN_QT_STD)
+    if len(rts) == 0:
+        rtm, rtst = 0, 0
+    elif len(rts) == 1:
+        rtm, rtst = rts[0], C.QT_ERR_STD
+    else:
+        rtm, rtst = np.mean(rts), max(np.std(rts), C.MIN_QT_STD)
     pattern.hypothesis.meas = o.CycleMeasurements((np.mean(rrs), np.std(rrs)),
-                                                  (np.mean(rts), np.std(rts)),
-                                                  (np.mean(pqs), np.std(pqs)))
+                                                      (rtm, rtst), (pqm, pqst))
 
 
 BIGEMINY_PATTERN = PatternAutomata()

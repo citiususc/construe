@@ -65,6 +65,10 @@ def msec2samples(msec):
     """
     return msec * SAMPLING_FREQ / 1000.0
 
+def samples2sec(samples):
+    """Returns the seconds corresponding to a number of signal samples"""
+    return samples2msec(samples) / 1000.0
+
 def phys2digital(mvolts):
     """
     Obtains the digital difference value in the signal that corresponds to

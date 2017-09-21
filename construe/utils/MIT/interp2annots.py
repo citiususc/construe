@@ -37,8 +37,8 @@ def ann2interp(record, anns, fmt=False):
     assumed. This parameter is also inferred from the first annotation in the
     list.
     """
-    fmt = (fmt or anns[0].code is C.NOTE
-                     and anns[0].aux == FMT_STRING)
+    fmt = (fmt or len(anns) > 0 and anns[0].code is C.NOTE
+                                                 and anns[0].aux == FMT_STRING)
     interp = Interpretation()
     observations = []
     for i in xrange(len(anns)):
@@ -48,17 +48,28 @@ def ann2interp(record, anns, fmt=False):
             if fmt:
                 beg = next(a for a in reversed(anns[:i]) if a.time < ann.time
                            and a.code == C.WFON and a.subtype == ann.code).time
+                end = next(a for a in anns[i:] if a.time > ann.time
+                          and a.code == C.WFOFF and a.subtype == ann.code).time
             else:
                 beg = next(a for a in reversed(anns[:i]) if a.time < ann.time
                                                      and a.code == C.WFON).time
+                end = next(a for a in anns[i] if a.time > ann.time
+                                                    and a.code == C.WFOFF).time
             obs.start.value = Iv(beg, beg)
-            end = beg+(ann.time-beg)*2
             obs.end.value = Iv(end, end)
             if fmt:
-                obs.amplitude = json.loads(ann.aux)
+                amp = json.loads(ann.aux)
+                for l in amp.keys():
+                    if l not in record.leads:
+                        compatible = next((l2 for l2 in VALID_LEAD_NAMES
+                                          if VALID_LEAD_NAMES[l2] == l), None)
+                        if compatible is None:
+                            raise ValueError('Unrecognized lead {0}'.format(l))
+                        obs.amplitude[compatible] = amp.pop(l)
             else:
                 leads = (record.leads if ann.code is C.TWAVE
                          else set(K.PWAVE_LEADS) & set(record.leads))
+                leads = record.leads
                 for lead in leads:
                     sidx = record.leads.index(lead)
                     s = record.signal[sidx][beg:end+1]

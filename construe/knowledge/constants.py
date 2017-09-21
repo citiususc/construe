@@ -104,6 +104,12 @@ TQRS_MAX_DIFFR = 0.7
 #Maximum amplitude distance between the end of the T wave and the baseline if
 #the delineation begins at the end of the temporal support of the T wave.
 TWEND_BASELINE_MAX_DIFF = p2d(0.3)
+#Constant values for the Kalman Filter used for QT (actually RT) measure
+QT_ERR_STD = m2s(58) #Standard deviation of the QT error (R matrix)
+MIN_QT_STD = m2s(20) #Minimum standard deviation of the QT error
+KF_Q = m2s(40) #Dynamic noise of the Kalman filter (Q matrix)
+#Upper and lower limit of the RR intervals
+QTC_RR_LIMITS = Iv(m2s(300), m2s(1200))
 
 
 #####################################################
@@ -141,6 +147,7 @@ COMPAUSE_RREXT_MAX_F = 4.0    #compensatory pause wrt the advanced beat.
 ICOUPLET_MIN_RREXT_F = 1.25   #Min RR extension factor after a couplet.
 ICOUPLET_MIN_RREXT = m2s(225) #Minimum pause after a couplet.
 ICOUPLET_MAX_DIFF = m2s(150)  #Maximum RR variation inside a couplet.
+ICOUPLET_RCHANGE = m2s(100)   #Minimum RR variation of the second extrasystole.
 
 ##################################
 ### Asystole related constants ###
