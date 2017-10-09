@@ -11,7 +11,7 @@ with signal records simulating the real-time input.
 
 from ..utils.MIT import load_MIT_record, read_annotations, is_qrs_annotation
 from ..utils.units_helper import (samples2msec as sp2ms, msec2samples as ms2sp,
-                                                                 SAMPLING_FREQ)
+                                                        SAMPLING_FREQ, ADCGain)
 from ..model import Interval as Iv
 from ..utils.axel import Event
 import construe.utils.MIT.ECGCodes as ECGCodes
@@ -42,6 +42,8 @@ def set_record(record, annotator = None, physical_units= False):
     assert SAMPLING_FREQ == _REC.frequency, ('Incorrect sampling frequency: '
                                              'expected {0}, got {1}'.format(
                                                  SAMPLING_FREQ, _REC.frequency))
+    assert ADCGain == _REC.gain, ('Incorrect ADC Gain: expected {0}, '
+                                  'got {1}'.format(ADCGain, _REC.gain))
     if annotator is not None:
         _ANNOTS = read_annotations(record + '.' + annotator)
 

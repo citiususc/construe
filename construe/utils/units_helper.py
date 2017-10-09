@@ -7,8 +7,6 @@ converted units of the signal.
 __author__="T. Teijeiro"
 __date__ ="$30-nov-2011 9:58:56$"
 
-from ..model import Interval as Iv
-
 #: Signal sampling frequency (Hz)
 SAMPLING_FREQ = 250.0
 
@@ -133,29 +131,6 @@ def hour2samples(hour):
     hms, ms = hour.split('.')
     h, m, s = hms.split(':')
     return int(h)*3600000 + int(m)*60000 + int(s)*1000 + int(ms)
-
-
-def changeTime(observations, time_offset):
-    """
-    Modifies the start and end timestamps of a set of observations, allowing
-    an easy conversion between absolute and relative temporal locations.
-
-    Parameters
-    ----------
-    observations - Observations to modify.
-    time_offset - Time amount to be added to the timestamps.
-    """
-    if time_offset > 0:
-        for o in observations:
-            o.end.value = Iv(o.earlyend + time_offset, o.lateend + time_offset)
-            o.start.value = Iv(o.earlystart + time_offset,
-                               o.latestart + time_offset)
-    else:
-        for o in observations:
-            o.start.value = Iv(o.earlystart + time_offset,
-                               o.latestart + time_offset)
-            o.end.value = Iv(o.earlyend + time_offset, o.lateend + time_offset)
-
 
 if __name__ == "__main__":
     pass

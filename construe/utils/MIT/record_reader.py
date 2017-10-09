@@ -6,8 +6,8 @@ Utility module to read MIT records.
 """
 
 
-__author__="T. Teijeiro"
-__date__ ="$30-nov-2011 18:01:49$"
+__author__ = "T. Teijeiro"
+__date__ = "$30-nov-2011 18:01:49$"
 
 
 import numpy
@@ -23,10 +23,12 @@ class MITRecord(object):
     def __init__(self):
         self.signal = None
         self.frequency = 0.0
+        self.gain = 0.0
         self.leads = []
 
     @property
     def length(self):
+        """Obtains the length, in samples, of the longest signal"""
         return max(len(self.signal[i]) for i in xrange(len(self.leads)))
 
 def get_leads(record_path):
@@ -40,7 +42,36 @@ def get_datetime(record_path):
     datestr = datestr[datestr.index('[')+1:datestr.index(']')]
     return dateutil.parser.parse(datestr, dayfirst=True)
 
-def load_MIT_record(record_path, physical_units= False, multifreq= False):
+def get_gain(record_path):
+    """
+    Obtains the ADC Gain of a specific record. Currently only a single
+    Gain value is supported, so all signals in a record must have the same
+    value.
+    """
+    sigdesc = [s.strip()
+                 for s in check_output(['wfdbdesc', record_path]).splitlines()]
+    gains = set()
+    for desc in sigdesc:
+        if desc.startswith('Gain:'):
+            try:
+                gains.add(float(desc.split()[1]))
+            except ValueError:
+                pass
+    if len(gains) > 1:
+        raise ValueError('Found more than one different ADC Gain value for '
+                         'the given record. Currently only one value is '
+                         'supported')
+    elif len(gains) == 0:
+        return 200.0
+    else:
+        return gains.pop()
+
+def get_sampling_frequency(record_path):
+    """Obtains the base sampling frequency of a record."""
+    return float(check_output(['sampfreq', record_path]))
+
+
+def load_MIT_record(record_path, physical_units=False, multifreq=False):
     """
     Loads a MIT-BIH record using rdsamp. The correct number of signals in the
     file must be passed as argument to ensure a correct load.
@@ -79,7 +110,7 @@ def load_MIT_record(record_path, physical_units= False, multifreq= False):
         #HINT Bug in some cases with physical units conversion in rdsamp.
         string = string.replace('-', '-0')
     #Convert to matrix
-    mat = numpy.fromstring(string, sep= '\t')
+    mat = numpy.fromstring(string, sep='\t')
     #We reshape it according to the number of signals + 1 (the first column)
     #is the number of sample, but it is not of our interest.
     mat = mat.reshape(((len(mat)/(num_signals + 1)), num_signals + 1))
@@ -88,8 +119,10 @@ def load_MIT_record(record_path, physical_units= False, multifreq= False):
     result.signal = mat[:, 1:].T
     #We include the loaded leads
     result.leads = leads
-    #And the sampling frequency
-    result.frequency = float(check_output(['sampfreq', record_path]))
+    #The sampling frequency
+    result.frequency = get_sampling_frequency(record_path)
+    #And the ADC Gain
+    result.gain = 1.0 if physical_units else get_gain(record_path)
     return result
 
 

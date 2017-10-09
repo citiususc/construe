@@ -12,7 +12,7 @@ interpretation process consisting of energy intervals observations.
 import construe.acquisition.signal_buffer as sig_buf
 import construe.knowledge.observables as o
 from construe.model import Interval as Iv
-from construe.utils.units_helper import msec2samples as ms2sp, changeTime
+from construe.utils.units_helper import msec2samples as ms2sp
 from scipy.stats.mstats import mquantiles
 import numpy as np
 import itertools as it
@@ -24,6 +24,29 @@ from sortedcontainers import SortedList
 ############################
 LPUB = 0        # Maximum level of the observations considered as base evidence
 TWINDOW = 1280  # Temporal window for obtaining the relevan intervals
+
+def changeTime(observations, time_offset):
+    """
+    Modifies the start and end timestamps of a set of observations, allowing
+    an easy conversion between absolute and relative temporal locations.
+
+    Parameters
+    ----------
+    observations - Observations to modify.
+    time_offset - Time amount to be added to the timestamps.
+    """
+    if time_offset > 0:
+        for obs in observations:
+            obs.end.value = Iv(obs.earlyend + time_offset,
+                               obs.lateend + time_offset)
+            obs.start.value = Iv(obs.earlystart + time_offset,
+                                 obs.latestart + time_offset)
+    else:
+        for obs in observations:
+            obs.start.value = Iv(obs.earlystart + time_offset,
+                                 obs.latestart + time_offset)
+            obs.end.value = Iv(obs.earlyend + time_offset,
+                               obs.lateend + time_offset)
 
 
 def get_energy_intervals(energy, level = 0, percentile = 0.95, group = 1):
