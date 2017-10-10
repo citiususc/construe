@@ -33,7 +33,19 @@ _LAST_POS = 0
 _ANNOTS = []
 
 def set_record(record, annotator = None, physical_units= False):
-    """Sets the record used for input, and allows to read annotations"""
+    """
+    Sets the record used for input and the initial evidence.
+
+    Parameters
+    ----------
+    record:
+        Name/Path of the MIT-BIH record containing the input signal.
+    annotator:
+        It can be a string with the name of the annotator, or a list of
+        annotations with the initial evidence to be interpreted.
+    physical_units:
+        Flag to set whether the signal is in digital or physical units.
+    """
     global _REC
     global _ANNOTS
     global _RECNAME
@@ -45,7 +57,10 @@ def set_record(record, annotator = None, physical_units= False):
     assert ADCGain == _REC.gain, ('Incorrect ADC Gain: expected {0}, '
                                   'got {1}'.format(ADCGain, _REC.gain))
     if annotator is not None:
-        _ANNOTS = read_annotations(record + '.' + annotator)
+        if isinstance(annotator, str):
+            _ANNOTS = read_annotations(record + '.' + annotator)
+        else:
+            _ANNOTS = annotator[:]
 
 def set_offset(offset):
     """Sets an offset in the record from where the acquisition should start"""

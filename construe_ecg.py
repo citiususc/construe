@@ -1,5 +1,6 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
+# pylint: disable-msg= C0103, C0325
 """
 Created on Mon Oct  9 12:58:30 2017
 
@@ -16,7 +17,7 @@ if __name__ == '__main__':
     import os.path
     import subprocess
     from construe.utils.MIT import (get_gain, get_sampling_frequency,
-                                                              read_annotations)
+                                    read_annotations, save_annotations)
     from construe.utils.units_helper import set_ADCGain, set_sampling_freq
 
     parser = argparse.ArgumentParser(description=
@@ -57,7 +58,7 @@ if __name__ == '__main__':
                               'of 256. Default:23040 if the abstraction level'
                               ' is "rhythm", and 640000 if the abstraction '
                               'level is "conduction".'))
-    parser.add_argument('--overl', default=1080, type=int,
+    parser.add_argument('--overl', default=-1, type=int,
                         help=('Length in samples of the overlapping between '
                               'consecutive fragments, to prevent loss of '
                               'information. Default: 1080 if the abstraction '
@@ -69,21 +70,29 @@ if __name__ == '__main__':
                               '2.0 the interpretation can be working for two '
                               'times the real duration of the interpreted '
                               'record. Note: This factor cannot be '
-                              'guaranteed. Default: 1.0'))
+                              'guaranteed. If the selected abstraction level '
+                              'is "conduction", this parameter is ignored. '
+                              'Default: 1.0'))
     parser.add_argument('-d', metavar='min_delay', default=2560, type=int,
                         help=('Minimum delay in samples between the '
                               'acquisition time and the last interpretation '
-                              'time. Default: 2560'))
+                              'time. If the selected abstraction level is '
+                              '"conduction", this parameter is ignored. '
+                              'Default: 2560'))
     parser.add_argument('-D', metavar='max_delay', default=20.0, type=float,
                         help=('Maximum delay in seconds that the '
                               'interpretation can be without moving forward. '
                               'If this threshold is exceeded, the searching '
-                              'process is pruned. Default: 20.0'))
+                              'process is pruned. If the selected abstraction '
+                              'level is "conduction", this parameter is '
+                              'ignored. Default: 20.0'))
     parser.add_argument('--time-limit', default=np.inf, type=float,
                         help=('Interpretation time limit *for each fragment*.'
                               'If the interpretation time exceeds this number '
                               'of seconds, the interpretation finishes '
                               'immediately, moving to the next fragment. '
+                              'If the selected abstraction level is '
+                              '"conduction", this parameter is ignored. '
                               'Default: Infinity'))
     parser.add_argument('-k', default=12, type=int,
                         help=('Exploration factor. It is the number of '
@@ -124,12 +133,26 @@ if __name__ == '__main__':
     else:
         rname, ext = os.path.splitext(args.r)
         annots = read_annotations(rname + '.' + args.a)
-
-
-#    reasoning.MERGE_STRATEGY = not args.no_merge
-#    result = _clean_artifacts(process_record(args.r, args.a, args.tfactor,
-#                                             args.l, args.overl, args.d,
-#                                             args.D, args.k, args.f, args.t,
-#                                             args.v))
-#    MITAnnotation.save_annotations(result, args.r + '.' + args.o)
+    #Conduction or rhythm interpretation
+    if args.level == 'conduction':
+        from record_processing import process_record_conduction
+        length = 640000 if args.l == 0 else args.l
+        overl = 0 if args.l == -1 else args.l
+        result = process_record_conduction(rname, annots, length, overl,
+                                           args.f, args.t,
+                                           args.exclude_pwaves,
+                                           args.exclude_twaves, args.v)
+    else:
+        from record_processing import process_record_rhythm
+        #Merge strategy
+        import construe.inference.reasoning as reasoning
+        reasoning.MERGE_STRATEGY = not args.no_merge
+        length = 23040 if args.l == 0 else args.l
+        overl = 1080 if args.l == -1 else args.l
+        result = process_record_rhythm(rname, annots, args.tfactor,
+                                       length, overl, args.time_limit,
+                                       args.d, args.D, args.k, args.f,
+                                       args.t, args.exclude_pwaves,
+                                       args.exclude_twaves, args.v)
+    save_annotations(result, args.r + '.' + args.o)
     print('Record ' + args.r + ' succesfully processed')

@@ -17,6 +17,7 @@ import construe.acquisition.record_acquisition as IN
 import construe.inference.searching as searching
 import construe.inference.reasoning as reasoning
 import construe.knowledge.observables as o
+import construe.knowledge.abstraction_patterns as ap
 from construe.model.interpretation import Interpretation
 import time
 import sortedcontainers
@@ -107,7 +108,7 @@ def _standardize_rhythm_annots(annots):
                            and a.code in (ECGCodes.RHYTHM, ECGCodes.VFON)),
                                                                 annots[-1])
                 nbeats = searching.ilen(a for a in annots if a.time >= ann.time
-                                        and a.time<=end.time and
+                                        and a.time <= end.time and
                                         MITAnnotation.is_qrs_annotation(a))
                 if nbeats < 7:
                     continue
@@ -116,7 +117,7 @@ def _standardize_rhythm_annots(annots):
                            and a.code in (ECGCodes.RHYTHM, ECGCodes.VFON)),
                                                                 annots[-1])
                 nbeats = searching.ilen(a for a in annots if a.time >= ann.time
-                                        and a.time<=end.time and
+                                        and a.time <= end.time and
                                         MITAnnotation.is_qrs_annotation(a))
                 if nbeats < 7:
                     continue
@@ -126,7 +127,7 @@ def _standardize_rhythm_annots(annots):
             #############################################################
             if ann.aux in ('(BK', 'P'):
                 ann.aux = '(SBR'
-            if ann.aux not in ('(EXT','(CPT'):
+            if ann.aux not in ('(EXT', '(CPT'):
                 prev = next((a for a in reversed(dest)
                                        if a.code is ECGCodes.RHYTHM), None)
                 if prev is None or prev.aux != ann.aux:
@@ -200,7 +201,7 @@ def _standardize_rhythm_annots(annots):
     #########################################
     # Redundant rhythm description removing #
     #########################################
-    i=1
+    i = 1
     while i < len(dest):
         if dest[i].code is ECGCodes.RHYTHM:
             prev = next((a for a in reversed(dest[:i])
@@ -236,10 +237,138 @@ def _clean_artifacts(annots):
             i += 1
     return annots
 
+def process_record_conduction(path, ann='atr', fr_len=640000, fr_overlap=0,
+                              initial_pos=0, final_pos=np.inf,
+                              exclude_pwaves=False, exclude_twaves=False,
+                              verbose=True):
+    """
+    This function performs an interpretation in the conduction abstraction
+    level of a given MIT-BIH formatted record, using as initial evidence an
+    external set of annotations. The result is a delineation of the P waves,
+    QRS complex, and T waves of each heartbeat in the initial evidence
+    annotator. The interpretation is splitted in independent fragments of
+    configurable length.
 
-def process_record(path, ann='atr', tfactor=1.0, fr_len=23040, fr_overlap=1080,
-                   min_delay=2560, max_delay=20.0, kfactor=12, initial_pos=0,
-                   final_pos=np.inf, verbose=True):
+    Parameters
+    ----------
+    path:
+        Complete name of the record to be processed (without any extension)
+    ann:
+        Annotator used to obtain the initial evidence (default: 'atr')
+    fr_len:
+        Length in samples of each independently interpreted fragment.
+    fr_overlap:
+        Lenght in samples of the overlapping between consecutive fragments, to
+        prevent loss of information.
+    initial_pos:
+        Time position (in samples) where the interpretation should begin.
+    final_pos:
+        Time position (in samples) where the interpretation should finish.
+    exclude_pwaves:
+        Flag to avoid P-wave searching.
+    exclude_twaves:
+        Flag to avoid T-wave searching.
+    verbose:
+        Boolean flag. If active, the algorithm will print to standard output
+        the fragment being interpreted.
+
+    Returns
+    -------
+    out:
+        sortedlist of annotations resulting from the interpretation, including
+        only segmentation annnotations.
+    """
+    if fr_len > final_pos-initial_pos:
+        fr_len = int(final_pos-initial_pos)
+        fr_overlap = 0
+    if fr_len % IN._STEP != 0:
+        fr_len += IN._STEP - (fr_len % IN._STEP)
+        warnings.warn('Fragment length is not multiple of {0}. '
+                      'Adjusted to {1}'.format(IN._STEP, fr_len))
+    #Knowledge base configuration
+    prev_knowledge = ap.KNOWLEDGE
+    curr_knowledge = ap.SEGMENTATION_KNOWLEDGE[:]
+    if exclude_pwaves:
+        curr_knowledge.remove(ap.PWAVE_PATTERN)
+    if exclude_twaves:
+        curr_knowledge.remove(ap.TWAVE_PATTERN)
+    ap.set_knowledge_base(curr_knowledge)
+    #Input configuration
+    IN.set_record(path, ann)
+    IN.set_duration(fr_len)
+    IN.set_tfactor(1e20)
+    #Annotations buffer
+    annots = sortedcontainers.SortedList()
+    pos = initial_pos
+    ictr = Interpretation.counter
+    while pos < min(IN.get_record_length(), final_pos):
+        if verbose:
+            print('Processing fragment {0}:{1}'.format(pos, pos+fr_len))
+        #Input start
+        IN.reset()
+        IN.set_offset(pos)
+        IN.start()
+        while IN.BUF.get_status() == IN.BUF.Status.ACQUIRING:
+            IN.get_more_evidence()
+
+        #Reasoning and interpretation
+        root = node = Interpretation()
+        try:
+            root.focus.push(next(IN.BUF.get_observations()), None)
+        except (StopIteration, ValueError):
+            pos += fr_len - fr_overlap
+            continue
+        successors = {node:reasoning.firm_succ(node)}
+        t0 = time.time()
+        ########################
+        ### Greedy searching ###
+        ########################
+        while True:
+            try:
+                node = next(successors[node])
+                if node not in successors:
+                    successors[node] = reasoning.firm_succ(node)
+            except StopIteration:
+                #If the focus contains a top-level hypothesis, then there is
+                #no more evidence to explain.
+                if isinstance(node.focus.top[0], o.Normal_Cycle):
+                    break
+                else:
+                    #In other case, we perform a backtracking operation
+                    node = node.parent
+            except KeyError:
+                best_explanation = root
+        best_explanation = node
+        best_explanation.recover_all()
+        #End of reasoning
+        #We resolve possible conflicts on joining two fragments, selecting the
+        #interpretation higher coverage.
+        btime = _merge_annots(annots, best_explanation, pos) if annots else 0
+        #We generate and add the annotations for the current fragment
+        newanns = interp2ann(best_explanation, btime, pos)
+        annots.update(newanns)
+        #We go to the next fragment after deleting the current used branch and
+        #clearing the reasoning cache.
+        del root
+        reasoning.reset()
+        if verbose:
+            idur = time.time() - t0
+            print('Fragment finished in {0:.03f} seconds. Real-time factor: '
+                  '{1:.03f}. Created {2} interpretations.'.format(idur,
+                      sp2ms(fr_len)/(idur*1000.), Interpretation.counter-ictr))
+        ictr = Interpretation.counter
+        #We introduce an overlapping between consecutive fragments
+        pos += fr_len - fr_overlap
+    #Restore the previous knowledge base
+    ap.set_knowledge_base(prev_knowledge)
+    return _clean_artifacts(annots)
+
+
+def process_record_rhythm(path, ann='atr', tfactor=1.0, fr_len=23040,
+                          fr_overlap=1080, fr_tlimit=np.inf, min_delay=2560,
+                          max_delay=20.0, kfactor=12, initial_pos=0,
+                          final_pos=np.inf, exclude_pwaves=False,
+                          exclude_twaves=False, verbose=True):
     """
     This function performs a complete interpretation of a given MIT-BIH
     formatted record, using as initial evidence an external set of annotations.
@@ -253,22 +382,24 @@ def process_record(path, ann='atr', tfactor=1.0, fr_len=23040, fr_overlap=1080,
     ann:
         Annotator used to obtain the initial evidence (default: 'atr')
     tfactor:
-        Time factor to control de duration of the interpretation. For example,
-        if tfactor = 2.0 the interpretation can be working for two times the
-        real duration of the interpreted record. **Note: This factor cannot
-        be guaranteed**.
+        Time factor to control the speed of the input signal. For example,
+        if tfactor = 2.0 two seconds of new signal are added to the signal
+        buffer each real second. Of course this can only be greater than 1 in
+        offline interpretations.
     fr_len:
         Length in samples of each independently interpreted fragment.
     fr_overlap:
         Lenght in samples of the overlapping between consecutive fragments, to
         prevent loss of information.
+    fr_tlimit:
+        Time limit **in seconds** for the interpretation of each fragment.
     min_delay:
-        Minimum delay in samples between the acquisition time and the last
+        Minimum delay **in samples** between the acquisition time and the last
         interpretation time.
     max_delay:
         Maximum delay **in seconds**, that the interpretation can be without
         moving forward. If this threshold is exceeded, the searching process
-        is pruned
+        is pruned.
     kfactor:
         Exploration factor. It is the number of interpretations expanded in
         each searching cycle.
@@ -276,6 +407,10 @@ def process_record(path, ann='atr', tfactor=1.0, fr_len=23040, fr_overlap=1080,
         Time position (in samples) where the interpretation should begin.
     final_pos:
         Time position (in samples) where the interpretation should finish.
+    exclude_pwaves:
+        Flag to avoid P-wave searching.
+    exclude_twaves:
+        Flag to avoid T-wave searching.
     verbose:
         Boolean flag. If active, the algorithm will print to standard output
         the fragment being interpreted.
@@ -293,6 +428,14 @@ def process_record(path, ann='atr', tfactor=1.0, fr_len=23040, fr_overlap=1080,
         fr_len += IN._STEP - (fr_len % IN._STEP)
         warnings.warn('Fragment length is not multiple of {0}. '
                       'Adjusted to {1}'.format(IN._STEP, fr_len))
+    #Knowledge base configuration
+    prev_knowledge = ap.KNOWLEDGE
+    curr_knowledge = ap.RHYTHM_KNOWLEDGE[:]
+    if exclude_pwaves:
+        curr_knowledge.remove(ap.PWAVE_PATTERN)
+    if exclude_twaves:
+        curr_knowledge.remove(ap.TWAVE_PATTERN)
+    ap.set_knowledge_base(curr_knowledge)
     #Input configuration
     IN.set_record(path, ann)
     IN.set_duration(fr_len)
@@ -300,6 +443,7 @@ def process_record(path, ann='atr', tfactor=1.0, fr_len=23040, fr_overlap=1080,
     #Annotations buffer
     annots = sortedcontainers.SortedList()
     pos = initial_pos
+    ictr = Interpretation.counter
     while pos < min(IN.get_record_length(), final_pos):
         if verbose:
             print('Processing fragment {0}:{1}'.format(pos, pos+fr_len))
@@ -318,18 +462,26 @@ def process_record(path, ann='atr', tfactor=1.0, fr_len=23040, fr_overlap=1080,
         except (StopIteration, ValueError):
             pos += fr_len - fr_overlap
             continue
-        ltime = (cntr.last_time, time.time())
+        t0 = time.time()
+        ltime = (cntr.last_time, t0)
         while cntr.best is None:
             IN.get_more_evidence()
             acq_time = IN.get_acquisition_point()
-            filt = ((lambda n: acq_time + n[0][2] >= min_delay)
-                    if IN.BUF.get_status() is IN.BUF.Status.ACQUIRING
-                    else (lambda _: True))
+            def filt(node):
+                """Filter function to enforce *min_delay*"""
+                if IN.BUF.get_status() is IN.BUF.Status.ACQUIRING:
+                    return acq_time + node[0][2] >= min_delay
+                else:
+                    return True
             cntr.step(filt)
+            t = time.time()
             if cntr.last_time > ltime[0]:
-                ltime = (cntr.last_time, time.time())
-            if time.time()-ltime[1] > max_delay:
+                ltime = (cntr.last_time, t)
+            if t-ltime[1] > max_delay:
                 cntr.prune()
+            if t-t0 > fr_tlimit:
+                cntr.best = (min(cntr.open) if len(cntr.open) > 0
+                                            else min(cntr.closed))
         best_explanation = cntr.best.node
         best_explanation.recover_all()
         #End of reasoning
@@ -344,69 +496,17 @@ def process_record(path, ann='atr', tfactor=1.0, fr_len=23040, fr_overlap=1080,
         del cntr
         del root
         reasoning.reset()
+        if verbose:
+            idur = time.time() - t0
+            print('Fragment finished in {0:.03f} seconds. Real-time factor: '
+                  '{1:.03f}. Created {2} interpretations.'.format(idur,
+                      sp2ms(fr_len)/(idur*1000.), Interpretation.counter-ictr))
+        ictr = Interpretation.counter
         #We introduce an overlapping between consecutive fragments
         pos += fr_len - fr_overlap
-    return annots
+    #Restore the previous knowledge base
+    ap.set_knowledge_base(prev_knowledge)
+    return _clean_artifacts(annots)
 
 if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description=
-        'Interprets a MIT-BIH ECG record, generating as a result a set of '
-        'annotations.')
-    parser.add_argument('-r', metavar='record', required=True,
-                        help='Name of the record to be processed')
-    parser.add_argument('-a', metavar='ann', default='qrs',
-                        help= ('Annotator used to set the initial evidence '
-                              '(default: qrs)'))
-    parser.add_argument('-o', metavar='oann', default='iqrs',
-                        help= ('Save annotations as annotator oann '
-                               '(default: iqrs)'))
-    parser.add_argument('-f', metavar='init', default=0, type=int,
-                        help= ('Begin the interpretation at the "init" time, '
-                               'in samples'))
-    parser.add_argument('-t', metavar='stop', default=np.inf, type=float,
-                        help= ('Stop the interpretation at the "stop" time, '
-                               'in samples'))
-    parser.add_argument('-l', metavar='length', default=23040, type=int,
-                        help= ('Length in samples of each independently '
-                               'interpreted fragment. It has to be multiple '
-                               'of 256. Default:23040.'))
-    parser.add_argument('--overl', default=1080, type=int,
-                        help= ('Length in samples of the overlapping between '
-                               'consecutive fragments, to prevent loss of '
-                               'information. Default: 1080'))
-    parser.add_argument('--tfactor', default=1.0, type=float,
-                        help= ('Time factor to control de duration of the '
-                               'interpretation. For example, if --tfactor = '
-                               '2.0 the interpretation can be working for two '
-                               'times the real duration of the interpreted '
-                               'record. Note: This factor cannot be '
-                               'guaranteed. Default: 1.0'))
-    parser.add_argument('-d', metavar='min_delay', default=2560, type=int,
-                        help= ('Minimum delay in samples between the '
-                               'acquisition time and the last interpretation '
-                               'time. Default: 1080'))
-    parser.add_argument('-D', metavar='max_delay', default=20.0, type=float,
-                        help= ('Maximum delay in seconds that the '
-                               'interpretation can be without moving forward. '
-                               'If this threshold is exceeded, the searching '
-                               'process is pruned. Default: 20.0'))
-    parser.add_argument('-k', default=12, type=int,
-                        help= ('Exploration factor. It is the number of '
-                               'interpretations expanded in each searching '
-                               'cycle. Default: 12'))
-    parser.add_argument('-v', action = 'store_true',
-                        help= ('Verbose mode. The algorithm will print to '
-                               'standard output the fragment being '
-                               'interpreted.'))
-    parser.add_argument('--no-merge', action = 'store_true',
-                        help= ('Avoids the use of a branch-merging strategy for'
-                               ' interpretation exploration.'))
-    args = parser.parse_args()
-    reasoning.MERGE_STRATEGY = not args.no_merge
-    result = _clean_artifacts(process_record(args.r, args.a, args.tfactor,
-                                             args.l, args.overl, args.d,
-                                             args.D, args.k, args.f, args.t,
-                                             args.v))
-    MITAnnotation.save_annotations(result, args.r + '.' + args.o)
-    print('Record ' + args.r + ' succesfully processed')
+    pass
