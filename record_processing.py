@@ -215,8 +215,11 @@ def _standardize_rhythm_annots(annots):
     return dest
 
 
-def _clean_artifacts(annots):
-    """Removes those artifact annotations that are close to a QRS annotation"""
+def _clean_artifacts_redundancy(annots):
+    """
+    Removes those artifact annotations that are close to a QRS annotation,  as
+    well as redundant rhythm annotations.
+    """
     DISTANCE = ms2sp(150)
     banns = [a for a in annots if MITAnnotation.is_qrs_annotation(a) or
                                                       a.code == ECGCodes.ARFCT]
@@ -235,12 +238,23 @@ def _clean_artifacts(annots):
             banns.pop(i)
         else:
             i += 1
+    #Redundant rhythms
+    i = 1
+    while i < len(annots):
+        if annots[i].code is ECGCodes.RHYTHM:
+            prev = next((a for a in reversed(annots[:i])
+                                           if a.code is ECGCodes.RHYTHM), None)
+            if prev is not None and prev.aux == annots[i].aux:
+                annots.pop(i)
+            else:
+                i += 1
+        else:
+            i += 1
     return annots
 
-def process_record_conduction(path, ann='atr', fr_len=640000, fr_overlap=0,
-                              initial_pos=0, final_pos=np.inf,
-                              exclude_pwaves=False, exclude_twaves=False,
-                              verbose=True):
+def process_record_conduction(path, ann='atr', fr_len=512000, initial_pos=0,
+                              final_pos=np.inf, exclude_pwaves=False,
+                              exclude_twaves=False, verbose=True):
     """
     This function performs an interpretation in the conduction abstraction
     level of a given MIT-BIH formatted record, using as initial evidence an
@@ -257,9 +271,6 @@ def process_record_conduction(path, ann='atr', fr_len=640000, fr_overlap=0,
         Annotator used to obtain the initial evidence (default: 'atr')
     fr_len:
         Length in samples of each independently interpreted fragment.
-    fr_overlap:
-        Lenght in samples of the overlapping between consecutive fragments, to
-        prevent loss of information.
     initial_pos:
         Time position (in samples) where the interpretation should begin.
     final_pos:
@@ -280,7 +291,6 @@ def process_record_conduction(path, ann='atr', fr_len=640000, fr_overlap=0,
     """
     if fr_len > final_pos-initial_pos:
         fr_len = int(final_pos-initial_pos)
-        fr_overlap = 0
     if fr_len % IN._STEP != 0:
         fr_len += IN._STEP - (fr_len % IN._STEP)
         warnings.warn('Fragment length is not multiple of {0}. '
@@ -288,10 +298,11 @@ def process_record_conduction(path, ann='atr', fr_len=640000, fr_overlap=0,
     #Knowledge base configuration
     prev_knowledge = ap.KNOWLEDGE
     curr_knowledge = ap.SEGMENTATION_KNOWLEDGE[:]
-    if exclude_pwaves:
-        curr_knowledge.remove(ap.PWAVE_PATTERN)
     if exclude_twaves:
         curr_knowledge.remove(ap.TWAVE_PATTERN)
+        curr_knowledge.remove(ap.PWAVE_PATTERN)
+    elif exclude_pwaves:
+        curr_knowledge.remove(ap.PWAVE_PATTERN)
     ap.set_knowledge_base(curr_knowledge)
     #Input configuration
     IN.set_record(path, ann)
@@ -316,7 +327,7 @@ def process_record_conduction(path, ann='atr', fr_len=640000, fr_overlap=0,
         try:
             root.focus.push(next(IN.BUF.get_observations()), None)
         except (StopIteration, ValueError):
-            pos += fr_len - fr_overlap
+            pos += fr_len
             continue
         successors = {node:reasoning.firm_succ(node)}
         t0 = time.time()
@@ -331,21 +342,19 @@ def process_record_conduction(path, ann='atr', fr_len=640000, fr_overlap=0,
             except StopIteration:
                 #If the focus contains a top-level hypothesis, then there is
                 #no more evidence to explain.
-                if isinstance(node.focus.top[0], o.Normal_Cycle):
+                if isinstance(node.focus.top[0], o.CardiacCycle):
                     break
                 else:
                     #In other case, we perform a backtracking operation
                     node = node.parent
             except KeyError:
-                best_explanation = root
+                node = root
+                break
         best_explanation = node
         best_explanation.recover_all()
         #End of reasoning
-        #We resolve possible conflicts on joining two fragments, selecting the
-        #interpretation higher coverage.
-        btime = _merge_annots(annots, best_explanation, pos) if annots else 0
         #We generate and add the annotations for the current fragment
-        newanns = interp2ann(best_explanation, btime, pos)
+        newanns = interp2ann(best_explanation, 0, pos, pos == initial_pos)
         annots.update(newanns)
         #We go to the next fragment after deleting the current used branch and
         #clearing the reasoning cache.
@@ -355,13 +364,14 @@ def process_record_conduction(path, ann='atr', fr_len=640000, fr_overlap=0,
             idur = time.time() - t0
             print('Fragment finished in {0:.03f} seconds. Real-time factor: '
                   '{1:.03f}. Created {2} interpretations.'.format(idur,
-                      sp2ms(fr_len)/(idur*1000.), Interpretation.counter-ictr))
+                      sp2ms(IN.get_acquisition_point())/(idur*1000.),
+                      Interpretation.counter-ictr))
         ictr = Interpretation.counter
         #We introduce an overlapping between consecutive fragments
-        pos += fr_len - fr_overlap
+        pos += fr_len
     #Restore the previous knowledge base
     ap.set_knowledge_base(prev_knowledge)
-    return _clean_artifacts(annots)
+    return _clean_artifacts_redundancy(annots)
 
 
 def process_record_rhythm(path, ann='atr', tfactor=1.0, fr_len=23040,
@@ -431,10 +441,11 @@ def process_record_rhythm(path, ann='atr', tfactor=1.0, fr_len=23040,
     #Knowledge base configuration
     prev_knowledge = ap.KNOWLEDGE
     curr_knowledge = ap.RHYTHM_KNOWLEDGE[:]
-    if exclude_pwaves:
-        curr_knowledge.remove(ap.PWAVE_PATTERN)
     if exclude_twaves:
         curr_knowledge.remove(ap.TWAVE_PATTERN)
+        curr_knowledge.remove(ap.PWAVE_PATTERN)
+    elif exclude_pwaves:
+        curr_knowledge.remove(ap.PWAVE_PATTERN)
     ap.set_knowledge_base(curr_knowledge)
     #Input configuration
     IN.set_record(path, ann)
@@ -489,7 +500,7 @@ def process_record_rhythm(path, ann='atr', tfactor=1.0, fr_len=23040,
         #interpretation higher coverage.
         btime = _merge_annots(annots, best_explanation, pos) if annots else 0
         #We generate and add the annotations for the current fragment
-        newanns = interp2ann(best_explanation, btime, pos)
+        newanns = interp2ann(best_explanation, btime, pos, pos == initial_pos)
         annots.update(newanns)
         #We go to the next fragment after deleting the current used branch and
         #clearing the reasoning cache.
@@ -500,13 +511,14 @@ def process_record_rhythm(path, ann='atr', tfactor=1.0, fr_len=23040,
             idur = time.time() - t0
             print('Fragment finished in {0:.03f} seconds. Real-time factor: '
                   '{1:.03f}. Created {2} interpretations.'.format(idur,
-                      sp2ms(fr_len)/(idur*1000.), Interpretation.counter-ictr))
+                      sp2ms(acq_time)/(idur*1000.),
+                      Interpretation.counter-ictr))
         ictr = Interpretation.counter
         #We introduce an overlapping between consecutive fragments
         pos += fr_len - fr_overlap
     #Restore the previous knowledge base
     ap.set_knowledge_base(prev_knowledge)
-    return _clean_artifacts(annots)
+    return _clean_artifacts_redundancy(annots)
 
 if __name__ == '__main__':
     pass

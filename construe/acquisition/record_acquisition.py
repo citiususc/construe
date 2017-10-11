@@ -120,7 +120,7 @@ def get_more_evidence():
             fragment = _REC.signal[i, init:init+nchunks*_STEP]
             if len(fragment) < nchunks*_STEP:
                 fragment = np.concatenate((fragment,
-                            fragment[-1]*np.ones(nchunks*_STEP-len(fragment))))
+                            fragment[-1]*np.ones(_STEP-len(fragment)%_STEP)))
             SIG.add_signal_fragment(fragment, _REC.leads[i])
         for ann in (a for a in _ANNOTS if ((is_qrs_annotation(a) or
                                             a.code is ECGCodes.FLWAV) and

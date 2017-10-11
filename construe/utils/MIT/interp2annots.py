@@ -153,12 +153,13 @@ def ann2interp(record, anns, fmt=False):
     interp.observations = sortedcontainers.SortedList(observations)
     return interp
 
-def interp2ann(interp, btime=0, offset=0):
+def interp2ann(interp, btime=0, offset=0, include_format=True):
     """
     Generates a list of annotations representing the observations from
     an interpretation. The *btime* optional parameter allows to include only
     the observations after a specific time point, and *offset* allows to define
-    a constant time to be added to the time point of each annotation.
+    a constant time to be added to the time point of each annotation. An
+    optional format annotation of type NOTE can be included at the beginning.
 
     NOTE: A first annotation is included at the beginning of the list, with
     time=*offset*, to indicate that the annotations are created with the
@@ -175,11 +176,12 @@ def interp2ann(interp, btime=0, offset=0):
         a dictionary in JSON format in the AUX field.
     """
     annots = sortedcontainers.SortedList()
-    fmtcode = MITAnnotation.MITAnnotation()
-    fmtcode.code = C.NOTE
-    fmtcode.time = int(offset)
-    fmtcode.aux = FMT_STRING
-    annots.add(fmtcode)
+    if include_format:
+        fmtcode = MITAnnotation.MITAnnotation()
+        fmtcode.code = C.NOTE
+        fmtcode.time = int(offset)
+        fmtcode.aux = FMT_STRING
+        annots.add(fmtcode)
     beats = list(interp.get_observations(o.QRS,
                                          filt=lambda q: q.time.start >= btime))
     #We get the beat observations in the best explanation branch.

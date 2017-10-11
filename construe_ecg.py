@@ -16,6 +16,7 @@ if __name__ == '__main__':
     import os
     import os.path
     import subprocess
+    import time
     from construe.utils.MIT import (get_gain, get_sampling_frequency,
                                     read_annotations, save_annotations)
     from construe.utils.units_helper import set_ADCGain, set_sampling_freq
@@ -45,7 +46,8 @@ if __name__ == '__main__':
     parser.add_argument('--exclude-pwaves', action='store_true',
                         help=('Avoids searching for P-waves. Default:False'))
     parser.add_argument('--exclude-twaves', action='store_true',
-                        help=('Avoids searching for T-waves. Default:False'))
+                        help=('Avoids searching for T-waves. It also implies '
+                              '--exclude-pwaves Default:False'))
     parser.add_argument('-f', metavar='init', default=0, type=int,
                         help=('Begin the interpretation at the "init" time, '
                               'in samples'))
@@ -58,21 +60,20 @@ if __name__ == '__main__':
                               'of 256. Default:23040 if the abstraction level'
                               ' is "rhythm", and 640000 if the abstraction '
                               'level is "conduction".'))
-    parser.add_argument('--overl', default=-1, type=int,
+    parser.add_argument('--overl', default=1080, type=int,
                         help=('Length in samples of the overlapping between '
                               'consecutive fragments, to prevent loss of '
-                              'information. Default: 1080 if the abstraction '
-                              'level is "rhythm", and 0 if the abstraction '
-                              'level is "conduction".'))
-    parser.add_argument('--tfactor', default=1.0, type=float,
-                        help=('Time factor to control de duration of the '
-                              'interpretation. For example, if --tfactor = '
-                              '2.0 the interpretation can be working for two '
-                              'times the real duration of the interpreted '
-                              'record. Note: This factor cannot be '
-                              'guaranteed. If the selected abstraction level '
+                              'information. If the selected abstraction level '
                               'is "conduction", this parameter is ignored. '
-                              'Default: 1.0'))
+                              'Default: 1080.'))
+    parser.add_argument('--tfactor', default=1e20, type=float,
+                        help=('Time factor to control the speed of the input '
+                              'signal. For example, if tfactor = 2.0 two '
+                              'seconds of new signal are added to the signal '
+                              'buffer each real second. A value of 1.0 '
+                              'simulates real-time online interpretation. If '
+                              'the selected abstraction level is "conduction",'
+                              ' this parameter is ignored. Default: 1e20'))
     parser.add_argument('-d', metavar='min_delay', default=2560, type=int,
                         help=('Minimum delay in samples between the '
                               'acquisition time and the last interpretation '
@@ -133,14 +134,13 @@ if __name__ == '__main__':
     else:
         rname, ext = os.path.splitext(args.r)
         annots = read_annotations(rname + '.' + args.a)
+    t0 = time.time()
     #Conduction or rhythm interpretation
     if args.level == 'conduction':
         from record_processing import process_record_conduction
-        length = 640000 if args.l == 0 else args.l
-        overl = 0 if args.l == -1 else args.l
-        result = process_record_conduction(rname, annots, length, overl,
-                                           args.f, args.t,
-                                           args.exclude_pwaves,
+        length = 512000 if args.l == 0 else args.l
+        result = process_record_conduction(rname, annots, length, args.f,
+                                           args.t, args.exclude_pwaves,
                                            args.exclude_twaves, args.v)
     else:
         from record_processing import process_record_rhythm
@@ -148,7 +148,7 @@ if __name__ == '__main__':
         import construe.inference.reasoning as reasoning
         reasoning.MERGE_STRATEGY = not args.no_merge
         length = 23040 if args.l == 0 else args.l
-        overl = 1080 if args.l == -1 else args.l
+        overl = 1080 if args.overl == -1 else args.overl
         result = process_record_rhythm(rname, annots, args.tfactor,
                                        length, overl, args.time_limit,
                                        args.d, args.D, args.k, args.f,
@@ -156,3 +156,12 @@ if __name__ == '__main__':
                                        args.exclude_twaves, args.v)
     save_annotations(result, args.r + '.' + args.o)
     print('Record ' + args.r + ' succesfully processed')
+    if args.v:
+        from construe.model.interpretation import Interpretation
+        from construe.utils.units_helper import samples2msec as sp2ms
+        import construe.acquisition.record_acquisition as IN
+        idur = time.time() - t0
+        print('Interpretation time: {0:.03f} seconds. Global Real-time factor: '
+              '{1:.03f}. Created {2} interpretations.'.format(idur,
+              sp2ms(min(args.t, IN.get_record_length())-args.f)/(idur*1000.),
+              Interpretation.counter))
