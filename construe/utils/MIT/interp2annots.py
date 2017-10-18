@@ -217,22 +217,23 @@ def interp2ann(interp, btime=0, offset=0, include_format=True):
     tend = beats[-1].lateend + ms2sp(400) if beats else 0
     for wtype in (o.PWave, o.TWave):
         for wave in interp.get_observations(wtype, pstart, tend):
-            code = C.PWAVE if wtype is o.PWave else C.TWAVE
-            beg = MITAnnotation.MITAnnotation()
-            beg.code = C.WFON
-            beg.subtype = code
-            beg.time = int(offset + wave.earlystart)
-            end = MITAnnotation.MITAnnotation()
-            end.code = C.WFOFF
-            end.subtype = code
-            end.time = int(offset + wave.lateend)
-            peak = MITAnnotation.MITAnnotation()
-            peak.code = code
-            peak.time = int((end.time+beg.time)/2.)
-            peak.aux = json.dumps(wave.amplitude)
-            annots.add(beg)
-            annots.add(peak)
-            annots.add(end)
+            if wave.earlystart >= btime:
+                code = C.PWAVE if wtype is o.PWave else C.TWAVE
+                beg = MITAnnotation.MITAnnotation()
+                beg.code = C.WFON
+                beg.subtype = code
+                beg.time = int(offset + wave.earlystart)
+                end = MITAnnotation.MITAnnotation()
+                end.code = C.WFOFF
+                end.subtype = code
+                end.time = int(offset + wave.lateend)
+                peak = MITAnnotation.MITAnnotation()
+                peak.code = code
+                peak.time = int((end.time+beg.time)/2.)
+                peak.aux = json.dumps(wave.amplitude)
+                annots.add(beg)
+                annots.add(peak)
+                annots.add(end)
     #Flutter annotations
     for flut in interp.get_observations(o.Ventricular_Flutter, btime):
         vfon = MITAnnotation.MITAnnotation()

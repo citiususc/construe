@@ -76,9 +76,9 @@ def _merge_annots(annlst, interp, reftime):
             offsets -= 1
         annlst.pop()
     while offsets > 0:
-        annlst.pop(next(i for i in xrange(len(annlst)-1, -1, -1)
-                        if annlst[i].code is ECGCodes.WFON))
-        offsets -= 1
+        ann = annlst.pop()
+        if ann.code is ECGCodes.WFON:
+            offsets -= 1
     return jpt-reftime
 
 def _standardize_rhythm_annots(annots):
