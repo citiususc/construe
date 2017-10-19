@@ -472,6 +472,8 @@ def process_record_rhythm(path, ann='atr', tfactor=1.0, fr_len=23040,
             cntr = searching.Construe(root, kfactor)
         except (StopIteration, ValueError):
             pos += fr_len - fr_overlap
+            if verbose:
+                print('No evidence found in this fragment. Skipping.')
             continue
         t0 = time.time()
         ltime = (cntr.last_time, t0)

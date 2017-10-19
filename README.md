@@ -4,17 +4,20 @@
 
  [1]: T. Teijeiro and P. Félix: *On the adoption of abductive reasoning for time series interpretation*, 2016,  [arXiv:1609.05632](http://arxiv.org/abs/1609.05632).
 
-In this repository you will find the complete implementation of the data model and the algorithms, as well as a knowledge base for the interpretation of electrocardiogram (ECG) signals, from the basic waveforms (P, QRS, T) to complex rhythm patterns (Atrial fibrillation, Bigeminy, Trigeminy, Ventricular flutter/fibrillation, etc.). In addition, we provide some utility scripts to reproduce the interpretation of all the ECG strips shown in paper [1], and to allow the interpretation of any ECG record in the [MIT-BIH format](https://www.physionet.org/faq.shtml#file_types).
+In this repository you will find the complete implementation of the data model and the algorithms, as well as a knowledge base for the interpretation of multi-lead electrocardiogram (ECG) signals, from the basic waveforms (P, QRS, T) to complex rhythm patterns (Atrial fibrillation, Bigeminy, Trigeminy, Ventricular flutter/fibrillation, etc.). In addition, we provide some utility scripts to reproduce the interpretation of all the ECG strips shown in paper [1], and to allow the interpretation of any ECG record in the [MIT-BIH format](https://www.physionet.org/faq.shtml#file_types) with a command-line interface very similar to that of the [WFDB applications](https://physionet.org/physiotools/wfdb.shtml).
 
-Recently, we have also included an algorithm for [automatic heartbeat classification on ECG signals](Beat_Classification.md), described in the paper:
+Additionally, the repository includes an algorithm for [automatic heartbeat classification on ECG signals](Beat_Classification.md), described in the paper:
 
  [2]: T. Teijeiro, P. Félix, J.Presedo and D. Castro: *Heartbeat classification using abstract features from the abductive interpretation of the ECG*
+
+The *Construe* algorithm is also the basis for the method described in the paper *Arrhythmia Classification from the Abductive Interpretation of Short Single-Lead ECG Records*, by T. Teijeiro, C.A. García, D. Castro and P. Félix. This method won First Prize in the [Physionet/Computing in Cardiology Challenge 2017](https://physionet.org/challenge/2017), providing the best results in Atrial Fibrillation detection among the 75 participating teams.
+
 
 ## Installation
 
 This project is implemented in pure python, so no installation is required. However, the core algorithms have strong dependencies with the following python packages:
 
-1. [blist](https://pypi.python.org/pypi/blist)
+1. [sortedcontainers](https://pypi.python.org/pypi/sortedcontainers)
 2. [numpy](https://pypi.python.org/pypi/numpy)
 
 In addition, the knowledge base for ECG interpretation depends on the following packages:
@@ -34,14 +37,14 @@ Finally, to read ECG signal records it is necessary to have access to a proper i
 To make easier the installation of Python dependencies, we recommend the [Anaconda Python distribution](https://www.continuum.io/anaconda-overview). Alternatively, you can install them using pip with the following command:
 
 ```
- ~$ pip install -r requeriments.txt
+ ~$ pip install -r requirements.txt
 ```
 
-Once all the dependencies are satisfied, it is enough to download the project sources and execute the proper python or bash scripts, as explained below.
+Once all the dependencies are satisfied, it is enough to download the project sources and execute the proper python or bash scripts, as explained below. Please note that all our tests are performed on Linux environments, so unexpected issues may arise on Windows or OS-X environments. Please let us know if this is the case.
 
 ## Getting started
 ### *Construe* as a tool for ECG analysis
-Along with the general data model for knowledge description and the interpretation algorithms, a comprehensive knowledge base for ECG signal interpretation is provided with the framework, so the software can be directly used as a tool for ECG analysis.
+Along with the general data model for knowledge description and the interpretation algorithms, a comprehensive knowledge base for ECG signal interpretation is provided with the framework, so the software can be directly used as a tool for ECG analysis in multiple abstraction levels.
 
 #### Demo examples
 All signal strips in [1] are included as interactive examples to make it easier to understand how the interpretation algorithms work. For this, use the `run_example.sh` script, selecting the figure for which you want to reproduce the interpretation process:
@@ -53,11 +56,103 @@ All signal strips in [1] are included as interactive examples to make it easier 
 ![fig4 interpretation](https://cloud.githubusercontent.com/assets/4498106/20661551/a1824bee-b54f-11e6-870f-a2aa14c43e88.png)
 
 
-Once the interpretation is finished, the resulting observations are printed to the terminal, and two interactive figures are shown. One plots the ECG signal with all the observations organized in abstraction levels (deflections, waves, and rhythms), and the other shows the interpretations tree explored to find the result. Each node in the tree can be selected to show the observations at a given time point during the interpretation, allowing to reproduce the *abduce*, *deduce*, *subsume* and *predict* reasoning steps [1].
+Once the interpretation is finished, the resulting observations are printed to the terminal, and two interactive figures are shown. One plots the ECG signal with all the observations organized into abstraction levels (deflections, waves, and rhythms), and the other shows the interpretations tree explored to find the result. Each node in the tree can be selected to show the observations at a given time point during the interpretation, allowing to reproduce the *abduce*, *deduce*, *subsume* and *predict* reasoning steps [1].
 
-#### Interpreting external ECG records
+#### Interpreting external ECG records. The `construe-ecg` tool:
 
-Any ECG record in [MIT-BIH format](https://www.physionet.org/physiotools/wag/header-5.htm) can be interpreted with the *Construe* algorithm. For this, we provide two convenient python modules that may be used as command-line tools. The first one (`fragment_processing.py`) is intended to visually show the result of the interpretation of a (small) ECG fragment, allowing to inspect and reproduce the interpretation process by navigating through the interpretations tree. The second one (`record_processing.py`) is intended to perform background interpretations of full records, resulting in a set of [annotations in the MIT format](https://www.physionet.org/physiotools/wag/annot-5.htm). Both tools follow the [WFDB Aplications](https://www.physionet.org/physiotools/wag/wag.htm) command-line interface, and usage details are available with the `-h` option.
+Any ECG record in [MIT-BIH format](https://www.physionet.org/physiotools/wag/header-5.htm) can be interpreted with the *Construe* algorithm. For this, we provide two convenient python modules that may be used as command-line tools. The first one (`fragment_processing.py`) is intended to visually show the result of the interpretation of a (small) ECG fragment, allowing to inspect and reproduce the interpretation process by navigating through the interpretations tree. But the main one is the (`construe_ecg.py`) script, which is intended to be used as a production tool that performs background interpretations of full ECG records (or sections). The result is a set of [annotations in the MIT format](https://www.physionet.org/physiotools/wag/annot-5.htm). Both tools try to follow the [WFDB Applications](https://www.physionet.org/physiotools/wag/wag.htm) command-line interface. The usage of the `construe-ecg` tool is as follows:
+
+```
+usage: construe_ecg.py [-h] -r record [-a ann] [-o oann]
+                       [--level {conduction,rhythm}] [--exclude-pwaves]
+                       [--exclude-twaves] [-f init] [-t stop] [-l length]
+                       [--overl OVERL] [--tfactor TFACTOR] [-d min_delay]
+                       [-D max_delay] [--time-limit TIME_LIMIT] [-k K] [-v]
+                       [--no-merge]
+
+Interprets a MIT-BIH ECG record in multiple abstraction levels, generating as
+a result a set of annotations encoding the observation hypotheses.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -r record             Name of the record to be processed
+  -a ann                Annotator containing the initial evidence. If not
+                        provided, the gqrs application is used.
+  -o oann               Save annotations as annotator oann (default: iqrs)
+  --level {conduction,rhythm}
+                        Highest abstraction level used in the interpretation.
+                        Using the "conduction" level produces just a wave
+                        delineation for each QRS annotation in the initial
+                        evidence, while the "rhythm" level also includes a
+                        rhythm interpretation of the full signal, but at the
+                        expense of a higher computational cost in several
+                        orders of magnitude.
+  --exclude-pwaves      Avoids searching for P-waves. Default:False
+  --exclude-twaves      Avoids searching for T-waves. It also implies
+                        --exclude-pwaves Default:False
+  -f init               Begin the interpretation at the "init" time, in
+                        samples
+  -t stop               Stop the interpretation at the "stop" time, in samples
+  -l length             Length in samples of each independently interpreted
+                        fragment. It has to be multiple of 256. Default:23040
+                        if the abstraction level is "rhythm", and 640000 if
+                        the abstraction level is "conduction".
+  --overl OVERL         Length in samples of the overlapping between
+                        consecutive fragments, to prevent loss of information.
+                        If the selected abstraction level is "conduction",
+                        this parameter is ignored. Default: 1080.
+  --tfactor TFACTOR     Time factor to control the speed of the input signal.
+                        For example, if tfactor = 2.0 two seconds of new
+                        signal are added to the signal buffer each real
+                        second. A value of 1.0 simulates real-time online
+                        interpretation. If the selected abstraction level is
+                        "conduction", this parameter is ignored. Default: 1e20
+  -d min_delay          Minimum delay in samples between the acquisition time
+                        and the last interpretation time. If the selected
+                        abstraction level is "conduction", this parameter is
+                        ignored. Default: 2560
+  -D max_delay          Maximum delay in seconds that the interpretation can
+                        be without moving forward. If this threshold is
+                        exceeded, the searching process is pruned. If the
+                        selected abstraction level is "conduction", this
+                        parameter is ignored. Default: 20.0
+  --time-limit TIME_LIMIT
+                        Interpretation time limit *for each fragment*.If the
+                        interpretation time exceeds this number of seconds,
+                        the interpretation finishes immediately, moving to the
+                        next fragment. If the selected abstraction level is
+                        "conduction", this parameter is ignored. Default:
+                        Infinity
+  -k K                  Exploration factor. It is the number of
+                        interpretations expanded in each searching cycle.
+                        Default: 12. If the selected abstraction level is
+                        "conduction", this parameter is ignored.
+  -v                    Verbose mode. The algorithm will print to standard
+                        output the fragment being interpreted.
+  --no-merge            Avoids the use of a branch-merging strategy for
+                        interpretation exploration. If the selected
+                        abstraction level is "conduction", this parameter is
+```
+
+#### Some common usage examples
+
+Perform a full interpretation of record `100` from the [MIT-BIH Arrhythmia Database](https://www.physionet.org/physiobank/database/mitdb) (the output will be stored in the `100.iqrs` annotations file):
+
+```
+$ python construe_ecg.py -r 100
+```
+
+Perform a delineation of the selected heartbeats in the `.man` annotations file for the record `sel30` from the [QT database](https://www.physionet.org/physiobank/database/qtdb), and storing the result in the `sel30.pqt` file.
+
+```
+$ python construe_ecg.py -r sel30 -a man -o pqt --level conduction
+```
+
+The same than before, but avoiding P-Wave delineation (only includes QRS complexes and T-waves):
+
+```
+$ python construe_ecg.py -r sel30 -a man -o pqt --level conduction --exclude-pwaves
+```
 
 ### Using *Construe* in another problems and domains
 
@@ -77,8 +172,8 @@ The source code is structured in the following main modules:
 
 ## Known issues
 
-- The ECG knowledge base is prepared to interpret records with any sampling frequency, but if frequency differs from 250 Hz the value has to be manually adjusted in `construe/utils/units_helper.py`, line 13.
-- Abductive interpretation of time-series is NP-Hard [1]. This implementation includes several optimizations to make computations feasible, but still the running times are probably longer than you expect. Try the `-v` flag to get feedback and make the wait less painful ;-).
+- On windows and OS-X systems, the *Dynamic Time Warping* utilities included in the `construe.utils.signal_processing.dtw` package probably won't work. These sources are from the discontinued [mlpy](http://mlpy.sourceforge.net) project, and should be compiled using [cython](http://cython.org). The fastest solution is probably to install the *mlpy* package and change the `dtw_std` import in the `construe/knowledge/abstraction_patterns/segmentation/QRS.py` module.
+- Abductive interpretation of time-series is NP-Hard [1]. This implementation includes several optimizations to make computations feasible, but still the running times are probably longer than you expect if the selected abstraction level is `rhythm`. Parameter tuning also help to increase the interpretation speed (usually at the cost of worse-quality results). Also try the `-v` flag to get feedback and make the wait less painful ;-).
 
 ## License
 

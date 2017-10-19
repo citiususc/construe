@@ -149,6 +149,10 @@ if __name__ == '__main__':
         reasoning.MERGE_STRATEGY = not args.no_merge
         length = 23040 if args.l == 0 else args.l
         overl = 1080 if args.overl == -1 else args.overl
+        if length <= overl:
+            raise ValueError('The length of each individually interpreted '
+                             'fragment has to be greater than the overlap '
+                             'between consecutive fragments.')
         result = process_record_rhythm(rname, annots, args.tfactor,
                                        length, overl, args.time_limit,
                                        args.d, args.D, args.k, args.f,
