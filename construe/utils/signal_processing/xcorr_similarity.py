@@ -12,12 +12,17 @@ cross-correlation.
 import numpy as np
 
 
-def xcorr_valid(sig1, sig2):
+def xcorr_valid(sig1, sig2, autosort=False):
     """
     Performs a normalized cross-correlation between two signals, assuming
     *sig2* is a subset or shorter sequence of *sig1*. Returns the maximum value
-    and the delay with respect to the first signal to get that value.
+    and the delay with respect to the first signal to get that value. If
+    *autosort* is True, then the length of *sig1* and *sig2* is checked to
+    ensure that the second argument is shorter, and the position is changed if
+    needed.
     """
+    if autosort and len(sig2) > len(sig1):
+        sig1, sig2 = sig2, sig1
     tr1 = sig1 - sig1[0] if sig1[0] != 0 else sig1
     tr2 = sig2 - sig2[0] if sig2[0] != 0 else sig2
     corr = np.correlate(tr1, tr2, mode='valid')

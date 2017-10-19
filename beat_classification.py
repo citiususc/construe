@@ -24,7 +24,7 @@ from construe.utils.units_helper import (msec2samples as ms2sp,
                                             set_sampling_freq)
 import numpy as np
 import collections
-import blist
+import sortedcontainers
 import pprint
 
 #Histogram bins for the P-wave characterization
@@ -156,7 +156,7 @@ def get_features(interpretation):
     """
     result = collections.OrderedDict()
     rhythms = interpretation.get_observations(o.Cardiac_Rhythm)
-    beats = blist.sortedlist(interpretation.get_observations(o.QRS))
+    beats = sortedcontainers.SortedList(interpretation.get_observations(o.QRS))
     rrs = np.diff([b.time.start for b in beats])
     beatiter = iter(beats)
     obs = interpretation.observations

@@ -31,7 +31,7 @@ from construe.model.automata import PatternAutomata, ABSTRACTED
 import operator
 import numpy as np
 import math
-import blist
+import sortedcontainers
 import bisect
 from collections import OrderedDict
 from scipy.cluster.vq import kmeans2, whiten
@@ -46,6 +46,9 @@ QRS_SHAPES = {
                  'Qr' , 'qr' , 'RSR', 'rSr', 'RsR'
            )),
     'QRs' : set(('qRs', 'QRs', 'R'  , 'RS' , 'Rs' , 'QR' , 'qR' , 'Qr' , 'qr' ,
+                 'rsR', 'Rr' , 'r'
+           )),
+    'QRS' : set(('qRs', 'QRs', 'R'  , 'RS' , 'Rs' , 'QR' , 'qR' , 'Qr' , 'qr' ,
                  'rsR', 'Rr' , 'r'
            )),
     'QS'  : set(('QrS', 'QRs', 'rS' , 'rSr', 'Q'  , 'QS' , 'qS' , 'Qs' , 'Qr' ,
@@ -134,7 +137,7 @@ def _characterize_signal(beg, end):
         samples, the baseline level estimation for the fragment, and the
         quality of the fragment in that lead.
     """
-    siginfo = blist.sortedlist(key= lambda v: -v[4])
+    siginfo = sortedcontainers.SortedList(key=lambda v: -v[4])
     for lead in sig_buf.get_available_leads():
         baseline, quality = characterize_baseline(lead, beg, end)
         sig = sig_buf.get_signal_fragment(beg, end, lead=lead)[0]
@@ -538,8 +541,8 @@ def _reference_wave(shape):
         if shape.tag in ('R',   'r',  'RS', 'Rs', 'rs', 'RSR', 'rsr', 'RsR',
                          'RrS', 'RR', 'Rr', 'rr', 'Q', 'Qr'):
             return 0
-        elif shape.tag in ('qRs', 'QRs', 'rS', 'rSr', 'rR', 'qR', 'QR', 'qr',
-                           'Qs',  'qS'):
+        elif shape.tag in ('qRs', 'QRs', 'QRS', 'rS', 'rSr', 'rR', 'qR', 'QR',
+                           'qr', 'Qs',  'qS'):
             return 1
         elif shape.tag in ('QrS', 'rsR'):
             return 2
@@ -720,6 +723,12 @@ def _guided_qrs_observation(hyp):
                     newshape[lead] = shape
             verify(signal_match(hyp.shape, newshape))
             hyp.shape = newshape
+            #The detected shapes may constrain the delineation area.
+            llim = min(hyp.shape[lead].waves[0].l for lead in hyp.shape)
+            if llim > 0:
+                start = start + llim
+                for lead in hyp.shape:
+                    hyp.shape[lead].move(-llim)
             end = start + max(s.waves[-1].r for s in hyp.shape.itervalues())
             peak = start + min(s.waves[_reference_wave(s)].m
                                                for s in hyp.shape.itervalues())
@@ -794,6 +803,7 @@ def _qrs_gconst(pattern, rdef):
     #First we try a guided QRS observation
     _guided_qrs_observation(hyp)
     if hyp.shape:
+        hyp.freeze()
         return
     #Hypothesis initial limits
     beg = int(hyp.earlystart)
@@ -889,6 +899,7 @@ def _qrs_gconst(pattern, rdef):
     verify(len(hyp.shape) > len(sig_buf.get_available_leads())/2.0 or
                 ph2dg(0.5) <= max(s.amplitude for s in hyp.shape.itervalues())
                                                                 <= ph2dg(6.5))
+    hyp.freeze()
 
 #########################
 ## Automata definition ##

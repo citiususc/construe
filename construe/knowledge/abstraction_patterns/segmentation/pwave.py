@@ -90,6 +90,7 @@ def delineate_pwave(es_lim, ls_lim, ee_lim, le_lim, pwave):
     for lead in (l for l in C.PWAVE_LEADS if sig_buf.is_available(l)):
         #We take some environment signal for the P wave.
         beg = int(es_lim-C.PWAVE_ENV)
+        beg = 0 if beg < 0 else beg
         sig = sig_buf.get_signal_fragment(beg, le_lim, lead=lead)[0]
         endpoints = _delimit_p(sig, lead, es_lim-beg, ls_lim-beg, ee_lim-beg)
         if endpoints is None:
@@ -154,7 +155,8 @@ def _p_gconst(pattern, defl):
     evidence has been observed.
     """
     pwave = pattern.hypothesis
-    if defl.earlystart != defl.latestart or not pattern.evidence[o.QRS]:
+    if ((defl is not None and defl.earlystart != defl.latestart)
+                                               or not pattern.evidence[o.QRS]):
         return
     qrs = pattern.evidence[o.QRS][0]
     beg = pwave.earlystart
@@ -184,6 +186,7 @@ PWAVE_PATTERN.Hypothesis = o.PWave
 PWAVE_PATTERN.add_transition(0, 1, o.QRS, ENVIRONMENT, _p_qrs_tconst)
 PWAVE_PATTERN.add_transition(1, 2, o.Deflection, ABSTRACTED, _p_defl_tconst,
                              _p_gconst)
+#PWAVE_PATTERN.add_transition(1, 2, gconst=_p_gconst)
 PWAVE_PATTERN.final_states.add(2)
 PWAVE_PATTERN.freeze()
 
@@ -261,6 +264,19 @@ _PDUR_HIST = (np.array(
 #for the simplification and assuming the first point is always (0,0). The
 #units of the coordinates are in msec and mV.
 
+def _scale_sample(signal, lead):
+    if not lead in _CL_MAP:
+        raise ValueError('Invalid lead.')
+    scaler = _SCALERS[_CL_MAP[lead]]
+    #The signal is converted to physical units, and the first point is (0,0)
+    sig = dg2ph(signal-signal[0])
+    #The features are the 4 points better representing the signal shape.
+    points = DP.arrayRDP(sig, 0.001, 5)[1:]
+    if len(points) < 4:
+        raise ValueError('Not enough points after path simplification')
+    sample = np.concatenate((sp2ms(points), sig[points])).reshape(1, -1)
+    return scaler.transform(sample)
+
 def seems_pwave(signal, lead):
     """
     Checks if a signal fragment looks like a P wave. It is assumed the signal
@@ -276,16 +292,27 @@ def seems_pwave(signal, lead):
     """
     if not lead in _CL_MAP:
         raise ValueError('Invalid lead.')
-    scaler = _SCALERS[_CL_MAP[lead]]
     classifier = _CLASSIFIERS[_CL_MAP[lead]]
-    #The signal is converted to physical units, and the first point is (0,0)
-    sig = dg2ph(signal-signal[0])
-    #The features are the 4 points better representing the signal shape.
-    points = DP.arrayRDP(sig, 0.001, 5)[1:]
-    if len(points) < 4:
+    try:
+        sample = _scale_sample(signal, lead)
+    except ValueError:
         return False
-    sample = np.concatenate((sp2ms(points), sig[points])).reshape(1, -1)
-    return classifier.predict(scaler.transform(sample))[0] == 1
+    return classifier.predict(sample)[0] == 1
+
+def pwave_distance(signal, lead):
+    """
+    Obtains a distance measure of a signal fragment to a recognized P wave
+    morphology.
+    """
+    if not lead in _CL_MAP:
+        raise ValueError('Invalid lead.')
+    classifier = _CLASSIFIERS[_CL_MAP[lead]]
+    try:
+        sample = _scale_sample(signal, lead)
+    except ValueError:
+        #Unknown values are located in the decision boundary
+        return 0.0
+    return classifier.decision_function(sample)[0][0]
 
 #Mapping for each lead with the corresponding classifier.
 _CL_MAP = {sig_buf.Leads.UNIQUE: 0, sig_buf.Leads.MLI:   0,

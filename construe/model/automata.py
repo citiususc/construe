@@ -20,8 +20,13 @@ import itertools as it
 ABSTRACTED = True
 ENVIRONMENT = False
 
-NULL_CONST = lambda pattern, obs : None
-NULL_PROC = lambda pattern : None
+def NULL_CONST(pattern, obs):
+    """Default constraint definition"""
+    return None
+
+def NULL_PROC(pattern):
+    """Default observation procedure"""
+    return None
 
 def BASIC_TCONST(pattern, obs):
     """
@@ -29,9 +34,9 @@ def BASIC_TCONST(pattern, obs):
     any observation within an abstraction pattern. This constraints set that
     the beginning of an observation has to occur before its ending.
     """
-    if (obs.start is not obs.time):
+    if obs.start is not obs.time:
         pattern.last_tnet.set_before(obs.start, obs.time)
-    if (obs.time is not obs.end):
+    if obs.time is not obs.end:
         pattern.last_tnet.set_before(obs.time, obs.end)
 
 
@@ -43,10 +48,12 @@ class Transition(FreezableObject):
     that allows the transition as an Abstracted observation or an Environment
     observation.
     """
+    __slots__ = ('istate', 'fstate', 'observable', 'abstracted', 'tconst',
+                 'gconst')
 
-    def __init__(self, istate = None, fstate = None, observable = None,
-                            abstracted = ABSTRACTED, tconst = BASIC_TCONST,
-                                                          gconst = NULL_CONST):
+    def __init__(self, istate=None, fstate=None, observable=None,
+                       abstracted=ABSTRACTED, tconst=BASIC_TCONST,
+                                                            gconst=NULL_CONST):
         """
         Creates a new transition that can be added to a DFA definition. All the
         attributes of the transition must be set on the creation, and no
@@ -107,6 +114,9 @@ class PatternAutomata(FreezableObject):
     It also includes the definition of the final states of the pattern, and
     the Observable class that represents the hypothesis of the pattern.
     """
+    __slots__ = ('name', 'Hypothesis', 'transitions', 'abstractions',
+                 'final_states', 'obs_proc')
+
     def __init__(self):
         """
         Creates a new empty pattern automata.
@@ -151,9 +161,9 @@ class PatternAutomata(FreezableObject):
         self.transitions = tuple(self.transitions)
         super(PatternAutomata, self).freeze()
 
-    def add_transition(self, istate = None, fstate = None, observable = None,
-                            abstracted = ABSTRACTED, tconst = NULL_CONST,
-                                                          gconst = NULL_CONST):
+    def add_transition(self, istate=None, fstate=None, observable=None,
+                             abstracted=ABSTRACTED, tconst=NULL_CONST,
+                                                            gconst=NULL_CONST):
         """
         Adds a new *Transition* to this automata.
 
@@ -256,5 +266,3 @@ if __name__ == "__main__":
     DFA.add_transition('F', 'H', 'f', ENVIRONMENT)
     DFA.final_states.add('H')
     DFA.freeze()
-
-

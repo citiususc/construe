@@ -19,7 +19,7 @@ from construe.model.constraint_network import verify
 from construe.model.automata import PatternAutomata
 from construe.model import Interval as Iv
 import numpy as np
-import blist
+from sortedcontainers import SortedList
 
 
 def generate_Deflection_Patterns(npats):
@@ -79,7 +79,7 @@ def get_gconst(int_idx):
             return 0.0
         #We get the already published fragments affecting our temporal support.
         conflictive = []
-        published = blist.sortedlist(obs_buf.get_observations(o.Deflection))
+        published = SortedList(obs_buf.get_observations(o.Deflection))
         idx = published.bisect_left(pattern.hypothesis)
         if idx > 0 and published[idx-1].lateend > beg:
             idx -= 1

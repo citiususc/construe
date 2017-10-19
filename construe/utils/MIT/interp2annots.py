@@ -14,37 +14,69 @@ import construe.utils.MIT.MITAnnotation as MITAnnotation
 import construe.utils.MIT as MIT
 import construe.knowledge.observables as o
 import construe.knowledge.constants as K
+from construe.acquisition.signal_buffer import VALID_LEAD_NAMES
 from construe.knowledge.abstraction_patterns.segmentation.QRS import _tag_qrs
 from ..units_helper import msec2samples as ms2sp
 from construe.model.interpretation import Interpretation
 from construe.model.interval import Interval as Iv
 from ..signal_processing.wave_extraction import Wave
 import json
-import blist
+import sortedcontainers
 import numpy as np
 import warnings
 
-def ann2interp(record, anns):
+#Specific string used to set the format of the annotations file
+FMT_STRING = 'Construe_format_17.01'
+
+def ann2interp(record, anns, fmt=False):
     """
     Returns an interpretation containing the observations represented in a list
     of annotations associated to a loaded MIT record. Note that only the
-    *observations* field is properly set.
+    *observations* field is properly set. The optional parameter *fmt* allows
+    to specify if the specific Construe format for annotation files can be
+    assumed. This parameter is also inferred from the first annotation in the
+    list.
     """
+    fmt = (fmt or len(anns) > 0 and anns[0].code is C.NOTE
+                                                 and anns[0].aux == FMT_STRING)
     interp = Interpretation()
     observations = []
     for i in xrange(len(anns)):
         ann = anns[i]
         if ann.code in (C.PWAVE, C.TWAVE):
             obs = o.PWave() if ann.code == C.PWAVE else o.TWave()
-            beg = next(a for a in reversed(anns[:i]) if a.code == C.WFON).time
+            if fmt:
+                beg = next(a for a in reversed(anns[:i]) if a.time < ann.time
+                           and a.code == C.WFON and a.subtype == ann.code).time
+                end = next(a for a in anns[i:] if a.time > ann.time
+                          and a.code == C.WFOFF and a.subtype == ann.code).time
+            else:
+                beg = next(a for a in reversed(anns[:i]) if a.time < ann.time
+                                                     and a.code == C.WFON).time
+                end = next(a for a in anns[i] if a.time > ann.time
+                                                    and a.code == C.WFOFF).time
             obs.start.value = Iv(beg, beg)
-            end = beg+(ann.time-beg)*2
             obs.end.value = Iv(end, end)
-            leads = (record.leads if ann.code is C.TWAVE
-                     else set(K.PWAVE_LEADS).intersection(set(record.leads)))
-            for lead in leads:
-                sidx = record.leads.index(lead)
-                obs.amplitude[lead] = np.ptp(record.signal[sidx][beg:end+1])
+            if fmt:
+                amp = json.loads(ann.aux)
+                for l in amp.keys():
+                    if l not in record.leads:
+                        compatible = next((l2 for l2 in VALID_LEAD_NAMES
+                                          if VALID_LEAD_NAMES[l2] == l), None)
+                        if compatible is None:
+                            raise ValueError('Unrecognized lead {0}'.format(l))
+                        obs.amplitude[compatible] = amp.pop(l)
+            else:
+                leads = (record.leads if ann.code is C.TWAVE
+                         else set(K.PWAVE_LEADS) & set(record.leads))
+                leads = record.leads
+                for lead in leads:
+                    sidx = record.leads.index(lead)
+                    s = record.signal[sidx][beg:end+1]
+                    mx, mn = np.amax(s), np.amin(s)
+                    pol = (1.0 if max(mx-s[0], mx-s[-1]) >= -min(mn-s[0],mn-s[1])
+                           else -1.0)
+                    obs.amplitude[lead] = pol * np.ptp(s)
             observations.append(obs)
         elif MIT.is_qrs_annotation(ann):
             obs = o.QRS()
@@ -55,11 +87,21 @@ def ann2interp(record, anns):
             #info. If not present, it is done according to delineation
             #annotations.
             if delin:
+                for l in delin.keys():
+                    if l not in record.leads:
+                        compatible = next((l2 for l2 in VALID_LEAD_NAMES
+                                          if VALID_LEAD_NAMES[l2] == l), None)
+                        if compatible is None:
+                            raise ValueError('Unrecognized lead {0}'.format(l))
+                        delin[compatible] = delin.pop(l)
                 beg = ann.time + min(d[0] for d in delin.itervalues())
                 end = ann.time + max(d[-1] for d in delin.itervalues())
             else:
-                beg = next(a for a in reversed(anns[:i]) if a.code==C.WFON).time
-                end = next(a for a in anns[i:] if a.code == C.WFOFF).time
+                def extra_cond(a): a.subtype == C.SYSTOLE if fmt else True
+                beg = next(a for a in reversed(anns[:i]) if a.code==C.WFON
+                           and extra_cond(a)).time
+                end = next(a for a in anns[i:] if a.code == C.WFOFF
+                           and extra_cond(a)).time
             #Endpoints set
             obs.start.value = Iv(beg, beg)
             obs.end.value = Iv(end, end)
@@ -108,17 +150,38 @@ def ann2interp(record, anns):
             obs = o.RDeflection()
             obs.time.value = Iv(ann.time, ann.time)
             observations.append(obs)
-    interp.observations = blist.sortedlist(observations)
+    interp.observations = sortedcontainers.SortedList(observations)
     return interp
 
-def interp2ann(interp, btime=0, offset=0):
+def interp2ann(interp, btime=0, offset=0, include_format=True):
     """
     Generates a list of annotations representing the observations from
     an interpretation. The *btime* optional parameter allows to include only
     the observations after a specific time point, and *offset* allows to define
-    a constant time to be added to the time point of each annotation.
+    a constant time to be added to the time point of each annotation. An
+    optional format annotation of type NOTE can be included at the beginning.
+
+    NOTE: A first annotation is included at the beginning of the list, with
+    time=*offset*, to indicate that the annotations are created with the
+    specific format for Construe interpretations. This format includes the
+    following features (for version 17.01):
+        - Beat annotations include the specific delineation information for
+        each lead in a dictionary in JSON format. The keys in this dictionary
+        are the lead names, and the values are a sequence of integer numbers.
+        Each triple in this sequence determines a wave within the QRS complex.
+        - WFON and WFOFF annotations include the type of wave they delimit in
+        the *subtyp* field. QRS complexes are described by the SYSTOLE code,
+        while P and T waves limits have the PWAVE or TWAVE code, respectively.
+        - PWAVE and TWAVE annotations include the amplitude of each lead, in
+        a dictionary in JSON format in the AUX field.
     """
-    annots = blist.sortedlist()
+    annots = sortedcontainers.SortedList()
+    if include_format:
+        fmtcode = MITAnnotation.MITAnnotation()
+        fmtcode.code = C.NOTE
+        fmtcode.time = int(offset)
+        fmtcode.aux = FMT_STRING
+        annots.add(fmtcode)
     beats = list(interp.get_observations(o.QRS,
                                          filt=lambda q: q.time.start >= btime))
     #We get the beat observations in the best explanation branch.
@@ -128,6 +191,7 @@ def interp2ann(interp, btime=0, offset=0):
         #annotation.
         beg = MITAnnotation.MITAnnotation()
         beg.code = C.WFON
+        beg.subtype = C.SYSTOLE
         beg.time = int(offset + beat.earlystart)
         peak = MITAnnotation.MITAnnotation()
         peak.code = beat.tag
@@ -143,6 +207,7 @@ def interp2ann(interp, btime=0, offset=0):
         peak.aux = json.dumps(delin)
         end = MITAnnotation.MITAnnotation()
         end.code = C.WFOFF
+        end.subtype = C.SYSTOLE
         end.time = int(offset + beat.lateend)
         annots.add(beg)
         annots.add(peak)
@@ -152,18 +217,23 @@ def interp2ann(interp, btime=0, offset=0):
     tend = beats[-1].lateend + ms2sp(400) if beats else 0
     for wtype in (o.PWave, o.TWave):
         for wave in interp.get_observations(wtype, pstart, tend):
-            beg = MITAnnotation.MITAnnotation()
-            beg.code = C.WFON
-            beg.time = int(offset + wave.earlystart)
-            end = MITAnnotation.MITAnnotation()
-            end.code = C.WFOFF
-            end.time = int(offset + wave.lateend)
-            peak = MITAnnotation.MITAnnotation()
-            peak.code = C.PWAVE if wtype is o.PWave else C.TWAVE
-            peak.time = int((end.time+beg.time)/2.)
-            annots.add(beg)
-            annots.add(peak)
-            annots.add(end)
+            if wave.earlystart >= btime:
+                code = C.PWAVE if wtype is o.PWave else C.TWAVE
+                beg = MITAnnotation.MITAnnotation()
+                beg.code = C.WFON
+                beg.subtype = code
+                beg.time = int(offset + wave.earlystart)
+                end = MITAnnotation.MITAnnotation()
+                end.code = C.WFOFF
+                end.subtype = code
+                end.time = int(offset + wave.lateend)
+                peak = MITAnnotation.MITAnnotation()
+                peak.code = code
+                peak.time = int((end.time+beg.time)/2.)
+                peak.aux = json.dumps(wave.amplitude)
+                annots.add(beg)
+                annots.add(peak)
+                annots.add(end)
     #Flutter annotations
     for flut in interp.get_observations(o.Ventricular_Flutter, btime):
         vfon = MITAnnotation.MITAnnotation()

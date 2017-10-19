@@ -44,6 +44,8 @@ class Variable(FreezableObject):
     value constrained by an interval that can be modified according constraints
     in a network. As value, this class assumes always an Interval object.
     """
+    __slots__ = ('value', )
+
     def __init__(self, value = Interval(-np.inf, np.inf)):
         """
         Creates a new variable, with a value constrained by an interval. By
@@ -87,6 +89,8 @@ class Constraint(object):
     This class represents a constraint between two variables in a constraint
     network. Constraints are represented as intervals.
     """
+    __slots__ = ('name', 'va', 'vb', 'constraint')
+
     def __init__(self, name = '', va = Variable(), vb = Variable(),
                  constr = Interval(-np.inf, np.inf)):
         """
@@ -145,6 +149,8 @@ class ConstraintNetwork(object):
         detected at network level. A True value of this property, however, does
         imply that the network is not constrained.
     """
+    __slots__ = ('_constr', 'unconstrained')
+
     def __init__(self):
         """
         Initializes a new, empty network, with no constraints.

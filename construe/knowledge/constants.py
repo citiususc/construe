@@ -19,8 +19,10 @@ import math
 ### Global constants ###
 ########################
 
-#Time span after which we can forget old observations.
+#Time span after which we can forget old observations, but always keeping a
+#minimum number.
 FORGET_TIMESPAN = m2s(10000)
+MIN_NOBS = 30
 
 #####################################
 ### Precision related constraints ###
@@ -69,11 +71,12 @@ PQ_DEF_SEP = Iv(m2s(20), m2s(240)) #P Deflection and QRS separation
 PR_DEF_SEP = Iv(m2s(20), m2s(400))
 
 #Leads with visible P waves
-PWAVE_LEADS = (SIG.Leads.MLII, SIG.Leads.MLIII, SIG.Leads.V1,
+PWAVE_LEADS = (SIG.Leads.MLI, SIG.Leads.MLII, SIG.Leads.MLIII, SIG.Leads.V1,
                SIG.Leads.V2, SIG.Leads.V3, SIG.Leads.V4, SIG.Leads.V5)
 
 #P wave amplitude limits
-PWAVE_AMP = {SIG.Leads.MLII : p2d(0.75), SIG.Leads.MLIII: p2d(0.75),
+PWAVE_AMP = {SIG.Leads.MLI : p2d(0.75), SIG.Leads.MLII : p2d(0.75),
+             SIG.Leads.MLIII: p2d(0.75),
              SIG.Leads.V1 : p2d(0.5), SIG.Leads.V2 : p2d(0.5),
              SIG.Leads.V3 : p2d(0.5), SIG.Leads.V4 : p2d(0.5),
              SIG.Leads.V5 : p2d(0.5)}
@@ -101,6 +104,12 @@ TQRS_MAX_DIFFR = 0.7
 #Maximum amplitude distance between the end of the T wave and the baseline if
 #the delineation begins at the end of the temporal support of the T wave.
 TWEND_BASELINE_MAX_DIFF = p2d(0.3)
+#Constant values for the Kalman Filter used for QT (actually RT) measure
+QT_ERR_STD = m2s(58) #Standard deviation of the QT error (R matrix)
+MIN_QT_STD = m2s(20) #Minimum standard deviation of the QT error
+KF_Q = m2s(40) #Dynamic noise of the Kalman filter (Q matrix)
+#Upper and lower limit of the RR intervals
+QTC_RR_LIMITS = Iv(m2s(300), m2s(1200))
 
 
 #####################################################
@@ -138,6 +147,7 @@ COMPAUSE_RREXT_MAX_F = 4.0    #compensatory pause wrt the advanced beat.
 ICOUPLET_MIN_RREXT_F = 1.25   #Min RR extension factor after a couplet.
 ICOUPLET_MIN_RREXT = m2s(225) #Minimum pause after a couplet.
 ICOUPLET_MAX_DIFF = m2s(150)  #Maximum RR variation inside a couplet.
+ICOUPLET_RCHANGE = m2s(100)   #Minimum RR variation of the second extrasystole.
 
 ##################################
 ### Asystole related constants ###

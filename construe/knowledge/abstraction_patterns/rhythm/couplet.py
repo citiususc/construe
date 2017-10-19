@@ -15,6 +15,7 @@ from construe.model.automata import (PatternAutomata, ABSTRACTED as ABS,
 from construe.model import verify, Interval as Iv
 import construe.knowledge.observables as o
 import construe.knowledge.constants as C
+from construe.utils.signal_processing.xcorr_similarity import signal_unmatch
 from construe.knowledge.abstraction_patterns.rhythm.regular import (
                                                            _check_missed_beats)
 import copy
@@ -149,6 +150,12 @@ def _couplet_gconst(pattern, _):
     General constraints to be checked when the couplet finishes.
     """
     _check_missed_beats(pattern)
+    #The second extrasystole cannot be in rhythm with contextual beats, or in
+    #such case it must have a different shape.
+    beats = pattern.evidence[o.QRS]
+    mpt = beats[0].time.start + (beats[-1].time.start - beats[0].time.start)/2.
+    verify(abs(mpt-beats[2].time.start) >= C.ICOUPLET_RCHANGE
+           or signal_unmatch(beats[2].shape, beats[-1].shape))
     pattern.hypothesis.meas = copy.copy(
                                     pattern.evidence[o.Cardiac_Rhythm][0].meas)
 

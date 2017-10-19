@@ -21,7 +21,6 @@ from networkx.drawing.nx_agraph import graphviz_layout
 import pygraphviz as pgv
 from math import sqrt
 import numpy as np
-import itertools as it
 import construe.acquisition.signal_buffer as sig_buf
 
 LEVELS = ap.get_max_level() + 1
@@ -203,9 +202,8 @@ class ObservationVisualizer(object):
         self.lev_height = (self.sig_limits[1] - self.sig_limits[0]) / LEVELS
         #Definition of a polygon for each observation
         self.trapezs = {}
-        observations = (list(self.interpretation.get_observations()) +
-                                       list(it.chain.from_iterable(p.findings
-                                       for p in self.interpretation.patterns)))
+        observations = list(self.interpretation.get_observations()) + [
+                                   o for o,_ in self.interpretation.focus._lst]
         for obs in observations:
             level = _get_obs_descriptor(obs)[2]
             bottom = self.sig_limits[0] + level * self.lev_height
@@ -258,9 +256,8 @@ class ObservationVisualizer(object):
             ypos += self.lev_height
         #Observation drawing
         last_point = 0
-        observations = (list(self.interpretation.get_observations()) +
-                                       list(it.chain.from_iterable(p.findings
-                                       for p in self.interpretation.patterns)))
+        observations = list(self.interpretation.get_observations()) + [
+                                   o for o,_ in self.interpretation.focus._lst]
         for obs in observations:
             color, alpha, level = _get_obs_descriptor(obs)
             if level > 0 and obs.lateend > last_point and obs.lateend < np.inf:
@@ -275,7 +272,7 @@ class ObservationVisualizer(object):
                                  [bottom, bottom+self.lev_height], color=color)
         #Focus draw
         if self.interpretation.focus:
-            focus = self.interpretation.focus[-1]
+            focus = self.interpretation.focus.top[0]
             color, _, level = _get_obs_descriptor(focus)
             y = self.sig_limits[0] + (level+0.5) * self.lev_height
             xmin = min(focus.latestart, focus.earlyend)
@@ -391,7 +388,8 @@ class InterpretationVisualizer(object):
             for node in self.graph.nodes_iter():
                 self.labels[key][node] = func(node)
         #Horizontal tree layout
-        self.pos = graphviz_layout(self.graph, prog='dot', args='-Grankdir=LR')
+        prog = 'dot' if len(self.graph) < 5000 else 'sfdp'
+        self.pos = graphviz_layout(self.graph, prog=prog, args='-Grankdir=LR')
         #Event listener
         self._fig.canvas.mpl_connect('button_release_event', self.__onclick)
         self._fig.canvas.mpl_connect('key_release_event', self.__onkey)
@@ -467,11 +465,11 @@ class InterpretationVisualizer(object):
         colors = []
         for node in self.drnodes:
             if node.is_firm:
-                colors.append('b')
+                colors.append('#348ABD')
             elif node in self.toremark:
-                colors.append('g')
+                colors.append('#8EBA42')
             else:
-                colors.append('r')
+                colors.append('#E24A33')
         nx.draw(self.graph, self.pos, axes, nodelist = self.drnodes,
                                        edgelist=self.graph.edges(self.drnodes),
                                            node_color = colors, labels = ldict)
@@ -491,11 +489,11 @@ class InterpretationVisualizer(object):
         colors = []
         for node in self.drnodes:
             if node.is_firm:
-                colors.append('b')
+                colors.append('#348ABD')
             elif node in self.toremark:
-                colors.append('g')
+                colors.append('#8EBA42')
             else:
-                colors.append('r')
+                colors.append('#E24A33')
         nx.draw(self.graph, self.pos, self._fig.gca(), nodelist = self.drnodes,
                                        edgelist=self.graph.edges(self.drnodes),
                                                            node_color = colors)

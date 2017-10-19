@@ -11,7 +11,7 @@ with signal records simulating the real-time input.
 
 from ..utils.MIT import load_MIT_record, read_annotations, is_qrs_annotation
 from ..utils.units_helper import (samples2msec as sp2ms, msec2samples as ms2sp,
-                                                                 SAMPLING_FREQ)
+                                                        SAMPLING_FREQ, ADCGain)
 from ..model import Interval as Iv
 from ..utils.axel import Event
 import construe.utils.MIT.ECGCodes as ECGCodes
@@ -33,7 +33,19 @@ _LAST_POS = 0
 _ANNOTS = []
 
 def set_record(record, annotator = None, physical_units= False):
-    """Sets the record used for input, and allows to read annotations"""
+    """
+    Sets the record used for input and the initial evidence.
+
+    Parameters
+    ----------
+    record:
+        Name/Path of the MIT-BIH record containing the input signal.
+    annotator:
+        It can be a string with the name of the annotator, or a list of
+        annotations with the initial evidence to be interpreted.
+    physical_units:
+        Flag to set whether the signal is in digital or physical units.
+    """
     global _REC
     global _ANNOTS
     global _RECNAME
@@ -42,8 +54,13 @@ def set_record(record, annotator = None, physical_units= False):
     assert SAMPLING_FREQ == _REC.frequency, ('Incorrect sampling frequency: '
                                              'expected {0}, got {1}'.format(
                                                  SAMPLING_FREQ, _REC.frequency))
+    assert ADCGain == _REC.gain, ('Incorrect ADC Gain: expected {0}, '
+                                  'got {1}'.format(ADCGain, _REC.gain))
     if annotator is not None:
-        _ANNOTS = read_annotations(record + '.' + annotator)
+        if isinstance(annotator, str):
+            _ANNOTS = read_annotations(record + '.' + annotator)
+        else:
+            _ANNOTS = annotator[:]
 
 def set_offset(offset):
     """Sets an offset in the record from where the acquisition should start"""
@@ -103,7 +120,7 @@ def get_more_evidence():
             fragment = _REC.signal[i, init:init+nchunks*_STEP]
             if len(fragment) < nchunks*_STEP:
                 fragment = np.concatenate((fragment,
-                            fragment[-1]*np.ones(nchunks*_STEP-len(fragment))))
+                            fragment[-1]*np.ones(_STEP-len(fragment)%_STEP)))
             SIG.add_signal_fragment(fragment, _REC.leads[i])
         for ann in (a for a in _ANNOTS if ((is_qrs_annotation(a) or
                                             a.code is ECGCodes.FLWAV) and

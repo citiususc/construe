@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# pylint: disable=C0103
+# pylint: disable=C0103, E1103
 """
 Created on Mon Apr 29 09:31:50 2013
 
@@ -15,9 +15,8 @@ import construe.acquisition.record_acquisition as IN
 import construe.knowledge.abstraction_patterns as ap
 import construe.inference.reasoning as reasoning
 import numpy as np
-import itertools as it
 import weakref
-from blist import sortedlist
+from sortedcontainers import SortedList
 from operator import attrgetter
 from collections import namedtuple
 
@@ -46,25 +45,18 @@ def valuation(node, time=None):
     number of hypotheses in the interpretation.
     """
     time = time or node.time_point
-    tp, unexp, total, abstime, nhyp = node.past_metrics
+    tp, abst, abstime, nhyp = node.past_metrics
     assert time >= tp
     if time > tp:
-        for obs in node.get_observations(end=time,
-                                         filt=(lambda o:
-                                               ap.is_abducible(type(o)) and
-                                               o.lateend >= tp)):
-            total += 1
-            if obs in node.observations:
-                nhyp += 1
-            if (node.get_abstraction_pattern(obs) is None
-                    and obs not in node.focus):
-                unexp += 1
-            elif ap.get_obs_level(type(obs)) == 0:
-                abstime += obs.earlyend - obs.latestart +1
+        abstime += sum(o.earlyend - o.latestart + 1 for o in node.abstracted
+                       if ap.get_obs_level(type(o)) == 0)
+        abst += len(node.abstracted)
+        nhyp += len(node.observations) + node.focus.nhyp
+    total = IN.BUF.nobs_before(time) + node.nabd
     if total == 0:
         return (0.0, 0.0, 0.0)
     else:
-        return (unexp/float(total), -abstime, nhyp)
+        return (1.0 - abst/float(total), -abstime, nhyp)
 
 def goal(node):
     """
@@ -73,17 +65,6 @@ def goal(node):
     """
     return (IN.BUF.get_status() is IN.BUF.Status.STOPPED
             and valuation(node, np.inf)[0] == 0.0 and node.is_firm)
-
-def _safe_discard(node, checklist, reason=''):
-    """
-    Discards a node checking if it is not an ancestor of any of the nodes in
-    the checklist iterable. In fact, the node is not destroyed, but only
-    detached from the main interpretations tree. The *reason* optional
-    parameter is the argument passed as argument for the *detach()* method
-    of the node.
-    """
-    if all(not subnode.is_ancestor(node) for _, subnode in checklist):
-        node.detach(reason)
 
 class Construe(object):
     """
@@ -116,6 +97,7 @@ class Construe(object):
         """
         assert K > 0
         self.K = K
+        self.root = root_node
         self.successors = weakref.WeakKeyDictionary()
         root_succ = PredictableIter(reasoning.firm_succ(root_node))
         if not root_succ.hasnext():
@@ -124,53 +106,25 @@ class Construe(object):
         self.last_time = root_node.time_point
         ocov, scov, nhyp = valuation(root_node)
         heur = Heuristic(ocov, scov, -self.last_time, nhyp)
-        self.open = sortedlist([Node(heur, root_node)], key=attrgetter('h'))
-        self.closed = sortedlist(key=attrgetter('h'))
+        self.open = SortedList([Node(heur, root_node)], key=attrgetter('h'))
+        self.closed = SortedList(key=attrgetter('h'))
         self.best = None
 
-    def _add_closed(self, interp, nodelist, tpoint=None):
+    def _update_closed(self, newclosed):
         """
-        Adds a new interpretation to the closed list, recalculating the
-        valuation of the already closed nodes using the furthest interpretation
-        time point.
-
-        Parameters
-        ----------
-        interp:
-            Interpretation to be added to the closed list.
-        nodelist:
-            List of nodes we want to keep safe in the discarding operations.
-        tpoint:
-            Time point of interp. If None, it is obtained from the *time_point*
-            property of interp.
+        Updates the *closed* list after an iteration of the algorithm. All
+        closed interpretations but the best one are removed from this list.
         """
-        tpoint = tpoint if tpoint is not None else interp.time_point
-        self.successors.pop(interp, None)
-        ocov, scov, nhyp = valuation(interp, self.last_time)
-        node = Node(Heuristic(ocov, scov, -tpoint, nhyp), interp)
-        #First we discard the not interesting closed interpretations
-        i = self.closed.bisect_right(node)
-        while len(self.closed) > i:
-            _, discarded = self.closed.pop()
-            _safe_discard(discarded, set(it.chain((node,), self.open, nodelist,
-                                                  self.closed[:i])),
-                          'uninteresting interpretation')
-        #And now we recalculate the value of all the still interesting
-        newclosed = sortedlist(key=attrgetter('h'))
-        for (ocov, scov, ntime, nhyp), iclosed in self.closed:
-            if -ntime < self.last_time:
-                ocov, scov, nhyp = valuation(iclosed, self.last_time)
-            newclosed.add(Node(Heuristic(ocov, scov, ntime, nhyp), iclosed))
-        #We introduce the closed node in the new closed list, discarding the
-        #interpretations that are worse after the valuation update.
-        i = newclosed.bisect_right(node)
-        while len(newclosed) > i:
-            _, discarded = newclosed.pop()
-            _safe_discard(discarded, set(it.chain((node,), self.open, nodelist,
-                                                  newclosed[:i])),
-                          'uninteresting interpretation')
-        newclosed.add(node)
-        self.closed = newclosed
+        if not newclosed:
+            return
+        tmplst = SortedList(key=attrgetter('h'))
+        for lst in (newclosed, self.closed):
+            for (ocov, scov, ntime, nhyp), n in lst:
+                if -ntime < self.last_time:
+                    ocov, scov, nhyp = valuation(n, self.last_time)
+                tmplst.add(Node(Heuristic(ocov, scov, ntime, nhyp), n))
+        self.closed.clear()
+        self.closed.append(tmplst.pop(0))
 
     def step(self, filt=lambda _: True):
         """
@@ -184,14 +138,14 @@ class Construe(object):
             decides if the node can be expanded in this iteration. The first
             K nodes satisfying this filter are expanded.
         """
-        newnodes = []
+        newopen = []
+        newclosed = []
+        ancestors = set()
         optimal = False
-        #In an optimal context, ancestor interpretations of the newly generated
-        #nodes are not expanded. The following filter is for that purpose
-        anc = (lambda n: optimal and
-               any(nn.is_ancestor(n.node) for _, nn in newnodes))
+
         for _ in xrange(self.K):
-            node = next((n for n in self.open if filt(n) and not anc(n)), None)
+            node = next((n for n in self.open if filt(n)
+                              and not (optimal and n.node in ancestors)), None)
             #The search stops if no nodes can be expanded or if, being in an
             #optimal context, we need to expand a non-optimal node.
             if node is None or (optimal and node.h.ocov > 0.0):
@@ -210,15 +164,17 @@ class Construe(object):
             #Reorganize the open and closed list.
             for n in (node, nxt):
                 if self.successors[n.node].hasnext():
-                    newnodes.append(n)
-                elif n.node.is_firm:
-                    self._add_closed(n.node, newnodes, -n.h.time)
-                    #Is there a full cover?
+                    newopen.append(n)
+                    reasoning.save_hierarchy(n.node, ancestors)
+                else:
+                    newclosed.append(n)
                     if (n is nxt and n.h.ocov == 0.0 and goal(n.node) and
                             (self.best is None or n.h < self.best.h)):
                         self.best = n
-        for node in newnodes:
+        for node in newopen:
             self.open.add(node)
+        #The closed list is recalculated by keeping only the best one.
+        self._update_closed(newclosed)
         if not self.open:
             if not self.closed:
                 raise ValueError('Could not find a complete interpretation.')
@@ -230,20 +186,37 @@ class Construe(object):
         only to the K best.
         """
         #Now we get the best nodes with a common valuation.
-        newopened = sortedlist(key=attrgetter('h'))
+        newopened = SortedList(key=attrgetter('h'))
         for h, node in self.open:
             ocov, scov, nhyp = valuation(node, self.last_time)
             newopened.add(Node(Heuristic(ocov, scov, h.time, nhyp), node))
         self.open = newopened
-        i = count = 0
-        while i < len(self.open) and count < self.K:
-            if self.open[i].node.is_firm:
-                count += 1
-            i += 1
-        for _, discarded in self.open[i:]:
-            _safe_discard(discarded, it.chain(self.closed, self.open[:i]),
-                          'sacrificed interpretation')
-        del self.open[i:]
+        n = min(len(self.open), self.K)
+        if not reasoning.SAVE_TREE:
+            #We track all interesting nodes in the hierarchy.
+            saved = set()
+            stop = set()
+            for i in xrange(n):
+                node = self.open[i].node
+                reasoning.save_hierarchy(node, saved)
+                stop.add(node)
+                mrg = reasoning._MERGED.get(node)
+                if mrg is not None:
+                    reasoning.save_hierarchy(mrg, saved)
+                    stop.add(mrg)
+            for _, node in self.closed:
+                reasoning.save_hierarchy(node, saved)
+            if self.best is not None:
+                reasoning.save_hierarchy(self.best.node, saved)
+            #And we prune all nodes outside the saved hierarchy
+            stack = [self.root]
+            while stack:
+                node = stack.pop()
+                if node not in saved:
+                    node.discard('Sacrificed interpretation')
+                elif node not in stop:
+                    stack.extend(node.child)
+        del self.open[n:]
         #We also clear the reasoning cache, since some interpretations cannot
         #be eligible for merging anymore.
         if self.open:

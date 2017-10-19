@@ -6,14 +6,15 @@ Created on Mon Jun 11 18:27:22 2012
 This module contains the definition of the reasoning methods using to generate
 the successor interpretations of a given one. Several different methods are
 applied based on the internal state of the interpretation, but the result is
-equivalent to apply always the abduction process, but it allows to avoid the
-generation of many uninteresting interpretations.
+equivalent to apply always the abduction process while avoiding the generation
+of many uninteresting interpretations.
 
 @author: T. Teijeiro
 """
 import construe.knowledge.abstraction_patterns as ap
 import construe.knowledge.constants as C
 from ..model.observable import is_singleton
+from ..model.FreezableObject import clone_attrs
 from ..model import AbstractionPattern
 from ..model.interpretation import Interpretation
 from ..model.automata import NULL_PROC
@@ -22,7 +23,7 @@ import copy
 import itertools as it
 import numpy as np
 import weakref
-import blist
+import sortedcontainers
 from ..model.constraint_network import InconsistencyError
 #FIXME debug import
 import construe.knowledge.observables as OBS
@@ -38,11 +39,20 @@ assert any is not np.any
 ### Module attributes ###
 #########################
 
+#Flag to avoid dead-end branch pruning, to allow debugging of all hypotheses
+SAVE_TREE = False
+
+#Flag to avoid the merging strategy exploration.
+MERGE_STRATEGY = True
+
 #Counter to measure where the interpretation process concentrates its efforts.
 STATS = Counter()
 
 #Sorted list of interpretations to find merge situations.
-_INCACHE = blist.sortedset(key=lambda interp: len(interp.observations))
+_INCACHE = sortedcontainers.SortedSet(key=lambda i: (len(i.observations),
+                                                     len(i.focus),
+                                                     len(i.unintelligible),
+                                                     len(i.abstracted)))
 
 #Dictionary to map merged interpretations
 _MERGED = weakref.WeakKeyDictionary()
@@ -83,62 +93,29 @@ def clear_cache(time):
     merging.
     """
     global _INCACHE
-    _INCACHE = blist.sortedset((i for i in _INCACHE if i.time_point >= time),
-                               key=lambda interp: len(interp.observations))
+    _INCACHE = sortedcontainers.SortedSet((i for i in _INCACHE
+                                           if i.time_point >= time),
+                                          key=lambda i: (len(i.observations),
+                                                         len(i.focus),
+                                                         len(i.unintelligible),
+                                                         len(i.abstracted)))
 
 
 #########################
 ### Utility functions ###
 #########################
 
-def _save_fsucc(interpretation):
+def save_hierarchy(interpretation, sset):
     """
-    This function is called when an interpretation is found to have a firm
-    successor, and then all the hierarchy up is properly marked.
+    This function adds all the hierarchy of a given *interpretation* in *sset*.
     """
     node = interpretation
     while node is not None:
         #When an interpretation is already found in the set, we can stop.
-        if node in _FSUCC:
+        if node in sset:
             break
-        _FSUCC.add(node)
+        sset.add(node)
         node = node.parent
-
-def _clone_attrs(obs, ref):
-    """
-    Performs a deep copy of the attributes of **ref**, setting them in **obs**.
-    The procedure ensures that all the attributes of **obs** are not frozen.
-
-    Parameters
-    ----------
-    obs, ref:
-        Observations. The attributes of *obs* are set to be equal that the
-        attributes of *ref*.
-    """
-    memo = {}
-    frozen = ref.frozen
-    if frozen:
-        ref.unfreeze()
-    for attr, value in vars(ref).iteritems():
-        if attr != '__frozen__':
-            if id(value) not in memo:
-                memo[id(value)] = copy.deepcopy(value)
-            setattr(obs, attr, memo[id(value)])
-    if frozen:
-        ref.freeze()
-
-def _consecutive_valid(obs, rep, interpretation):
-    """Checks if the consecutive restrictions of *obs* are satisfied by
-    *rep*."""
-    obs_p, obs_s = interpretation.get_pred(obs), interpretation.get_suc(obs)
-    #We exclude the original observation from the checking operation
-    if obs_p is not None:
-        if interpretation.non_consecutive(obs_p, rep):
-            return False
-    if obs_s is not None:
-        if interpretation.non_consecutive(rep, obs_s):
-            return False
-    return True
 
 def _singleton_violation(pat, interpretation):
     """
@@ -156,37 +133,75 @@ def _singleton_violation(pat, interpretation):
     """
     return issubclass(pat.Hypothesis, tuple(interpretation.singletons))
 
-def _pattern_completed(interpretation, patidx):
-    """
-    Checks if in some successor of an interpretation a given pattern
-    (identified by its index in the pattern list) has found a sufficient set
-    of evidence to support its hypothesis. It performs a depth-first search
-    on the successors tree.
-    """
-    stack = interpretation.child[:]
-    while stack:
-        interp = stack.pop()
-        if interp.patterns[patidx].sufficient_evidence:
-            return True
-        stack.extend(interp.child)
-    return False
-
 def _find_mergeable(interpretation):
     """
     Searches the interpretation cache in order to find mergeable
     interpretations.
     """
+    if not MERGE_STRATEGY:
+        return None
     idx = _INCACHE.bisect_left(interpretation)
     nobs = len(interpretation.observations)
+    nfoc = len(interpretation.focus)
+    nunint = len(interpretation.unintelligible)
+    nabs = len(interpretation.abstracted)
     mergeable = interpretation.is_mergeable
     while idx < len(_INCACHE):
         other = _INCACHE[idx]
-        if len(other.observations) > nobs:
+        if (len(other.observations) > nobs or len(other.focus) != nfoc
+                or len(other.unintelligible) != nunint
+                or len(other.abstracted) != nabs):
             break
         if mergeable(other):
             return other
         idx += 1
     return None
+
+def _finding_match(interp, finding, obs, start, end, pred, succ, is_abstr):
+    """
+    Performs a matching operation between a finding and an observation in a
+    given interpretation, checking some constraints set by some additional
+    parameters.
+
+    Parameters
+    ----------
+    interp:
+        Interpretation in which the matching is performed.
+    finding:
+        Finding to match.
+    obs:
+        Matched observation.
+    start:
+        Previous start time of the hypothesis of the pattern that generated
+        *finding*.
+    end:
+        Previous end time of the hypothesis of the pattern that generated
+        *finding*.
+    pred:
+        Predecessor of *finding* according to the consecutivity constraints.
+    succ:
+        Sucessor of *finding* according to the consecutivity constraints.
+    is_abstr:
+        Flag indicating if *finding* is abstracted.
+    """
+    interp.focus.match(finding, obs)
+    newhyp = interp.focus.top[0]
+    #Exclusion and consecutivity violations of the hypothesis are
+    #checked only if the value changes.
+    if newhyp.end.value != end or newhyp.start.value != start:
+        interp.verify_exclusion(newhyp)
+        interp.verify_consecutivity_violation(newhyp)
+    _MATCHED_FINDINGS.add(finding)
+    if is_abstr:
+        #Lazy copy of the parent reference
+        interp.abstracted = interp.abstracted.copy()
+        interp.abstracted.add(obs)
+    if pred is not None or succ is not None:
+        interp.predinfo = interp.predinfo.copy()
+        if pred is not None:
+            interp.predinfo[obs] = (pred, type(finding))
+        if succ is not None:
+            interp.predinfo[succ] = (obs, type(finding))
 
 ###########################
 ### Reasoning functions ###
@@ -195,7 +210,7 @@ def _find_mergeable(interpretation):
 def firm_succ(interpretation):
     """
     Returns a generator of the successor interpretations of a given one, but it
-    only returns those that are firm. To do this, it performs a depth-first
+    only yields those that are firm. To do this, it performs a depth-first
     search process.
 
     **Note:** This generator will not obtain **every** node in the tree, but
@@ -205,7 +220,7 @@ def firm_succ(interpretation):
     """
     #Check merge possibilities
     if interpretation not in _SUCCESSORS:
-        mrg = _find_mergeable(interpretation)
+        mrg = _MERGED.get(interpretation) or _find_mergeable(interpretation)
         if mrg is not None:
             _SUCCESSORS[interpretation] = _merge_succ(interpretation, mrg)
             _MERGED[interpretation] = mrg
@@ -218,9 +233,9 @@ def firm_succ(interpretation):
                 suc = generator.next()
                 if suc.is_firm:
                     #Only original interpretations are cached.
-                    if interpretation not in _MERGED:
+                    if MERGE_STRATEGY and interpretation not in _MERGED:
                         _INCACHE.add(suc)
-                    _save_fsucc(node)
+                    save_hierarchy(node, _FSUCC)
                     yield suc
                 else:
                     stack.append((suc, multicall_succ(suc)))
@@ -228,7 +243,7 @@ def firm_succ(interpretation):
             except StopIteration:
                 finished = True
                 #Remove interpretations with no firm descendants
-                if node not in _FSUCC and not node.is_firm:
+                if not SAVE_TREE and node not in _FSUCC and not node.is_firm:
                     node.discard('Dead-end interpretation')
                 stack.pop()
 
@@ -263,18 +278,17 @@ def _succ(interpretation):
     of an interpretation, use the *multicall_succ* generator.
     """
     sequences = []
-    focus = interpretation.focus[-1]
-    if interpretation.is_finding(focus):
-        sequences.append(subsume(interpretation))
+    focus, pat = interpretation.focus.top
+    if pat is not None and focus is pat.finding:
+        sequences.append(subsume(interpretation, focus, pat))
         #Past environment findings are not predicted.
-        pat = next(p for p in interpretation.patterns if focus in p.findings)
         if focus.lateend > interpretation.time_point or pat.abstracts(focus):
-            sequences.append(predict(interpretation))
+            sequences.append(predict(interpretation, focus, pat))
     else:
-        if interpretation.get_hypothesis_pattern(focus) is not None:
-            sequences.append(deduce(interpretation))
-        sequences.append(abduce(interpretation))
-        sequences.append(advance(interpretation))
+        if pat is not None:
+            sequences.append(deduce(interpretation, focus, pat))
+        sequences.append(abduce(interpretation, focus, pat))
+        sequences.append(advance(interpretation, focus, pat))
     return it.chain.from_iterable(sequences)
 
 def _merge_succ(interpretation, merged):
@@ -284,6 +298,7 @@ def _merge_succ(interpretation, merged):
     interpretation.
     """
     diff = interpretation.past_metrics.diff(merged.past_metrics)
+    nabdiff = interpretation.nabd - merged.nabd
     for succ in multicall_succ(merged):
         #Successors are shallow copies of the merged successors, changing
         #the tree structure references and the past_metrics.
@@ -293,206 +308,234 @@ def _merge_succ(interpretation, merged):
         nxt.parent = interpretation
         nxt.child = []
         nxt.past_metrics = nxt.past_metrics.patch(diff)
+        nxt.nabd += nabdiff
         #We already flag the successors as merged.
         _MERGED[nxt] = succ
         STATS.update(['Merge'])
         yield nxt
 
-def subsume(interpretation):
+def subsume(interp, finding, pattern):
     """
     Obtains the interpretations that can be derived from a given one, by
     establishing all the consistent matchings with the unmatched finding of
     the interpretation through a subsumption operation.
     """
-    focus = interpretation.focus[-1]
-    assert interpretation.is_finding(focus)
-    is_abstr = interpretation.get_abstraction_pattern(focus) is not None
-    #First we test all the subsumption options
-    opt = interpretation.get_observations(clazz=type(focus),
-            filt=lambda ev: (ev.start.value.overlapm(focus.start.value) and
-                               ev.time.value.overlapm(focus.time.value) and
-                               ev.end.value.overlapm(focus.end.value) and
-                            (ev not in interpretation.unintelligible and
-                             interpretation.get_abstraction_pattern(ev) is None
-                                                         if is_abstr else True)
-                            and _consecutive_valid(focus, ev, interpretation)))
+    is_abstr = pattern.abstracts(finding)
+    start, end = pattern.hypothesis.start.value, pattern.hypothesis.end.value
+    pred, succ = pattern.get_consecutive(finding)
+    def valid_subsumption(ev):
+        """Constraints that can be checked before subsumption"""
+        return (ev.earlystart in finding.start.value
+                and ev.time.start in finding.time.value
+                and ev.lateend in finding.end.value
+                and ev not in interp.unintelligible
+                and (ev not in interp.abstracted if is_abstr else True))
+    opt = []
+    if pred is not None:
+        subs = next(interp.get_observations(clazz=type(finding),
+                                            start=pred.earlyend,
+                                            end=finding.lateend,
+                                            filt=valid_subsumption), None)
+        if subs is not None:
+            opt = [subs]
+    elif succ is not None:
+        if succ:
+            if succ in interp.predinfo:
+                subs = interp.predinfo[succ][0]
+                if valid_subsumption(subs):
+                    opt = [subs]
+            else:
+                subs = next(interp.get_observations(clazz=type(finding),
+                                                   start=finding.earlystart,
+                                                   end=succ.latestart,
+                                                   filt=valid_subsumption,
+                                                   reverse=True), None)
+            if subs is not None:
+                opt = [subs]
+    else:
+        opt = interp.get_observations(clazz=type(finding),
+                                      start=finding.earlystart,
+                                      end=finding.lateend,
+                                      filt=valid_subsumption)
     for subs in opt:
-        newint = Interpretation(interpretation)
+        newint = Interpretation(interp)
         try:
-            newint.match(focus, subs)
-            _MATCHED_FINDINGS.add(focus)
-            newint.focus.pop()
+            _finding_match(newint, finding, subs, start, end, pred, succ,
+                           is_abstr)
             newint.remove_old()
-            STATS.update(['S+' + str(focus.__class__.__name__)])
+            STATS.update(['S+' + str(finding.__class__.__name__)])
             yield newint
         except InconsistencyError as error:
             newint.discard(str(error))
 
-def predict(interpretation):
+def predict(interp, finding, pattern):
     """
     Obtains the interpretations that can be derived from a given one, by
     performing a deduction operation taking as hypothesis the unmatched finding
     of the interpretation.
     """
-    focus = interpretation.focus[-1]
-    assert interpretation.is_finding(focus)
     for pat in (p for p in ap.KNOWLEDGE if
-                                  issubclass(p.Hypothesis, type(focus)) and
-                                  not _singleton_violation(p, interpretation)):
+                    issubclass(p.Hypothesis, type(finding))
+                                      and not _singleton_violation(p, interp)):
         #The exploration stops at the first consistent matching of the finding
-        if focus in _MATCHED_FINDINGS:
+        if finding in _MATCHED_FINDINGS:
+            _MATCHED_FINDINGS.remove(finding)
             return
-        newint = Interpretation(interpretation)
+        newint = Interpretation(interp)
         if is_singleton(pat.Hypothesis):
+            newint.singletons = newint.singletons.copy()
             newint.singletons.add(pat.Hypothesis)
         pattern = AbstractionPattern(pat)
         #We set the known attributes of the new conjecture
-        _clone_attrs(pattern.hypothesis, focus)
+        clone_attrs(pattern.hypothesis, finding)
         try:
-            newint.conjecture(pattern.hypothesis, pattern)
-            #The matching of the finding is delayed until the new hypothesis
-            #has sufficient evidence supporting it.
-            newint.delay_match.append((focus, pattern.hypothesis))
-            #We focus on the new predicted observation, replacing the predicted
-            #finding by it.
-            newint.focus.pop()
-            newint.focus.append(pattern.hypothesis)
+            #The new predicted observation is focused.
+            newint.focus.push(pattern.hypothesis, pattern)
+            newint.verify_consecutivity_violation(pattern.hypothesis)
+            newint.verify_exclusion(pattern.hypothesis)
+            #And the number of abducible observations is increased.
+            if ap.is_abducible(pat.Hypothesis):
+                newint.nabd += 1
             STATS.update(['D+' + str(pat)])
             yield newint
         except InconsistencyError as error:
             newint.discard(str(error))
 
-def deduce(interpretation):
+def deduce(interp, focus, pattern):
     """
     Extends the pattern whose hypothesis is the current inference focus of the
     interpretation, by testing all possible successor paths.
     """
-    focus = interpretation.focus[-1]
-    assert not interpretation.is_finding(focus)
-    hypat = interpretation.get_hypothesis_pattern(focus)
-    pidx = interpretation.patterns.index(hypat)
-    assert not hypat.findings
-    for suc in hypat.successors():
-        #Once a sufficient set of evidence has ben obtained, we don't look for
-        #other alternatives. Therefore, the successors() generator should try
-        #to optimize the coverage of the generated patterns.
-        if _pattern_completed(interpretation, pidx):
+    assert pattern.finding is None
+    for suc in pattern.successors():
+        #Once a sufficient set of evidence has ben obtained for this pattern
+        #and all dependent patterns up in the abstraction hierarchy, we don't
+        #look for other alternatives. Therefore, the successors() generator
+        #should try to optimize the coverage of the generated patterns.
+        if interp in _FSUCC:
             return
-        newint = Interpretation(interpretation)
-        newint.observations.add(suc.hypothesis)
-        newint.pat_map[suc.hypothesis] = (suc, frozenset())
-        newint.replace_pat(hypat, suc)
+        newint = Interpretation(interp)
         try:
+            newint.focus.top = (suc.hypothesis, suc)
             #We set the focus on the new predicted finding, if it exists.
-            if suc.findings:
-                newint.replace_obs(focus, suc.hypothesis)
-                finding = set(suc.findings).pop()
-                newint.pat_map[finding] = (None, frozenset({suc}))
-                newint.focus.append(finding)
-                newint.verify_consecutivity(finding)
-            else:
-                newint.match(focus, suc.hypothesis)
-            STATS.update(['X+' + str(hypat.automata)])
+            if suc.finding is not None:
+                bef, aft = suc.get_consecutive(suc.finding)
+                if bef is not None:
+                    newint.verify_consecutivity_satisfaction(bef, suc.finding,
+                                                             type(suc.finding))
+                elif aft is not None:
+                    newint.verify_consecutivity_satisfaction(suc.finding, aft,
+                                                             type(suc.finding))
+                newint.focus.push(suc.finding, suc)
+            #If the hypothesis timing changes, consecutivity and exclusion
+            #constraints have to be checked.
+            if (suc.hypothesis.end.value != focus.end.value
+                    or suc.hypothesis.start.value != focus.start.value):
+                newint.verify_exclusion(suc.hypothesis)
+                newint.verify_consecutivity_violation(suc.hypothesis)
+            STATS.update(['X+' + str(pattern.automata)])
             yield newint
         except InconsistencyError as error:
             newint.discard(str(error))
 
-def abduce(interpretation):
+def abduce(interp, focus, pattern):
     """
     Continues the inference by performing an abduction operation on the current
     inference focus of the interpretation.
     """
-    focus = interpretation.focus[-1]
-    assert not interpretation.is_finding(focus)
     #If the focus is an hypothesis of a pattern, we require that pattern to
     #have sufficient supporting evidence.
-    hypat = interpretation.get_hypothesis_pattern(focus)
-    if ((hypat is not None and not hypat.sufficient_evidence) or
-        interpretation.get_abstraction_pattern(focus) or
-                                       interpretation.delayed_idx(focus) > -1):
+    if ((pattern is not None and not pattern.sufficient_evidence)
+        or focus in interp.abstracted
+        or interp.focus.get_delayed_finding(focus) is not None):
         return
-    hypatcp = None
-    if hypat is not None and hypat.automata.obs_proc is not NULL_PROC:
-        hypatcp = copy.copy(hypat)
+    if pattern is not None and pattern.automata.obs_proc is not NULL_PROC:
+        pattern = copy.copy(pattern)
         try:
-            hypatcp.finish()
+            pattern.finish()
+            focus = pattern.hypothesis
         except InconsistencyError as error:
             return
     qobs = type(focus)
     for pat in (p for p in ap.KNOWLEDGE if
-                                  issubclass(qobs, tuple(p.abstracted)) and
-                                  not _singleton_violation(p, interpretation)):
+                                  issubclass(qobs, tuple(p.abstracted))
+                                  and not _singleton_violation(p, interp)):
         types = [tp for tp in pat.abstracted if issubclass(qobs, tp)]
         for typ in types:
             for trans in pat.abstractions[typ]:
                 try:
-                    newint = Interpretation(interpretation)
-                    if hypatcp is not None:
-                        newint.observations.add(hypatcp.hypothesis)
-                        newint.pat_map[hypatcp.hypothesis] = (hypatcp,
-                                                                   frozenset())
-                        newint.replace_pat(hypat, hypatcp)
-                        newint.match(focus, hypatcp.hypothesis)
-                        focus = hypatcp.hypothesis
-                    if is_singleton(pat.Hypothesis):
-                        newint.singletons.add(pat.Hypothesis)
+                    newint = Interpretation(interp)
+                    if pattern is not None:
+                        newint.observations = newint.observations.copy()
+                        newint.observations.add(focus)
+                    #Pattern consistency checking
                     pattern = AbstractionPattern(pat)
                     pattern.istate = trans.istate
                     pattern.fstate = trans.fstate
                     pattern.trseq.append((trans, focus))
                     pattern.evidence[typ].append(focus)
-                    hyp, ev_pats = newint.pat_map[focus]
-                    newint.pat_map[focus] = (hyp, ev_pats.union({pattern}))
-                    newint.conjecture(pattern.hypothesis, pattern)
                     trans.tconst(pattern, focus)
                     pattern.check_temporal_consistency()
                     trans.gconst(pattern, focus)
-                    newint.update_location(pattern.hypothesis)
+                    #Interpretation updating
+                    newint.abstracted = newint.abstracted.copy()
+                    newint.abstracted.add(focus)
+                    if is_singleton(pat.Hypothesis):
+                        newint.singletons = newint.singletons.copy()
+                        newint.singletons.add(pat.Hypothesis)
+                    if ap.is_abducible(pat.Hypothesis):
+                        newint.nabd += 1
                     newint.focus.pop()
-                    newint.focus.append(pattern.hypothesis)
-                    newint.verify_consecutivity(pattern.hypothesis)
+                    newint.focus.push(pattern.hypothesis, pattern)
+                    newint.verify_exclusion(pattern.hypothesis)
+                    newint.verify_consecutivity_violation(pattern.hypothesis)
                     STATS.update(['A+' + str(pat)])
                     yield newint
                 except InconsistencyError as error:
                     newint.discard(str(error))
 
-def advance(interpretation):
+def advance(interp, focus, pattern):
     """
-    Continues the inference by recovering the previous inference focus of the
-    interpretation, or going to the next unexplained observation. It also
-    resolves all the postponed matchings.
+    Continues the inference by recovering the previous focus of attention, or
+    by going to the next unexplained observation. It also resolves all the
+    postponed matchings.
     """
     max_ap_level = ap.get_max_level()
-    focus = interpretation.focus[-1]
-    assert not interpretation.is_finding(focus)
     #We can not advance if the focus is an hypothesis of a pattern with
     #insufficient evidence.
-    hypat = interpretation.get_hypothesis_pattern(focus)
     newint = None
-    if hypat is not None:
-        if not hypat.sufficient_evidence:
+    if pattern is not None:
+        if not pattern.sufficient_evidence:
             return
-        elif hypat.automata.obs_proc is not NULL_PROC:
-            hypatcp = copy.copy(hypat)
+        #If there is an observation procedure for the focused hypothesis, the
+        #execution takes place now.
+        elif pattern.automata.obs_proc is not NULL_PROC:
+            patcp = copy.copy(pattern)
             try:
-                hypatcp.finish()
-                newint = Interpretation(interpretation)
-                newint.observations.add(hypatcp.hypothesis)
-                newint.pat_map[hypatcp.hypothesis] = (hypatcp, frozenset())
-                newint.replace_pat(hypat, hypatcp)
-                newint.match(focus, hypatcp.hypothesis)
-                focus = hypatcp.hypothesis
+                patcp.finish()
+                newint = Interpretation(interp)
+                if (focus.end.value != patcp.hypothesis.end.value
+                        or focus.start.value != patcp.hypothesis.start.value):
+                    newint.verify_consecutivity_violation(patcp.hypothesis)
+                    newint.verify_exclusion(patcp.hypothesis)
+                focus = patcp.hypothesis
             except InconsistencyError:
                 return
     #If the new focus is a delayed matching, we solve it at this point.
-    if interpretation.delayed_idx(interpretation.focus[-1]) > -1:
-        newint = newint or Interpretation(interpretation)
+    finding = interp.focus.get_delayed_finding(interp.focus.top[0])
+    if finding is not None:
+        newint = newint or Interpretation(interp)
         try:
-            idx = newint.delayed_idx(focus)
-            finding, obs = newint.delay_match.pop(idx)
-            newint.match(finding, obs)
-            _MATCHED_FINDINGS.add(finding)
             newint.focus.pop()
+            pattern = newint.focus.top[1]
+            pred, succ = pattern.get_consecutive(finding)
+            _finding_match(newint, finding, focus,
+                           pattern.hypothesis.start.value,
+                           pattern.hypothesis.end.value, pred, succ,
+                           pattern.abstracts(finding))
+            #The matched hypothesis is included in the observations list
+            newint.observations = newint.observations.copy()
+            newint.observations.add(focus)
         except InconsistencyError as error:
             newint.discard(str(error))
             return
@@ -500,22 +543,28 @@ def advance(interpretation):
         #HINT with the current knowledge base, we restrict the advancement to
         #observations of the first or the last level, not allowing partial
         #interpretations in the abstraction level.
-        if (len(interpretation.focus) == 1 and
-                       0 < ap.get_obs_level(type(focus)) < max_ap_level):
+        if (len(interp.focus) == 1 and
+                             0 < ap.get_obs_level(type(focus)) < max_ap_level):
             return
         #We just move on the focus.
-        newint = newint or Interpretation(interpretation)
+        newint = newint or Interpretation(interp)
         if ap.get_obs_level(type(focus)) == 0:
+            newint.unintelligible = newint.unintelligible.copy()
             newint.unintelligible.add(focus)
+        #If the focus is a hypothesis, it is added to the observations list
+        if pattern is not None:
+            newint.observations = newint.observations.copy()
+            newint.observations.add(focus)
         newint.focus.pop()
     #If we have reached the top of the stack, we go ahead to the next
     #unexplained observation.
     if not newint.focus:
         try:
             unexp = newint.get_observations(start=focus.earlystart + 1, filt=
-                 lambda ev: ev not in newint.unintelligible and
-                             newint.get_abstraction_pattern(ev) is None).next()
-            newint.focus.append(unexp)
+                 lambda ev: ev not in newint.unintelligible
+                        and ev not in newint.abstracted
+                        and ap.is_abducible(type(ev))).next()
+            newint.focus.push(unexp, None)
         except StopIteration:
             newint.discard('No unexplained evidence after the current point')
             return
@@ -523,13 +572,7 @@ def advance(interpretation):
     #won't be used in following reasoning steps, and they affect the
     #performance of the searching procedure.
     oldtime = max(newint.past_metrics.time,
-                  min(o.earlystart for o in newint.focus) - C.FORGET_TIMESPAN)
-    #We always have to keep at least the last observation of the highest
-    #abstraction level.
-    max_ap_time = [o.earlystart for o in newint.observations
-                                  if ap.get_obs_level(type(o)) == max_ap_level]
-    if max_ap_time and max_ap_time[-1] < oldtime:
-        oldtime = max_ap_time[-1]
+                  newint.focus.earliest_time) - C.FORGET_TIMESPAN
     newint.remove_old(oldtime)
     yield newint
 

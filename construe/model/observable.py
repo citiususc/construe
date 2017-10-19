@@ -14,11 +14,10 @@ from .interval import Interval
 from numpy import inf
 import itertools as it
 
-
 def overlap(obs1, obs2):
     """
-    Determine if two observations overlap. Returns True only if we are 100%
-    sure that the observations overlap.
+    Determine if two observations overlap. Returns True only if we are sure
+    that the observations overlap.
     """
     return (not obs1.earlyend <= obs2.latestart and
                                            not obs2.earlyend <= obs1.latestart)
@@ -60,34 +59,15 @@ def overlap_any(obs, obs_lst):
         i+=1
     return False
 
-
-#TODO maybe this is not the best place for this function
-def non_consecutive(obs1, obs2, observations):
+def end_cmp_key(obs):
     """
-    Checks if two observations are non consecutive in a list, this is, there is
-    another observation between *obs1* and *obs2* in the *observations* list.
-
-    Parameters
-    ----------
-    obs1:
-        First observation
-    obs2:
-        Second observation
-    observations:
-        Iterable of observations (maybe containing obs1 and obs2).
-
-    Returns
-    -------
-    out:
-        True if it is guaranteed that there is a third observation in
-        *observations* (different from *obs1* and *obs2*) that is between
-        *obs1* and *obs2*.
+    Function to generate the key for observation comparison by end time. It is
+    used to keep an order based on the 'end' time of observations in the
+    observations list of an interpretation, instead of an order based on the
+    'start' time. This provides a better performance for most of the operations
+    during the interpretation.
     """
-    tocheck = it.ifilter(lambda obs : obs.earlystart >= obs1.earlystart and
-                                    obs.lateend <= obs2.lateend, observations)
-    return any(obs is not obs1 and obs is not obs2 and between(obs1, obs, obs2)
-                                                            for obs in tocheck)
-
+    return (obs.lateend, obs.earlyend, obs.latestart, obs.earlystart)
 
 def singleton_observable(observable):
     """
@@ -129,6 +109,9 @@ class Observable(FreezableObject):
     *end*:
         The finish temporal variable, of type *Variable*.
     """
+
+    __slots__ = ('start', 'time', 'end')
+
     def __init__(self):
         super(Observable, self).__init__()
         self.start = Variable(value = Interval(0, inf))

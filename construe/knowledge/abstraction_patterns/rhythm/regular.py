@@ -20,10 +20,11 @@ from construe.model.automata import (PatternAutomata, ABSTRACTED,
 from construe.utils.signal_processing.xcorr_similarity import (xcorr_valid,
                                                            signal_match,
                                                            signal_unmatch)
+from construe.utils.units_helper import (msec2samples as ms2sp,
+                                         samples2sec as sp2sc)
 from collections import Counter
 import numpy as np
 import copy
-
 
 #####################################################
 ### New definition of the regular rhythm patterns ###
@@ -62,13 +63,37 @@ def _update_measures(pattern):
     obseq = pattern.obs_seq
     #RR
     rrs = np.diff([b.time.start for b in beats])
-    #RT
-    rts = []
-    for twave in pattern.evidence[o.TWave][-nobs:]:
-        i = pattern.get_step(twave)
-        qrs = next(obseq[j] for j in xrange(i-1, 0, -1)
-                                                if isinstance(obseq[j], o.QRS))
-        rts.append(twave.lateend - qrs.time.start)
+    #The RT (QT) measure is updated by a Kalman Filter strategy.
+    #Belief values
+    rtmean, rtstd = pattern.hypothesis.meas.rt
+    #Current RR measure (bounded)
+    qrs = beats[-1]
+    rr = rrs[-1]
+    rr = max(min(rr, C.QTC_RR_LIMITS.end), C.QTC_RR_LIMITS.start)
+    #Kalman filter algorithm, as explained in "Probabilistic Robotics"
+    sigma_tbar = rtstd**2 + C.KF_Q**2
+    twave = obseq[-1]
+    if isinstance(twave, o.TWave):
+        #rt and corrected rt measure in the current iteration
+        rt = twave.earlyend - qrs.time.start
+        rtc = ms2sp(1000.0*sp2sc(rt)/np.cbrt(sp2sc(rr)))
+        meas_err = rtc-rtmean
+        #Abnormally QT intervals have associated higher uncertainty
+        qt = twave.earlyend - qrs.earlystart
+        qt_lims = C.QT_FROM_RR(Iv(rr, rr))
+        #Measure uncertainty, represented by the R matrix in the Kalman filter
+        KF_R = meas_err if qt in qt_lims else ms2sp(120)
+        k_t = sigma_tbar/(sigma_tbar + max(KF_R, C.MIN_QT_STD)**2)
+    else:
+        #No measure - 0 Kalman gain
+        meas_err = 0
+        k_t = 0
+    if rtmean == 0:
+        mu_t = meas_err
+        sigma_t = C.QT_ERR_STD**2
+    else:
+        mu_t = rtmean + k_t*meas_err
+        sigma_t = (1.0-k_t)*sigma_tbar
     #PQ
     pqs = []
     for pwave in pattern.evidence[o.PWave][-nobs:]:
@@ -76,7 +101,7 @@ def _update_measures(pattern):
         qrs = obseq[i-1]
         pqs.append(qrs.earlystart - pwave.earlystart)
     pattern.hypothesis.meas = o.CycleMeasurements((np.mean(rrs), np.std(rrs)),
-                                                  (np.mean(rts), np.std(rts)),
+                                                  (mu_t, np.sqrt(sigma_t)),
                                                   (np.mean(pqs), np.std(pqs)))
 
 def _check_missed_beats(pattern):
@@ -127,7 +152,55 @@ def _check_missed_beats(pattern):
                 sshape[lead].sig = (sig[lead][delay:delay+len(qshape[lead].sig)]
                                     - sig[lead][delay])
                 sshape[lead].amplitude = np.ptp(sshape[lead].sig)
-            verify(signal_unmatch(sshape, qshape), 'Missed beat')
+            if isinstance(pattern.hypothesis, o.RegularCardiacRhythm):
+                qref = pattern.evidence[o.QRS][-2]
+                rr = float(qrs.earlystart-qref.earlystart)
+                loc = (limit+delay-qref.earlystart)/rr
+                #Check for one and two missed beats in regular positions
+                if 0.45 <= loc <= 0.55:
+                    verify(signal_unmatch(sshape, qshape), 'Missed beat')
+                elif 0.28 <= loc <= 0.38 and not signal_unmatch(sshape, qshape):
+                    corr = -np.Inf
+                    delay = 0
+                    for lead in leads:
+                        sig[lead] = sig_buf.get_signal_fragment(
+                                        int(qref.earlystart+0.61*rr),
+                                        min(int(qref.earlystart+0.71*rr)
+                                                + len(qshape[lead].sig),
+                                            int(qrs.earlystart)),
+                                        lead=lead)[0]
+                        lcorr, ldelay = xcorr_valid(sig[lead], qshape[lead].sig)
+                        if lcorr > corr:
+                            corr, delay = lcorr, ldelay
+                    sshape = {}
+                    for lead in leads:
+                        sshape[lead] = o.QRSShape()
+                        sshape[lead].sig = (sig[lead][delay:delay
+                                 + len(qshape[lead].sig)]-sig[lead][delay])
+                        sshape[lead].amplitude = np.ptp(sshape[lead].sig)
+                    verify(signal_unmatch(sshape, qshape), 'Two missed beats')
+                elif 0.61 <= loc <= 0.71 and not signal_unmatch(sshape, qshape):
+                    corr = -np.Inf
+                    delay = 0
+                    for lead in leads:
+                        sig[lead] = sig_buf.get_signal_fragment(
+                                        int(qref.earlystart+0.28*rr),
+                                        min(int(qref.earlystart+0.38*rr)
+                                                + len(qshape[lead].sig),
+                                            int(qrs.earlystart)),
+                                        lead=lead)[0]
+                        lcorr, ldelay = xcorr_valid(sig[lead], qshape[lead].sig)
+                        if lcorr > corr:
+                            corr, delay = lcorr, ldelay
+                    sshape = {}
+                    for lead in leads:
+                        sshape[lead] = o.QRSShape()
+                        sshape[lead].sig = (sig[lead][delay:delay
+                                 + len(qshape[lead].sig)]-sig[lead][delay])
+                        sshape[lead].amplitude = np.ptp(sshape[lead].sig)
+                    verify(signal_unmatch(sshape, qshape), 'Two missed beats')
+            else:
+                verify(signal_unmatch(sshape, qshape), 'Missed beat')
 
 
 def _cycle_finished_gconst(pattern, _):
@@ -231,13 +304,11 @@ def _p_qrs_tconst(pattern, pwave):
         #PR interval
         tnet.add_constraint(pwave.start, qrs.start, C.N_PR_INTERVAL)
         tnet.set_before(pwave.end, qrs.start)
-        pqmean, pqstd = pattern.hypothesis.meas.pq
-        if pqmean > 0:
+        if len(pattern.evidence[o.PWave]) > 10:
             #The mean and standard deviation of the PQ measurements will
             #influence the following observations.
-            maxdiff = (C.TMARGIN if len(pattern.evidence[o.PWave]) < 10
-                                                                  else 2*pqstd)
-            interv = Iv(int(pqmean-maxdiff), int(pqmean+maxdiff))
+            pqmean, pqstd = pattern.hypothesis.meas.pq
+            interv = Iv(int(pqmean-2*pqstd), int(pqmean+2*pqstd))
             if interv.overlap(C.N_PR_INTERVAL):
                 tnet.add_constraint(pwave.start, qrs.start, interv)
 
@@ -258,6 +329,13 @@ def _t_qrs_tconst(pattern, twave):
         qidx = pattern.evidence[o.QRS].index(qrs)
         if qidx > 0:
             refrr = qrs.time.end - pattern.evidence[o.QRS][qidx-1].time.start
+            refrr = max(min(refrr, C.QTC_RR_LIMITS.end), C.QTC_RR_LIMITS.start)
+            rtc, rtstd = pattern.hypothesis.meas.rt
+            if rtc > 0:
+                #Expected QT value from the QT corrected value
+                rtmean = ms2sp(1000.0*sp2sc(rtc)*np.cbrt(sp2sc(refrr)))
+                tnet.add_constraint(qrs.time, twave.end, Iv(rtmean-2.5*rtstd,
+                                                            rtmean+2.5*rtstd))
             tnet.add_constraint(qrs.time, twave.end,
                                                 C.QT_FROM_RR(Iv(refrr, refrr)))
         else:
@@ -269,22 +347,6 @@ def _t_qrs_tconst(pattern, twave):
                                             C.PQ_INTERVAL.end + C.QRS_DUR.end))
         #ST interval
         tnet.add_constraint(qrs.end, twave.start, C.ST_INTERVAL)
-        #RT variation
-        rtmean, rtstd = pattern.hypothesis.meas.rt
-        if rtmean > 0:
-            #The mean and standard deviation of the PQ measurements will
-            #influence the following observations.
-            maxdiff = (C.TMARGIN if len(pattern.evidence[o.TWave]) < 10
-                                                                 else  2*rtstd)
-            interv = Iv(int(rtmean-maxdiff), int(rtmean+maxdiff))
-            #We avoid possible inconsistencies with constraint introduced by
-            #the rhythm information.
-            try:
-                existing = tnet.get_constraint(qrs.time, twave.end).constraint
-            except KeyError:
-                existing = Iv(-np.inf, np.inf)
-            if interv.overlap(existing):
-                tnet.add_constraint(qrs.time, twave.end, interv)
     except StopIteration:
         pass
 
@@ -302,7 +364,9 @@ def _prev_rhythm_gconst(pattern, rhythm):
     verify(isinstance(pattern.hypothesis, o.Asystole)
                                    or type(pattern.hypothesis) != type(rhythm))
     #The rhythm measurements are initially taken from the previous rhythm.
-    pattern.hypothesis.meas = copy.copy(rhythm.meas)
+    pattern.hypothesis.meas = o.CycleMeasurements(rhythm.meas.rr,
+                                             (rhythm.meas.rt[0], C.QT_ERR_STD),
+                                             (rhythm.meas.pq[0], C.QT_ERR_STD))
 
 def _rhythm_obs_proc(pattern):
     """Observation procedure executed once the rhythm pattern has finished"""
@@ -421,8 +485,9 @@ def create_regular_rhythm(name, hypothesis, rr_bounds):
                                                 beats[1].shape[lead].amplitude)
                     verify(min(samp, qamp)/max(samp, qamp)
                                                       >= C.MISSED_QRS_MAX_DIFF)
-            rhythm.meas = o.CycleMeasurements((rr, stdrr), prhythm.meas.rt,
-                                                               prhythm.meas.pq)
+            rhythm.meas = o.CycleMeasurements((rr, stdrr),
+                                            (prhythm.meas.rt[0], C.QT_ERR_STD),
+                                            (prhythm.meas.pq[0], C.QT_ERR_STD))
     _qrs_tconst = _get_qrs_tconst(rr_bounds)
     #Automata definition
     automata = PatternAutomata()

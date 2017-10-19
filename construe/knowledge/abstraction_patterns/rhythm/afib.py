@@ -22,7 +22,8 @@ from construe.knowledge.abstraction_patterns.rhythm.regular import (
 from construe.knowledge.abstraction_patterns.segmentation import (
                                                         characterize_baseline)
 from construe.knowledge.abstraction_patterns.rhythm.vflutter import _is_VF
-from construe.utils.units_helper import msec2samples as ms2sp
+from construe.utils.units_helper import (msec2samples as ms2sp,
+                                         samples2sec as sp2sc)
 from construe.utils.signal_processing.xcorr_similarity import signal_match
 import copy
 import numpy as np
@@ -167,28 +168,21 @@ def get_t_tconst(qrsidx):
             tnet.set_before(twave.end, beats[qidx+1].start)
         if qidx > 0:
             refrr = qrs.time.end - pattern.evidence[o.QRS][qidx-1].time.start
-            tnet.add_constraint(qrs.time, twave.end,
+            refrr = max(min(refrr, C.QTC_RR_LIMITS.end), C.QTC_RR_LIMITS.start)
+            rtc, rtstd = pattern.hypothesis.meas.rt
+            if rtc > 0:
+                #Expected QT value from the QT corrected value
+                rtmean = ms2sp(1000.0*sp2sc(rtc)*np.cbrt(sp2sc(refrr)))
+                tnet.add_constraint(qrs.time, twave.end, Iv(rtmean-2.5*rtstd,
+                                                            rtmean+2.5*rtstd))
+            try:
+                tnet.add_constraint(qrs.time, twave.end,
                                               Iv(0, refrr - C.TQ_INTERVAL_MIN))
+            except ValueError:
+                pass
+        tnet.add_constraint(qrs.start, twave.end, C.N_QT_INTERVAL)
         #ST interval
         tnet.add_constraint(qrs.end, twave.start, C.ST_INTERVAL)
-        #QT duration
-        tnet.add_constraint(qrs.start, twave.end, C.N_QT_INTERVAL)
-        #RT variation
-        rtmean, rtstd = pattern.hypothesis.meas.rt
-        if rtmean > 0:
-            #The mean and standard deviation of the PQ measurements will
-            #influence the following observations.
-            maxdiff = (C.TMARGIN if len(pattern.evidence[o.TWave]) < 10
-                                                                 else  2*rtstd)
-            interv = Iv(int(rtmean-maxdiff), int(rtmean+maxdiff))
-            #We avoid possible inconsistencies with constraint introduced by
-            #the rhythm information.
-            try:
-                existing = tnet.get_constraint(qrs.time, twave.end).constraint
-            except KeyError:
-                existing = Iv(-np.inf, np.inf)
-            if interv.overlap(existing):
-                tnet.add_constraint(qrs.time, twave.end, interv)
     return _t_tconst
 
 def _qrs_tconst(pattern, qrs):
@@ -262,17 +256,38 @@ def _update_measures(pattern):
     beats = pattern.evidence[o.QRS][-nobs:]
     #RR
     rrs = np.diff([b.time.start for b in beats])
-    #RT
-    rts = []
-    for twave in pattern.evidence[o.TWave][-nobs:]:
-        if twave not in pattern.findings:
-            qrs = next((q for q in reversed(beats)
-                                        if q.lateend < twave.earlystart), None)
-            if qrs is not None:
-                rts.append(twave.lateend - qrs.time.start)
+    obseq = pattern.obs_seq
+    #The RT (QT) measure is updated by a Kalman Filter strategy.
+    #Belief values
+    rtmean, rtstd = pattern.hypothesis.meas.rt
+    if (len(obseq) > 1 and isinstance(obseq[-2], o.TWave)
+                                         and obseq[-2] is not pattern.finding):
+        twave = obseq[-2]
+        #Current RR measure (bounded)
+        qrs = next((q for q in reversed(beats)
+                                       if q.lateend <= twave.earlystart), None)
+        rr = qrs.time.start - beats[beats.index(qrs)-1].time.start
+        rr = max(min(rr, C.QTC_RR_LIMITS.end), C.QTC_RR_LIMITS.start)
+        #Kalman filter algorithm, as explained in "Probabilistic Robotics"
+        sigma_tbar = rtstd**2 + C.KF_Q**2
+        #rt and corrected rt measure in the current iteration
+        rt = twave.earlyend - qrs.time.start
+        rtc = ms2sp(1000.0*sp2sc(rt)/np.cbrt(sp2sc(rr)))
+        meas_err = rtc-rtmean
+        #Abnormally QT intervals have associated higher uncertainty
+        qt = twave.earlyend - qrs.earlystart
+        qt_lims = C.QT_FROM_RR(Iv(rr, rr))
+        #Measure uncertainty, represented by the R matrix in the Kalman filter
+        KF_R = meas_err if qt in qt_lims else ms2sp(120)
+        k_t = sigma_tbar/(sigma_tbar + max(KF_R, C.MIN_QT_STD)**2)
+        if rtmean == 0:
+            rtmean = meas_err
+            rtstd = C.QT_ERR_STD
+        else:
+            rtmean = rtmean + k_t*meas_err
+            rtstd = np.sqrt((1.0-k_t)*sigma_tbar)
     pattern.hypothesis.meas = o.CycleMeasurements((np.mean(rrs), np.std(rrs)),
-                                                  (np.mean(rts), np.std(rts)),
-                                                                  (0.0, 0.0))
+                                                  (rtmean, rtstd), (0.0, 0.0))
 def _get_pwave_sig(beg, end):
     """
     Checks if before a QRS complex there is a waveform similar to a P Wave. In
