@@ -328,6 +328,8 @@ def process_record_conduction(path, ann='atr', fr_len=512000, initial_pos=0,
             root.focus.push(next(IN.BUF.get_observations()), None)
         except (StopIteration, ValueError):
             pos += fr_len
+            if verbose:
+                print('No evidence found in this fragment. Skipping.')
             continue
         successors = {node:reasoning.firm_succ(node)}
         t0 = time.time()
