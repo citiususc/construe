@@ -15,7 +15,7 @@ In short, for the automatic classification of heartbeats using this algorithm, i
  2. A set of annotations resulting from the abductive interpretation of the record (The `.iatr` files included in the `classification_data/` directory).
  3. The results of the clustering task on the beat annotations (The `.cluster` files included in the `classification_data/` directory)
 
-Since the abductive interpretation stage is a very time-consuming task, the annotation files with the results for all records in the [MIT-BIH Arrhythmia Database](https://www.physionet.org/physiobank/database/mitdb/) are provided in the `classification_data/` directory with the `.iatr` extension. These results can be obtained with the `record_processing.py` script, taking as initial evidence the `.atr` reference annotations in the database. Note that the interpretation results depend on the computing capabilities, so they may be slightly different from those provided in this repository.
+Since the abductive interpretation stage is a very time-consuming task, the annotation files with the results for all records in the [MIT-BIH Arrhythmia Database](https://www.physionet.org/physiobank/database/mitdb/) are provided in the `classification_data/` directory with the `.iatr` extension. These results can be obtained with the `construe_ecg.py` script, taking as initial evidence the `.atr` reference annotations in the database. Note that the interpretation results depend on the computing capabilities, so they may be slightly different from those provided in this repository.
 
 With respect to the clustering results, unfortunately at this time we can not provide access to the implementation of the clustering algorithm. This algorithm is described in the following paper:
 
