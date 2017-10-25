@@ -44,6 +44,8 @@ class RDeflection(Deflection):
     any external QRS detection algorithm
     """
 
+    __slots__ = ('tag', )
+
     def __init__(self):
         """Creates a new instance of a R-Deflection, that is instantaneous"""
         super(RDeflection, self).__init__()
