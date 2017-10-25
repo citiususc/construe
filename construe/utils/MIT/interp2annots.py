@@ -53,7 +53,7 @@ def ann2interp(record, anns, fmt=False):
             else:
                 beg = next(a for a in reversed(anns[:i]) if a.time < ann.time
                                                      and a.code == C.WFON).time
-                end = next(a for a in anns[i] if a.time > ann.time
+                end = next(a for a in anns[i:] if a.time > ann.time
                                                     and a.code == C.WFOFF).time
             obs.start.value = Iv(beg, beg)
             obs.end.value = Iv(end, end)
@@ -97,7 +97,8 @@ def ann2interp(record, anns, fmt=False):
                 beg = ann.time + min(d[0] for d in delin.itervalues())
                 end = ann.time + max(d[-1] for d in delin.itervalues())
             else:
-                def extra_cond(a): a.subtype == C.SYSTOLE if fmt else True
+                def extra_cond(a):
+                    return a.subtype == C.SYSTOLE if fmt else True
                 beg = next(a for a in reversed(anns[:i]) if a.code==C.WFON
                            and extra_cond(a)).time
                 end = next(a for a in anns[i:] if a.code == C.WFOFF
