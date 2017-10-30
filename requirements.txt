@@ -1,5 +1,5 @@
 numpy
-blist
+sortedcontainers
 scipy
 scikit-learn
 PyWavelets
