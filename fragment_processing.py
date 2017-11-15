@@ -110,9 +110,9 @@ be.recover_all()
 #pp(list(be.get_observations()))
 
 #Drawing of the best explanation
-#brview = plotter.plot_observations(sig_buf.get_signal(
-#                                         sig_buf.get_available_leads()[0]), be)
-##Drawing of the search tree
+brview = plotter.plot_observations(sig_buf.get_signal(
+                                         sig_buf.get_available_leads()[0]), be)
+#Drawing of the search tree
 #label_fncs = {}
 #label_fncs['n'] = lambda br: str(br)
 #label_fncs['e'] = lambda br: ''
