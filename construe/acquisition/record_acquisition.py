@@ -32,7 +32,7 @@ _STEP = 256          #Size in signal samples of each evidence acquisition step.
 _LAST_POS = 0
 _ANNOTS = []
 
-def set_record(record, annotator = None, physical_units= False):
+def set_record(record, annotator=None, physical_units=False):
     """
     Sets the record used for input and the initial evidence.
 
@@ -78,7 +78,7 @@ def set_tfactor(tfactor):
     global _TFACTOR
     _TFACTOR = tfactor
 
-def get_tfactor(tfactor):
+def get_tfactor():
     """Obtains the temporal factor controlling the current input speed."""
     return _TFACTOR
 
@@ -167,7 +167,7 @@ if __name__ == "__main__":
             break
         T.sleep(0.1)
     print('Total length of acquired signal: {0} (in {1} s)'.format(
-                                         SIG.get_signal_length(),T.time()-_T0))
+                                        SIG.get_signal_length(), T.time()-_T0))
     reset()
     #We test higher temporal factors
     _TFACTOR = 30.0
@@ -181,5 +181,5 @@ if __name__ == "__main__":
             break
         T.sleep(0.1)
     print('Total length of acquired signal: {0} (in {1} s)'.format(
-                                         SIG.get_signal_length(),T.time()-_T0))
+                                        SIG.get_signal_length(), T.time()-_T0))
 
