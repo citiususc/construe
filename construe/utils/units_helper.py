@@ -8,10 +8,10 @@ __author__="T. Teijeiro"
 __date__ ="$30-nov-2011 9:58:56$"
 
 #: Signal sampling frequency (Hz)
-SAMPLING_FREQ = 300.0
+SAMPLING_FREQ = 250.0
 
 #: Analog-Digital conversor gain
-ADCGain = 1000.0
+ADCGain = 200.0
 
 #: Temporal scale of the drawing mechanism (mm/sec)
 TSCALE = 25.0
