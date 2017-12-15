@@ -1,7 +1,8 @@
 from collections import Hashable
+import copy
 from unittest import TestCase
 
-from construe.model import FreezableObject, Interval, Variable
+from construe.model import FreezableObject, Interval, Variable, ConstraintNetwork
 
 
 class FreezableTest(FreezableObject):
@@ -402,7 +403,117 @@ class TestVariable(TestCase):
         assert var1 != var2
         assert var1 > var2
 
-    def test_hash(self):
-        inter = Interval(0, 15)
-        var = Variable(inter)
+    def test_hashable(self):
+        var = Variable(Interval(10, 150))
         assert isinstance(var, Hashable)
+
+        var = [Variable(Interval(0, x)) for x in range(100)]
+        varset = set(var)
+
+        assert len(varset) == 100
+        assert all(v in varset for v in var)
+
+    def test_deep_copy(self):
+        var1 = Variable(Interval(10, 150))
+        var2 = copy.deepcopy(var1)
+        var3 = copy.deepcopy(var1)
+
+        assert var1 is not var2 and var1 is not var3
+        assert var1 == var2 and var1 == var3
+        assert var2 is not var3
+        assert var2 == var3
+
+        assert var1.value is not var2.value and var1.value is not var3.value
+        assert var1.value == var2.value and var1.value == var3.value
+        assert var2.value is not var3.value
+        assert var2.value == var3.value
+
+        assert hash(var1.value) == hash(var2.value) == hash(var3.value)
+        assert hash(var1.value) is hash(var1.value) is hash(var3.value)
+
+        assert hash(var1) != hash(var2) and hash(var1) != hash(var3)
+        assert hash(var2) != hash(var3)
+
+
+class TestConstraintNetWork(TestCase):
+    def test_set_before(self):
+        v0, v1 = [Variable(Interval(-1, x)) for x in range(2)]
+        nw = ConstraintNetwork()
+        nw.set_before(v0, v1)
+        nw.minimize_network()
+        assert v0 < v1
+        assert v0.value.start == v1.value.start
+        assert v0.value.start == -1
+
+        nw.set_before(v1, v0)
+        nw.minimize_network()
+        assert v0 == v1
+        assert v0.value == v1.value
+        assert v0.value.start == -1
+
+    def test_add_constraint(self):
+        # Known example assertion (Detcher STP example in TCN paper)
+        v0, v1, v2, v3, v4 = [Variable() for _ in range(5)]
+        v0.value = Interval(0, 0)
+        nw = ConstraintNetwork()
+        nw.add_constraint(v0, v1, Interval(10, 20))
+        nw.add_constraint(v1, v2, Interval(30, 40))
+        nw.add_constraint(v3, v2, Interval(10, 20))
+        nw.add_constraint(v3, v4, Interval(40, 50))
+        nw.add_constraint(v0, v4, Interval(60, 70))
+        nw.minimize_network()
+        assert v0.value == Interval(0, 0)
+        assert v1.value == Interval(10, 20)
+        assert v2.value == Interval(40, 50)
+        assert v3.value == Interval(20, 30)
+        assert v4.value == Interval(60, 70)
+
+        # Testing if a stricker constraint is applied
+        v0, v1, v2, v3, v4 = [Variable() for _ in range(5)]
+        v0.value = Interval(0, 0)
+        nw = ConstraintNetwork()
+        nw.add_constraint(v0, v1, Interval(10, 20))
+        nw.add_constraint(v1, v2, Interval(30, 40))
+        nw.add_constraint(v3, v2, Interval(10, 20))
+        nw.add_constraint(v3, v4, Interval(40, 50))
+        nw.add_constraint(v0, v4, Interval(60, 70))
+
+        nw.add_constraint(v0, v1, Interval(10, 15))
+        nw.add_constraint(v1, v2, Interval(30, 35))
+        nw.add_constraint(v3, v2, Interval(10, 15))
+        nw.add_constraint(v3, v4, Interval(40, 45))
+        nw.add_constraint(v0, v4, Interval(60, 65))
+        nw.minimize_network()
+        assert v0.value == Interval(0, 0)
+        assert v1.value == Interval(10, 10)
+        assert v2.value == Interval(40, 40)
+        assert v3.value == Interval(25, 25)
+        assert v4.value == Interval(65, 65)
+
+    def test_equal(self):
+        v0 = Variable(Interval(0, 10))
+        v1 = Variable(Interval(7, 15))
+
+        nw = ConstraintNetwork()
+        nw.set_equal(v0, v1)
+        nw.minimize_network()
+        assert v0 == v1
+
+    def test_between(self):
+        v0 = Variable(Interval(0, 10))
+        v1 = Variable(Interval(7, 15))
+        v2 = Variable(Interval(4, 10))
+
+        nw = ConstraintNetwork()
+        nw.set_between(v0, v1, v2)
+        nw.minimize_network()
+        assert v0 <= v1 <= v2
+
+        v0 = Variable(Interval(0, 10))
+        v1 = Variable(Interval(7, 15))
+        v2 = Variable(Interval(4, 10))
+
+        nw = ConstraintNetwork()
+        nw.set_between(v2, v1, v0)
+        nw.minimize_network()
+        assert v2 <= v1 <= v0
