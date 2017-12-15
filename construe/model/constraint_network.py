@@ -61,6 +61,18 @@ class Variable(FreezableObject):
         """
         return bool(self.value < other.value)
 
+    def __le__(self, other):
+        return self < other or self == other
+
+    def __eq__(self, other):
+        return self.value == other.value
+
+    def __gt__(self, other):
+        return self.value > other.value
+
+    def __ge__(self, other):
+        return self > other or self == other
+
     def __deepcopy__(self, memo):
         """Performs a deep copy operation of this variable."""
         if id(self) in memo:
