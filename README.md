@@ -177,4 +177,4 @@ The source code is structured in the following main modules:
 
 ## License
 
-This project is licensed under the terms of the [GPL v3 license](LICENSE).
+This project is licensed under the terms of the [AGPL v3 license](LICENSE).
