@@ -24,8 +24,8 @@ class AbstractionPattern(object):
     the allowed transitions for each state and generate all the possible
     combinations of evidence consistent with the pattern.
     """
-    __slots__ = ('automata', 'temporal_constraints', 'istate', 'fstate',
-                 'trseq', 'hypothesis', 'evidence', 'finding')
+    __slots__ = ('automata', 'tnet', 'istate', 'fstate', 'trseq', 'hypothesis',
+                 'evidence', 'finding')
 
     def __init__(self, automata):
         """
@@ -54,20 +54,18 @@ class AbstractionPattern(object):
             the automata definition with a list of the observations of that
             observable as evidence of the pattern.
         finding:
-            A finding in the evidence that has still not been matched to an 
+            A finding in the evidence that has still not been matched to an
             actual observation, or None if there is not such finding.
-        temporal_constraints:
-            List with temporal networks that are used to introduce the temporal
-            knowledge in the pattern.
+        tnet:
+            *ConstraintNetwork* used to define temporal knowledge.
         """
         self.automata = automata
-        self.temporal_constraints = []
+        self.tnet = ConstraintNetwork()
         self.istate = self.fstate = automata.start_state
         self.trseq = []
         self.hypothesis = automata.Hypothesis()
         self.evidence = {obs : [] for obs in automata.manifestations}
         self.finding = None
-        self.temporal_constraints.append(ConstraintNetwork())
         #We introduce the first basic constraints (start<=time<=end)
         BASIC_TCONST(self, self.hypothesis)
 
@@ -88,22 +86,20 @@ class AbstractionPattern(object):
         cpy.istate = self.istate
         cpy.fstate = self.fstate
         cpy.trseq = self.trseq[:]
-        cpy.temporal_constraints = []
         clone_attrs(cpy.hypothesis, self.hypothesis)
         for observable, observations in self.evidence.iteritems():
             cpy.evidence[observable] = observations[:]
         cpy.finding = self.finding
-        for tnet in self.temporal_constraints:
-            cpy.temporal_constraints.append(copy.copy(tnet))
-            if cpy.last_tnet.contains_variable(self.hypothesis.start):
-                cpy.last_tnet.substitute_variable(self.hypothesis.start,
-                                                          cpy.hypothesis.start)
-            if cpy.last_tnet.contains_variable(self.hypothesis.time):
-                cpy.last_tnet.substitute_variable(self.hypothesis.time,
-                                                          cpy.hypothesis.time)
-            if cpy.last_tnet.contains_variable(self.hypothesis.end):
-                cpy.last_tnet.substitute_variable(self.hypothesis.end,
-                                                          cpy.hypothesis.end)
+        cpy.tnet = copy.copy(self.tnet)
+        if cpy.tnet.contains_variable(self.hypothesis.start):
+            cpy.tnet.substitute_variable(self.hypothesis.start,
+                                         cpy.hypothesis.start)
+        if cpy.tnet.contains_variable(self.hypothesis.time):
+            cpy.tnet.substitute_variable(self.hypothesis.time,
+                                         cpy.hypothesis.time)
+        if cpy.tnet.contains_variable(self.hypothesis.end):
+            cpy.tnet.substitute_variable(self.hypothesis.end,
+                                         cpy.hypothesis.end)
         return cpy
 
     def successors(self):
@@ -124,7 +120,7 @@ class AbstractionPattern(object):
             #Because we travel the transition in inverse order, we have to
             #rebuild and recheck all the constraints from the initial to the
             #final state.
-            pat.temporal_constraints = [ConstraintNetwork()]
+            pat.tnet = ConstraintNetwork()
             try:
                 for i in xrange(len(pat.trseq)):
                     trans, obs = pat.trseq[i]
@@ -159,20 +155,13 @@ class AbstractionPattern(object):
                     pass
 
     @property
-    def last_tnet(self):
-        """
-        Obtains the reference to the last temporal network in this pattern.
-        """
-        return self.temporal_constraints[-1]
-
-    @property
     def sufficient_evidence(self):
         """
         Checks if the evidence subsumed to the hypothesis of this pattern is
         sufficient to support the hypothesis.
         """
-        return (self.finding is None and 
-                self.istate is self.automata.start_state and 
+        return (self.finding is None and
+                self.istate is self.automata.start_state and
                 self.fstate in self.automata.final_states)
     @property
     def obs_seq(self):
@@ -235,13 +224,12 @@ class AbstractionPattern(object):
         if obs1 is obs2:
             return
         #Temporal variable replacement
-        for tnet in self.temporal_constraints:
-            if tnet.contains_variable(obs1.start):
-                tnet.substitute_variable(obs1.start, obs2.start)
-            if tnet.contains_variable(obs1.time):
-                tnet.substitute_variable(obs1.time, obs2.time)
-            if tnet.contains_variable(obs1.end):
-                tnet.substitute_variable(obs1.end, obs2.end)
+        if self.tnet.contains_variable(obs1.start):
+            self.tnet.substitute_variable(obs1.start, obs2.start)
+        if self.tnet.contains_variable(obs1.time):
+            self.tnet.substitute_variable(obs1.time, obs2.time)
+        if self.tnet.contains_variable(obs1.end):
+            self.tnet.substitute_variable(obs1.end, obs2.end)
         #We get the transition that generated obs1
         tri = next((i for i in xrange(len(self.trseq))
                                             if self.trseq[i][1] is obs1), None)
@@ -269,7 +257,7 @@ class AbstractionPattern(object):
         #If the observation replaced a finding, it is not considered a finding
         #anymore.
         if observation is self.finding:
-            self.finding = None        
+            self.finding = None
         #Once the replace is made, the temporal consistency of the pattern and
         #the general constraints of the transition have to be checked.
         self.check_temporal_consistency({observation.start, observation.time,
@@ -302,23 +290,10 @@ class AbstractionPattern(object):
             Set of *Variable* objects that have been modified in the
             consistency checking.
         """
-        variables = variables or set()
-        out = set()
-        #We minimize the involved networks lazily
-        queue = deque(n for n in self.temporal_constraints
-                            if n.unconstrained or any(n.contains_variable(var)
-                                                         for var in variables))
-        while queue:
-            tnet = queue.popleft()
-            modified = tnet.minimize_network()
-            #We add all the networks containing modified variables
-            for var in modified:
-                out.add(var)
-                queue.extend({n for n in self.temporal_constraints
-                                                  if n is not tnet and
-                                                     n not in queue and
-                                                     n.contains_variable(var)})
-        return out
+        variables = variables or frozenset()
+        return (self.tnet.minimize_network() if self.tnet.unconstrained
+                            or any(self.tnet.contains_variable(var)
+                                        for var in variables) else frozenset())
 
     def finish(self):
         """

@@ -778,7 +778,7 @@ def _qrs_tconst(pattern, rdef):
     """
     Adds the temporal constraints of the QRS abstraction pattern automata.
     """
-    tnet = pattern.last_tnet
+    tnet = pattern.tnet
     qrs = pattern.hypothesis
     #QRS complex duration constraint
     tnet.add_constraint(qrs.start, qrs.end, C.QRS_DUR)

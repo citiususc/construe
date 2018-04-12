@@ -116,7 +116,7 @@ def _p_qrs_tconst(pattern, qrs):
     BASIC_TCONST(pattern, qrs)
     pwave = pattern.hypothesis
     #Temporal constraints
-    tnet = pattern.last_tnet
+    tnet = pattern.tnet
     #P wave duration constraint
     tnet.add_constraint(pwave.start, pwave.end, C.PW_DURATION)
     #Relations between P wave and QRS complex
@@ -133,7 +133,7 @@ def _p_defl_tconst(pattern, defl):
     if pattern.evidence[o.QRS]:
         qrs = pattern.evidence[o.QRS][0]
     #Temporal constraints
-    tnet = pattern.last_tnet
+    tnet = pattern.tnet
     #P wave duration constraint
     tnet.add_constraint(pwave.start, pwave.end, C.PW_DURATION)
     #Constraints with the energy interval

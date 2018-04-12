@@ -272,35 +272,6 @@ class ConstraintNetwork(object):
         """
         return (self._constr[va] & self._constr[vb]).pop()
 
-
-    def remove_constraint(self, va, vb):
-        """
-        Removes the constraint in this network involving two specific variables.
-        If there is no such constraint, an exception is raised.
-
-        Parameters
-        ----------
-        va:
-            One variable of the constraint to remove.
-        vb:
-            Other variable of the constraint to remove.
-        """
-        if va is not vb:
-            #We get the constraint to remove
-            try:
-                constraint = self.get_constraint(va, vb)
-                #And we remove it from the two involved sets
-                self._constr[va].remove(constraint)
-                self._constr[vb].remove(constraint)
-                #If the variables have no constraints, we remove them from the
-                #network.
-                if not self._constr[va]:
-                    self._constr.pop(va)
-                if not self._constr[vb]:
-                    self._constr.pop(vb)
-            except KeyError:
-                pass
-
     def set_equal(self, va, vb):
         """
         Adds a constraint to indicate that variables *va* and *vb* must be
@@ -482,13 +453,6 @@ if __name__ == "__main__":
     assert v2.value == Interval(40, 50)
     assert v3.value == Interval(20, 30)
     assert v4.value == Interval(60, 70)
-    nw.remove_constraint(v0, v1)
-    try:
-        nw.remove_constraint(v0, v3)
-    except KeyError:
-        pass
-    else:
-        raise ValueError('An exception should be thrown')
     #Performance test
     nvar = 500
     variables = [Variable() for _ in xrange(nvar)]

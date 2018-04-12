@@ -24,7 +24,7 @@ import copy
 def _prev_rhythm_tconst(pattern, rhythm):
     """Temporal constraints of a cardiac rhythm with the precedent one."""
     BASIC_TCONST(pattern, rhythm)
-    tnet = pattern.last_tnet
+    tnet = pattern.tnet
     tnet.set_equal(pattern.hypothesis.start, rhythm.end)
     tnet.add_constraint(pattern.hypothesis.start, pattern.hypothesis.end,
                                       Iv(2*C.TACHY_RR.start, 3*C.BRADY_RR.end))
@@ -46,17 +46,16 @@ def _qrs_rref_tconst(pattern, qrs):
     """Temporal constraints of the first environment QRS complex"""
     BASIC_TCONST(pattern, qrs)
     if pattern.evidence[o.Cardiac_Rhythm]:
-        pattern.last_tnet.set_before(qrs.end,
+        pattern.tnet.set_before(qrs.end,
                                      pattern.evidence[o.Cardiac_Rhythm][0].end)
 
 def _qrs_env_tconst(pattern, qrs):
     """Temporal constraints of the second environment QRS complex"""
     BASIC_TCONST(pattern, qrs)
-    tnet = pattern.last_tnet
-    tnet.set_equal(pattern.hypothesis.start, qrs.time)
+    pattern.tnet.set_equal(pattern.hypothesis.start, qrs.time)
     if pattern.evidence[o.QRS].index(qrs) == 1:
         prev = pattern.evidence[o.QRS][0]
-        tnet.add_constraint(prev.time, qrs.time, Iv(C.TACHY_RR.start,
+        pattern.tnet.add_constraint(prev.time, qrs.time, Iv(C.TACHY_RR.start,
                                                                C.BRADY_RR.end))
 
 def _qrs_ext_tconst(ventricular):
@@ -71,7 +70,7 @@ def _qrs_ext_tconst(ventricular):
         extrasystole, depending on its ventricular nature or not.
         """
         BASIC_TCONST(pattern, qrs)
-        tnet = pattern.last_tnet
+        tnet = pattern.tnet
         tnet.set_before(qrs.end, pattern.hypothesis.end)
         if ventricular:
             tnet.add_constraint(qrs.start, qrs.end, C.VQRS_DUR)
@@ -104,7 +103,7 @@ def _qrs_fin_pause_tconst(pattern, qrs):
     extrasystole.
     """
     BASIC_TCONST(pattern, qrs)
-    tnet = pattern.last_tnet
+    tnet = pattern.tnet
     tnet.set_equal(pattern.hypothesis.end, qrs.time)
     beats = pattern.evidence[o.QRS]
     idx = beats.index(qrs)
@@ -146,7 +145,7 @@ def _qrs_fin_npause_tconst(pattern, qrs):
     compensatory pause.
     """
     BASIC_TCONST(pattern, qrs)
-    tnet = pattern.last_tnet
+    tnet = pattern.tnet
     tnet.set_equal(pattern.hypothesis.end, qrs.time)
     beats = pattern.evidence[o.QRS]
     #We need all previous evidence
@@ -177,11 +176,10 @@ def _p_qrs_tconst(pattern, pwave):
     if idx == 0 or not isinstance(obseq[idx-1], o.QRS):
         return
     qrs = obseq[idx-1]
-    tnet = pattern.last_tnet
-    tnet.add_constraint(pwave.start, pwave.end, C.PW_DURATION)
+    pattern.tnet.add_constraint(pwave.start, pwave.end, C.PW_DURATION)
     #PR interval
-    tnet.add_constraint(pwave.start, qrs.start, C.N_PR_INTERVAL)
-    tnet.set_before(pwave.end, qrs.start)
+    pattern.tnet.add_constraint(pwave.start, qrs.start, C.N_PR_INTERVAL)
+    pattern.tnet.set_before(pwave.end, qrs.start)
 
 def _t_qrs_tconst(pattern, twave):
     """
@@ -194,7 +192,7 @@ def _t_qrs_tconst(pattern, twave):
     try:
         qrs = next(obseq[i] for i in xrange(idx-1, -1, -1)
                                                 if isinstance(obseq[i], o.QRS))
-        tnet = pattern.last_tnet
+        tnet = pattern.tnet
         if idx > 0 and isinstance(obseq[idx-1], o.PWave):
             pwave = obseq[idx-1]
             tnet.add_constraint(pwave.end, twave.start, Iv(C.ST_INTERVAL.start,

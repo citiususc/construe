@@ -11,7 +11,7 @@ a bigeminy rhythm.
 
 from construe.model.automata import (PatternAutomata, ABSTRACTED as ABS,
                                         ENVIRONMENT as ENV, BASIC_TCONST)
-from construe.model import ConstraintNetwork, verify, Interval as Iv
+from construe.model import verify, Interval as Iv
 import construe.knowledge.observables as o
 import construe.knowledge.constants as C
 from construe.knowledge.abstraction_patterns.rhythm.regular import (
@@ -35,8 +35,7 @@ def _prev_rhythm_gconst(_, rhythm):
 def _prev_rhythm_tconst(pattern, rhythm):
     """Temporal constraints of a cardiac rhythm with the precedent one."""
     BASIC_TCONST(pattern, rhythm)
-    tnet = pattern.last_tnet
-    tnet.set_equal(pattern.hypothesis.start, rhythm.end)
+    pattern.tnet.set_equal(pattern.hypothesis.start, rhythm.end)
 
 #################################
 ### QRS complexes constraints ###
@@ -49,12 +48,11 @@ def _qrs_after_twave(pattern, qrs):
     """
     obseq = pattern.obs_seq
     oidx = pattern.get_step(qrs)
-    tnet = pattern.last_tnet
     #If there is a prior T Wave, it must finish before the start
     #of the QRS complex.
     if oidx > 0 and isinstance(obseq[oidx-1], o.TWave):
         prevt = obseq[oidx-1]
-        tnet.set_before(prevt.end, qrs.start)
+        pattern.tnet.set_before(prevt.end, qrs.start)
 
 def _reg_qrs_tconst(pattern, qrs):
     """
@@ -63,7 +61,7 @@ def _reg_qrs_tconst(pattern, qrs):
     """
     beats = pattern.evidence[o.QRS]
     idx = beats.index(qrs)
-    tnet = pattern.last_tnet
+    tnet = pattern.tnet
     hyp = pattern.hypothesis
     BASIC_TCONST(pattern, qrs)
     tnet.add_constraint(qrs.start, qrs.end, C.NQRS_DUR)
@@ -116,17 +114,13 @@ def _ect_qrs_tconst(pattern, qrs):
     """
     beats = pattern.evidence[o.QRS]
     idx = beats.index(qrs)
-    tnet = pattern.last_tnet
+    tnet = pattern.tnet
     hyp = pattern.hypothesis
     if idx > 0:
         prev = beats[idx - 1]
         #After the second couplet, every ectopic beat introduces a new temporal
         #network in the pattern to make it easier the minimization.
         if idx > 3:
-            tnet.remove_constraint(hyp.end, prev.time)
-            #We create a new temporal network for the cyclic observations
-            tnet = ConstraintNetwork()
-            pattern.temporal_constraints.append(tnet)
             #The duration of each couplet should not have high instantaneous
             #variations.
             refrr = beats[idx-2].time.end - beats[idx-3].time.start
@@ -184,7 +178,7 @@ def get_p_tconst(qrsidx):
     def _p_tconst(pattern, pwave):
         """P waves temporal constraints"""
         BASIC_TCONST(pattern, pwave)
-        tnet = pattern.last_tnet
+        tnet = pattern.tnet
         tnet.add_constraint(pwave.start, pwave.end, C.PW_DURATION)
         #We find the associated QRS.
         beats = pattern.evidence[o.QRS]
@@ -218,7 +212,7 @@ def get_t_tconst(qrsidx):
         Temporal constraints of the T Waves wrt the corresponding QRS complex.
         """
         BASIC_TCONST(pattern, twave)
-        tnet = pattern.last_tnet
+        tnet = pattern.tnet
         obseq = pattern.obs_seq
         idx = pattern.get_step(twave)
         beats = pattern.evidence[o.QRS]

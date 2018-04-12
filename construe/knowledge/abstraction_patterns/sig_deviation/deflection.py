@@ -56,7 +56,7 @@ def generate_Deflection_Patterns(npats):
 def _def_tconst(pattern, _):
     """Temporal constraints for the energy interval abstraction pattern"""
     deflection = pattern.hypothesis
-    pattern.last_tnet.add_constraint(deflection.start, deflection.end, DEF_DUR)
+    pattern.tnet.add_constraint(deflection.start, deflection.end, DEF_DUR)
 
 def get_gconst(int_idx):
     """

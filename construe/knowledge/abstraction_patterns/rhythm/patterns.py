@@ -24,7 +24,7 @@ def _rstart_tconst(pattern, qrs):
     Temporal constraints for the Rhythm Start abstraction pattern.
     """
     BASIC_TCONST(pattern, qrs)
-    pattern.last_tnet.set_equal(qrs.time, pattern.hypothesis.time)
+    pattern.tnet.set_equal(qrs.time, pattern.hypothesis.time)
 
 
 def _p_qrs_tconst(pattern, pwave):
@@ -37,11 +37,10 @@ def _p_qrs_tconst(pattern, pwave):
     if idx == 0 or not isinstance(obseq[idx-1], o.QRS):
         return
     qrs = obseq[idx-1]
-    tnet = pattern.last_tnet
-    tnet.add_constraint(pwave.start, pwave.end, PW_DURATION)
+    pattern.tnet.add_constraint(pwave.start, pwave.end, PW_DURATION)
     #PR interval
-    tnet.add_constraint(pwave.start, qrs.start, N_PR_INTERVAL)
-    tnet.set_before(pwave.end, qrs.start)
+    pattern.tnet.add_constraint(pwave.start, qrs.start, N_PR_INTERVAL)
+    pattern.tnet.set_before(pwave.end, qrs.start)
 
 def _t_qrs_tconst(pattern, twave):
     """
@@ -54,7 +53,7 @@ def _t_qrs_tconst(pattern, twave):
     try:
         qrs = next(obseq[i] for i in xrange(idx-1, -1, -1)
                                                 if isinstance(obseq[i], o.QRS))
-        tnet = pattern.last_tnet
+        tnet = pattern.tnet
         if idx > 0 and isinstance(obseq[idx-1], o.PWave):
             pwave = obseq[idx-1]
             tnet.add_constraint(pwave.end, twave.start, Iv(ST_INTERVAL.start,
@@ -69,29 +68,28 @@ def _t_qrs_tconst(pattern, twave):
 def _prev_rhythm_tconst(pattern, rhythm):
     """Temporal constraints of a cardiac rhythm with the precedent one."""
     BASIC_TCONST(pattern, rhythm)
-    pattern.last_tnet.set_equal(pattern.hypothesis.start, rhythm.end)
+    pattern.tnet.set_equal(pattern.hypothesis.start, rhythm.end)
 
 def _asyst_prev_rhythm_tconst(pattern, rhythm):
     """Temporal constraints of an asystole with the precedent rhythm."""
     BASIC_TCONST(pattern, rhythm)
-    tnet = pattern.last_tnet
-    tnet.set_equal(pattern.hypothesis.start, rhythm.end)
-    tnet.add_constraint(pattern.hypothesis.start, pattern.hypothesis.end,
-                                                                   ASYSTOLE_RR)
+    pattern.tnet.set_equal(pattern.hypothesis.start, rhythm.end)
+    pattern.tnet.add_constraint(pattern.hypothesis.start,
+                                           pattern.hypothesis.end, ASYSTOLE_RR)
 
 def _qrs1_tconst(pattern, qrs):
     """Temporal constraints of the first QRS in the asystole."""
     BASIC_TCONST(pattern, qrs)
-    pattern.last_tnet.set_equal(pattern.hypothesis.start, qrs.time)
-    pattern.last_tnet.set_before(qrs.end, pattern.hypothesis.end)
+    pattern.tnet.set_equal(pattern.hypothesis.start, qrs.time)
+    pattern.tnet.set_before(qrs.end, pattern.hypothesis.end)
 
 def _qrs2_tconst(pattern, qrs):
     """Temporal constraints of the delayed QRS in the asystole."""
     BASIC_TCONST(pattern, qrs)
-    pattern.last_tnet.set_equal(qrs.time, pattern.hypothesis.end)
+    pattern.tnet.set_equal(qrs.time, pattern.hypothesis.end)
     if len(pattern.evidence[o.QRS]) > 1:
         prev = pattern.evidence[o.QRS][0]
-        pattern.last_tnet.add_constraint(prev.time, qrs.time, ASYSTOLE_RR)
+        pattern.tnet.add_constraint(prev.time, qrs.time, ASYSTOLE_RR)
 
 def _rhythmstart_gconst(pattern, _):
     """General constraints of the rhythm start pattern."""

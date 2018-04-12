@@ -32,25 +32,25 @@ def _envbeat_tconst(pattern, obs):
     Temporal constraints for the environment QRS and CardiacCycle observation
     """
     BASIC_TCONST(pattern, obs)
-    pattern.last_tnet.add_constraint(obs.end, pattern.hypothesis.time,
+    pattern.tnet.add_constraint(obs.end, pattern.hypothesis.time,
                                      Iv(msec2samples(20), np.inf))
     if isinstance(obs, o.QRS) and isinstance(pattern.obs_seq[0], o.CardiacCycle):
-        pattern.last_tnet.set_equal(pattern.obs_seq[0].time, obs.time)
+        pattern.tnet.set_equal(pattern.obs_seq[0].time, obs.time)
 
 def _btime_tconst(pattern, qrs):
     """
     Temporal constraints for the abstracted QRS observation
     """
     BASIC_TCONST(pattern, qrs)
-    pattern.last_tnet.set_equal(qrs.time, pattern.hypothesis.time)
+    pattern.tnet.set_equal(qrs.time, pattern.hypothesis.time)
 
 def _qrs_time_tconst(pattern, _):
     """
     Temporal constraints for beat ending without T wave observation
     """
     qrs = pattern.obs_seq[-2]
-    pattern.last_tnet.set_equal(qrs.start, pattern.hypothesis.start)
-    pattern.last_tnet.set_equal(qrs.end, pattern.hypothesis.end)
+    pattern.tnet.set_equal(qrs.start, pattern.hypothesis.start)
+    pattern.tnet.set_equal(qrs.end, pattern.hypothesis.end)
 
 def _p_qrs_tconst(pattern, pwave):
     """
@@ -59,7 +59,7 @@ def _p_qrs_tconst(pattern, pwave):
     BASIC_TCONST(pattern, pwave)
     obseq = pattern.obs_seq
     idx = pattern.get_step(pwave)
-    tnet = pattern.last_tnet
+    tnet = pattern.tnet
     #Beat start
     tnet.set_equal(pwave.start, pattern.hypothesis.start)
     tnet.add_constraint(pwave.start, pwave.end, C.PW_DURATION)
@@ -77,7 +77,7 @@ def _t_qrs_tconst(pattern, twave):
     BASIC_TCONST(pattern, twave)
     obseq = pattern.obs_seq
     idx = pattern.get_step(twave)
-    tnet = pattern.last_tnet
+    tnet = pattern.tnet
     #Beat end
     tnet.set_equal(twave.end, pattern.hypothesis.end)
     #We find the qrs observation precedent to this T wave.

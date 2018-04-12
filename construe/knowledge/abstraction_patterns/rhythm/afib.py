@@ -12,7 +12,7 @@ import construe.knowledge.observables as o
 import construe.knowledge.constants as C
 import construe.acquisition.record_acquisition as IN
 import construe.acquisition.signal_buffer as sig_buf
-from construe.model import ConstraintNetwork, verify, Interval as Iv
+from construe.model import verify, Interval as Iv
 from construe.model.automata import (PatternAutomata, ABSTRACTED,
                                         ENVIRONMENT, BASIC_TCONST)
 from construe.knowledge.abstraction_patterns.segmentation.pwave import (
@@ -114,7 +114,7 @@ def _prev_afib_tconst(pattern, afib):
     fibrillation that will helps us to reduce the necessary evidence
     """
     BASIC_TCONST(pattern, afib)
-    pattern.last_tnet.add_constraint(afib.end, pattern.hypothesis.start,
+    pattern.tnet.add_constraint(afib.end, pattern.hypothesis.start,
                                                        Iv(0, C.AFIB_MAX_DELAY))
 
 def _prev_multrhythm_tconst(pattern, rhythm):
@@ -124,20 +124,18 @@ def _prev_multrhythm_tconst(pattern, rhythm):
     """
     BASIC_TCONST(pattern, rhythm)
     const = Iv(1, C.AFIB_MAX_DELAY-1)
-    tnet = pattern.last_tnet
-    tnet.add_constraint(rhythm.start, rhythm.end, const)
-    tnet.add_constraint(rhythm.start, pattern.hypothesis.start, const)
-    tnet.add_constraint(rhythm.end, pattern.hypothesis.start, const)
+    pattern.tnet.add_constraint(rhythm.start, rhythm.end, const)
+    pattern.tnet.add_constraint(rhythm.start, pattern.hypothesis.start, const)
+    pattern.tnet.add_constraint(rhythm.end, pattern.hypothesis.start, const)
 
 
 def _prev_rhythm_tconst(pattern, rhythm):
     """Temporal constraints of the fibrillation with the precedent rhythm"""
     BASIC_TCONST(pattern, rhythm)
-    tnet = pattern.last_tnet
-    tnet.set_equal(pattern.hypothesis.start, rhythm.end)
+    pattern.tnet.set_equal(pattern.hypothesis.start, rhythm.end)
     #An atrial fibrillation needs at least 7 QRS complexes.
-    tnet.add_constraint(pattern.hypothesis.start, pattern.hypothesis.end,
-                                                Iv(7*C.TACHY_RR.start, np.inf))
+    pattern.tnet.add_constraint(pattern.hypothesis.start,
+                        pattern.hypothesis.end, Iv(7*C.TACHY_RR.start, np.inf))
 
 def _qrs0_tconst(pattern, qrs):
     """
@@ -145,9 +143,8 @@ def _qrs0_tconst(pattern, qrs):
     the flutter.
     """
     BASIC_TCONST(pattern, qrs)
-    tnet = pattern.last_tnet
-    tnet.set_equal(pattern.hypothesis.start, qrs.time)
-    tnet.add_constraint(pattern.hypothesis.start, pattern.hypothesis.end,
+    pattern.tnet.set_equal(pattern.hypothesis.start, qrs.time)
+    pattern.tnet.add_constraint(pattern.hypothesis.start, pattern.hypothesis.end,
                                                 Iv(5*C.TACHY_RR.start, np.inf))
 
 def get_t_tconst(qrsidx):
@@ -161,7 +158,7 @@ def get_t_tconst(qrsidx):
         """
         BASIC_TCONST(pattern, twave)
         beats = pattern.evidence[o.QRS]
-        tnet = pattern.last_tnet
+        tnet = pattern.tnet
         qidx = qrsidx+len(beats) if qrsidx < 0 else qrsidx
         qrs = beats[qidx]
         if qidx < len(beats) - 1:
@@ -192,17 +189,11 @@ def _qrs_tconst(pattern, qrs):
     beats = pattern.evidence[o.QRS]
     idx = beats.index(qrs)
     hyp = pattern.hypothesis
-    tnet = pattern.last_tnet
+    tnet = pattern.tnet
     obseq = pattern.obs_seq
     oidx = pattern.get_step(qrs)
     if idx > 0:
         prev = beats[idx-1]
-        #In cyclic observations, we have to introduce more networks to simplify
-        #the minimization operation.
-        if idx > 5:
-            tnet.remove_constraint(hyp.end, prev.time)
-            tnet = ConstraintNetwork()
-            pattern.temporal_constraints.append(tnet)
         rr_bounds = Iv(C.TACHY_RR.start, C.BRADY_RR.end)
         tnet.add_constraint(prev.time, qrs.time, rr_bounds)
         tnet.add_constraint(prev.start, qrs.start, rr_bounds)

@@ -149,7 +149,7 @@ def _t_qrs_tconst(pattern, qrs):
     """
     BASIC_TCONST(pattern, qrs)
     twave = pattern.hypothesis
-    tc = pattern.last_tnet
+    tc = pattern.tnet
     tc.add_constraint(qrs.end, twave.start, C.ST_INTERVAL)
     tc.add_constraint(qrs.start, twave.end, C.QT_INTERVAL)
     tc.add_constraint(qrs.end, twave.end, C.SQT_INTERVAL)
@@ -162,7 +162,7 @@ def _t_defl_tconst(pattern, defl):
     BASIC_TCONST(pattern, defl)
     qrs = pattern.evidence[o.QRS][0] if pattern.evidence[o.QRS] else None
     twave = pattern.hypothesis
-    tc = pattern.last_tnet
+    tc = pattern.tnet
     tc.add_constraint(defl.start, defl.end, Iv(0, C.TW_DURATION.end))
     tc.add_constraint(twave.start, defl.start, Iv(-C.TW_DEF_OVER_MAX,
                                                            C.TW_DEF_OVER_MIN))

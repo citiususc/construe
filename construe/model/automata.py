@@ -35,9 +35,9 @@ def BASIC_TCONST(pattern, obs):
     the beginning of an observation has to occur before its ending.
     """
     if obs.start is not obs.time:
-        pattern.last_tnet.set_before(obs.start, obs.time)
+        pattern.tnet.set_before(obs.start, obs.time)
     if obs.time is not obs.end:
-        pattern.last_tnet.set_before(obs.time, obs.end)
+        pattern.tnet.set_before(obs.time, obs.end)
 
 
 class Transition(FreezableObject):

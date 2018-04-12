@@ -13,7 +13,7 @@ import construe.acquisition.signal_buffer as sig_buf
 import construe.knowledge.constants as C
 from construe.utils.signal_processing import fft_filt
 from construe.utils.units_helper import SAMPLING_FREQ
-from construe.model import ConstraintNetwork, verify, Interval as Iv
+from construe.model import verify, Interval as Iv
 from construe.model.automata import (PatternAutomata, ABSTRACTED,
                                         ENVIRONMENT, BASIC_TCONST)
 from construe.utils.signal_processing.xcorr_similarity import (xcorr_valid,
@@ -73,30 +73,24 @@ def _contains_qrs(pattern):
 def _prev_rhythm_tconst(pattern, rhythm):
     """Temporal constraints of the flutter with the precedent rhythm"""
     BASIC_TCONST(pattern, rhythm)
-    tnet = pattern.last_tnet
-    tnet.set_equal(pattern.hypothesis.start, rhythm.end)
-    tnet.add_constraint(pattern.hypothesis.start, pattern.hypothesis.end,
+    pattern.tnet.set_equal(pattern.hypothesis.start, rhythm.end)
+    pattern.tnet.add_constraint(pattern.hypothesis.start, pattern.hypothesis.end,
                                                Iv(C.VFLUT_MIN_DUR, np.inf))
 
 def _def0_tconst(pattern, defl):
     """Temporal constraints of the first deflection"""
     BASIC_TCONST(pattern, defl)
-    tnet = pattern.last_tnet
-    tnet.add_constraint(pattern.hypothesis.start, defl.time, C.VFLUT_LIM_INTERV)
-    tnet.set_before(defl.time, pattern.hypothesis.end)
+    pattern.tnet.add_constraint(pattern.hypothesis.start, defl.time, C.VFLUT_LIM_INTERV)
+    pattern.tnet.set_before(defl.time, pattern.hypothesis.end)
 
 def _deflection_tconst(pattern, defl):
     """Temporal constraints of the posterior deflections"""
     defls = pattern.evidence[o.Deflection]
     idx = defls.index(defl)
     hyp = pattern.hypothesis
-    tnet = pattern.last_tnet
+    tnet = pattern.tnet
     prev = defls[idx-1]
-    tnet.remove_constraint(hyp.end, prev.time)
-    #We create a new temporal network for the cyclic observations
-    tnet = ConstraintNetwork()
     tnet.add_constraint(prev.time, defl.time, C.VFLUT_WW_INTERVAL)
-    pattern.temporal_constraints.append(tnet)
     BASIC_TCONST(pattern, defl)
     tnet.add_constraint(defl.start, defl.end, Iv(0, C.VFLUT_WW_INTERVAL.end))
     tnet.set_before(defl.time, hyp.end)
@@ -107,9 +101,8 @@ def _qrs0_tconst(pattern, qrs):
     the flutter.
     """
     BASIC_TCONST(pattern, qrs)
-    tnet = pattern.last_tnet
-    tnet.set_equal(pattern.hypothesis.start, qrs.time)
-    tnet.add_constraint(pattern.hypothesis.start, pattern.hypothesis.end,
+    pattern.tnet.set_equal(pattern.hypothesis.start, qrs.time)
+    pattern.tnet.add_constraint(pattern.hypothesis.start, pattern.hypothesis.end,
                                                    Iv(C.VFLUT_MIN_DUR, np.inf))
 
 def _qrs_tconst(pattern, qrs):
@@ -117,10 +110,9 @@ def _qrs_tconst(pattern, qrs):
     flutter"""
     BASIC_TCONST(pattern, qrs)
     defl = pattern.evidence[o.Deflection][-1]
-    tnet = pattern.last_tnet
-    tnet.add_constraint(defl.time, qrs.time, C.VFLUT_LIM_INTERV)
-    tnet.set_equal(pattern.hypothesis.end, qrs.time)
-    tnet.add_constraint(qrs.start, qrs.end, C.QRS_DUR)
+    pattern.tnet.add_constraint(defl.time, qrs.time, C.VFLUT_LIM_INTERV)
+    pattern.tnet.set_equal(pattern.hypothesis.end, qrs.time)
+    pattern.tnet.add_constraint(qrs.start, qrs.end, C.QRS_DUR)
 
 
 ###########################

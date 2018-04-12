@@ -28,8 +28,7 @@ import numpy as np
 def _prev_rhythm_tconst(pattern, rhythm):
     """Temporal constraints of a cardiac rhythm with the precedent one."""
     BASIC_TCONST(pattern, rhythm)
-    tnet = pattern.last_tnet
-    tnet.set_equal(pattern.hypothesis.start, rhythm.end)
+    pattern.tnet.set_equal(pattern.hypothesis.start, rhythm.end)
 
 
 #######################
@@ -43,34 +42,30 @@ def _qrs_after_twave(pattern, qrs):
     """
     obseq = pattern.obs_seq
     oidx = pattern.get_step(qrs)
-    tnet = pattern.last_tnet
     #If there is a prior T Wave, it must finish before the start
     #of the QRS complex.
     if oidx > 0 and isinstance(obseq[oidx-1], o.TWave):
         prevt = obseq[oidx-1]
-        tnet.set_before(prevt.end, qrs.start)
+        pattern.tnet.set_before(prevt.end, qrs.start)
 
 def _common_qrs_constraints(pattern, qrs):
     """Temporal constraints affecting all QRS complex."""
-    tnet = pattern.last_tnet
     hyp = pattern.hypothesis
     BASIC_TCONST(pattern, qrs)
-    tnet.add_constraint(qrs.start, qrs.end, C.QRS_DUR)
-    tnet.set_before(qrs.time, hyp.end)
+    pattern.tnet.add_constraint(qrs.start, qrs.end, C.QRS_DUR)
+    pattern.tnet.set_before(qrs.time, hyp.end)
 
 def _n0_tconst(pattern, qrs):
     """Temporal constraints of the first environment QRS complex"""
-    tnet = pattern.last_tnet
     hyp = pattern.hypothesis
     _common_qrs_constraints(pattern, qrs)
     #The environment QRS complex determines the beginning of the couplet.
-    tnet.set_equal(hyp.start, qrs.time)
+    pattern.tnet.set_equal(hyp.start, qrs.time)
 
 def _v0_tconst(pattern, qrs):
     """Temporal constraints of the first extrasystole in the couplet"""
     beats = pattern.evidence[o.QRS]
     idx = beats.index(qrs)
-    tnet = pattern.last_tnet
     if idx > 0:
         prev = beats[idx-1]
         #The reference RR varies from an upper limit to the last measurement,
@@ -83,16 +78,16 @@ def _v0_tconst(pattern, qrs):
                 refrr, stdrr = mrr, srr
         adv = max(stdrr, C.TMARGIN)
         #The first ectopic beat must be advanced wrt the reference RR
-        tnet.add_constraint(prev.time, qrs.time,
+        pattern.tnet.add_constraint(prev.time, qrs.time,
                         Iv(C.TACHY_RR.start, max(C.TACHY_RR.start, refrr-adv)))
-        tnet.set_before(prev.end, qrs.start)
+        pattern.tnet.set_before(prev.end, qrs.start)
     _common_qrs_constraints(pattern, qrs)
 
 def _v1_tconst(pattern, qrs):
     """Temporal constraints of the second extrasystole in the couplet"""
     beats = pattern.evidence[o.QRS]
     idx = beats.index(qrs)
-    tnet = pattern.last_tnet
+    tnet = pattern.tnet
     prev = beats[idx-1]
     #The second extrasystole must be shorter or approximately equal to the
     #first one, so we give the standard margin for the RR increasing.
@@ -110,7 +105,6 @@ def _n1_tconst(pattern, qrs):
     """Temporal constraints of the normal beat determining the couplet end"""
     beats = pattern.evidence[o.QRS]
     idx = beats.index(qrs)
-    tnet = pattern.last_tnet
     hyp = pattern.hypothesis
     _common_qrs_constraints(pattern, qrs)
     _qrs_after_twave(pattern, qrs)
@@ -121,9 +115,9 @@ def _n1_tconst(pattern, qrs):
                 beats[idx-2].time.end - beats[idx-3].time.start)
     mincompause = max(C.COMPAUSE_MIN_DUR, min(minrr*C.ICOUPLET_MIN_RREXT_F,
                                               minrr+C.ICOUPLET_MIN_RREXT))
-    tnet.add_constraint(beats[idx-1].time, qrs.time,
+    pattern.tnet.add_constraint(beats[idx-1].time, qrs.time,
                                  Iv(mincompause, maxrr*C.COMPAUSE_RREXT_MAX_F))
-    tnet.set_equal(qrs.time, hyp.end)
+    pattern.tnet.set_equal(qrs.time, hyp.end)
     #The morphology of the first and last QRS complexes should be similar
     qrs.shape = beats[idx-3].shape
     qrs.paced = beats[idx-3].paced
@@ -168,7 +162,7 @@ def _p_tconst(pattern, pwave):
     Temporal constraints of the P Waves wrt the corresponding QRS complex
     """
     BASIC_TCONST(pattern, pwave)
-    tnet = pattern.last_tnet
+    tnet = pattern.tnet
     tnet.add_constraint(pwave.start, pwave.end, C.PW_DURATION)
     #We find the QRS observed just before that P wave.
     idx = pattern.get_step(pwave)
@@ -186,7 +180,7 @@ def _t_tconst(pattern, twave):
     obseq = pattern.obs_seq
     idx = pattern.get_step(twave)
     try:
-        tnet = pattern.last_tnet
+        tnet = pattern.tnet
         #We find the qrs observation precedent to this T wave.
         qrs = next(obseq[i] for i in xrange(idx-1, -1, -1)
                                                 if isinstance(obseq[i], o.QRS))
@@ -215,13 +209,12 @@ def _tv0_tconst(pattern, twave):
     only observed after the second extrasystole QRS has been properly observed.
     """
     BASIC_TCONST(pattern, twave)
-    tnet = pattern.last_tnet
     beats = pattern.evidence[o.QRS]
     #The T wave must be in the hole between the two QRS complexes, and must
     #finish at least 1mm before the next QRS starts.
-    tnet.set_before(beats[1].end, twave.start)
-    tnet.set_before(twave.end, beats[2].start)
-    tnet.add_constraint(twave.end, beats[2].start, Iv(C.TMARGIN, np.Inf))
+    pattern.tnet.set_before(beats[1].end, twave.start)
+    pattern.tnet.set_before(twave.end, beats[2].start)
+    pattern.tnet.add_constraint(twave.end, beats[2].start, Iv(C.TMARGIN, np.Inf))
 
 
 

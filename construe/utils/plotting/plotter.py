@@ -79,8 +79,7 @@ def constraints_network_graphviz(interpretation, outfile):
     pats = sorted(interpretation.patterns,
                      key = lambda p : -ap.get_obs_level(p.automata.Hypothesis))
     for pat in pats:
-        for tnet in pat.temporal_constraints:
-            lst.extend(tnet.get_constraints())
+        lst.extend(pat.tnet.get_constraints())
     G = pgv.AGraph(directed=True)
     G.graph_attr['fontsize'] = '7'
     G.node_attr['style'] = 'filled'
@@ -113,8 +112,7 @@ def plot_constraints_network(interpretation, with_labels = False, fig = None):
     #List with all the temporal constraints of the network
     lst = []
     for pat in interpretation.patterns:
-        for tnet in pat.temporal_constraints:
-            lst.extend(tnet.get_constraints())
+        lst.extend(pat.tnet.get_constraints())
     G = nx.DiGraph()
     for const in lst:
         G.add_edge(const.va, const.vb)
