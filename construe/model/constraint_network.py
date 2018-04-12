@@ -101,16 +101,15 @@ class Constraint(object):
     This class represents a constraint between two variables in a constraint
     network. Constraints are represented as intervals.
     """
-    __slots__ = ('name', 'va', 'vb', 'constraint')
+    __slots__ = ('va', 'vb', 'constraint')
 
-    def __init__(self, name = '', va = Variable(), vb = Variable(),
+    def __init__(self, va = Variable(), vb = Variable(),
                  constr = Interval(-np.inf, np.inf)):
         """
         Creates a new constraint between two variable instances va and vb, with
         a default interval (-Inf, Inf)
         """
         assert va is not vb
-        self.name = name
         self.va = va
         self.vb = vb
         self.constraint = constr
@@ -120,7 +119,7 @@ class Constraint(object):
 
 
     def __deepcopy__(self, memo):
-        result = Constraint(name = self.name)
+        result = Constraint()
         #va copy
         k = id(self.va)
         vacp = memo.get(k, None)
@@ -288,16 +287,19 @@ class ConstraintNetwork(object):
         """
         if va is not vb:
             #We get the constraint to remove
-            constraint = self.get_constraint(va, vb)
-            #And we remove it from the two involved sets
-            self._constr[va].remove(constraint)
-            self._constr[vb].remove(constraint)
-            #If the variables have no constraints, we remove them from the
-            #network.
-            if not self._constr[va]:
-                self._constr.pop(va)
-            if not self._constr[vb]:
-                self._constr.pop(vb)
+            try:
+                constraint = self.get_constraint(va, vb)
+                #And we remove it from the two involved sets
+                self._constr[va].remove(constraint)
+                self._constr[vb].remove(constraint)
+                #If the variables have no constraints, we remove them from the
+                #network.
+                if not self._constr[va]:
+                    self._constr.pop(va)
+                if not self._constr[vb]:
+                    self._constr.pop(vb)
+            except KeyError:
+                pass
 
     def set_equal(self, va, vb):
         """
@@ -423,6 +425,13 @@ class ConstraintNetwork(object):
             if v.value != newval:
                 modified.add(v)
                 v.value = newval
+        #Remove all constraints involving fixed-value variables.
+        for v in (k for k in keys if k.value.empty):
+            for cntr in (c for c in self._constr.pop(v) if c.va is not c.vb):
+                v2 = cntr.vb if v is cntr.va else cntr.va
+                self._constr[v2].remove(cntr)
+                if not v2.value.empty and not self._constr[v2]:
+                    self._constr.pop(v2)
         self.unconstrained = False
         return modified
 

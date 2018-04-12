@@ -385,7 +385,7 @@ class InterpretationVisualizer(object):
         labelling = label_funcs or dict({'e': lambda node: ''})
         for key, func in labelling.iteritems():
             self.labels[key] = {}
-            for node in self.graph.nodes_iter():
+            for node in self.graph.nodes():
                 self.labels[key][node] = func(node)
         #Horizontal tree layout
         prog = 'dot' if len(self.graph) < 5000 else 'sfdp'
