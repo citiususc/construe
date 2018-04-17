@@ -92,13 +92,13 @@ class AbstractionPattern(object):
         cpy.finding = self.finding
         cpy.tnet = copy.copy(self.tnet)
         if cpy.tnet.contains_variable(self.hypothesis.start):
-            cpy.tnet.substitute_variable(self.hypothesis.start,
+            cpy.tnet.replace_variable(self.hypothesis.start,
                                          cpy.hypothesis.start)
         if cpy.tnet.contains_variable(self.hypothesis.time):
-            cpy.tnet.substitute_variable(self.hypothesis.time,
+            cpy.tnet.replace_variable(self.hypothesis.time,
                                          cpy.hypothesis.time)
         if cpy.tnet.contains_variable(self.hypothesis.end):
-            cpy.tnet.substitute_variable(self.hypothesis.end,
+            cpy.tnet.replace_variable(self.hypothesis.end,
                                          cpy.hypothesis.end)
         return cpy
 
@@ -225,11 +225,11 @@ class AbstractionPattern(object):
             return
         #Temporal variable replacement
         if self.tnet.contains_variable(obs1.start):
-            self.tnet.substitute_variable(obs1.start, obs2.start)
+            self.tnet.replace_variable(obs1.start, obs2.start)
         if self.tnet.contains_variable(obs1.time):
-            self.tnet.substitute_variable(obs1.time, obs2.time)
+            self.tnet.replace_variable(obs1.time, obs2.time)
         if self.tnet.contains_variable(obs1.end):
-            self.tnet.substitute_variable(obs1.end, obs2.end)
+            self.tnet.replace_variable(obs1.end, obs2.end)
         #We get the transition that generated obs1
         tri = next((i for i in xrange(len(self.trseq))
                                             if self.trseq[i][1] is obs1), None)

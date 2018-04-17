@@ -182,6 +182,11 @@ class Focus(object):
         verify(obs not in pat.evidence[pat.get_evidence_type(f)[0]],
                   'Observation {0} is already in the evidence of {1} pattern',
                                                                     (obs, pat))
+        verify(obs.start.value.overlapm(finding.start.value)
+               and obs.time.value.overlapm(finding.time.value)
+               and obs.end.value.overlapm(finding.end.value),
+               'Observation {0} is temporally inconsistent with finding {1}',
+                                                                (obs, finding))
         patcp = copy.copy(pat)
         patcp.match(f, obs)
         #The hypothesis generating the finding is updated

@@ -113,8 +113,8 @@ be.recover_all()
 brview = plotter.plot_observations(sig_buf.get_signal(
                                          sig_buf.get_available_leads()[0]), be)
 #Drawing of the search tree
-#label_fncs = {}
-#label_fncs['n'] = lambda br: str(br)
-#label_fncs['e'] = lambda br: ''
-#brview = plotter.plot_branch(interp, label_funcs=label_fncs, target=be,
-#                             full_tree=True)
+label_fncs = {}
+label_fncs['n'] = lambda br: str(br)
+label_fncs['e'] = lambda br: ''
+brview = plotter.plot_branch(interp, label_funcs=label_fncs, target=be,
+                             full_tree=True)

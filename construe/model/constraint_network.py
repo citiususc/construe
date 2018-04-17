@@ -210,9 +210,9 @@ class ConstraintNetwork(object):
                 raise InconsistencyError('Constraints between the same '
                                                   'variable must contain zero')
         else:
-            if not self._constr.has_key(va):
+            if va not in self._constr:
                 self._constr[va] = set()
-            if not self._constr.has_key(vb):
+            if vb not in self._constr:
                 self._constr[vb] = set()
             #We look up for a possible duplicate
             try:
@@ -309,9 +309,10 @@ class ConstraintNetwork(object):
         """
         Returns a list with all the constraint in this network.
         """
-        return list(set.union(*self._constr.values()))
+        return (frozenset() if not self._constr
+                                  else list(set.union(*self._constr.values())))
 
-    def substitute_variable(self, old, new):
+    def replace_variable(self, old, new):
         """
         Substitutes all the ocurrences of the 'old' temporal variable by
         the 'new' temporal variable. It allows for a transparent variable
@@ -319,17 +320,24 @@ class ConstraintNetwork(object):
 
         Parameters
         ----------
-        old - Variable to be substituted.
+        old - Variable to be replaced.
         new - Variable to set instead of 'old'.
         """
         constr = self._constr.pop(old)
         for const in constr:
+            assert const.va is old or const.vb is old
             if const.va is old:
                 const.va = new
-            elif const.vb is old:
+            else:
                 const.vb = new
-        self._constr[new] = constr
-        self.unconstrained = old.value != new.value
+        if new not in self._constr:
+            self._constr[new] = constr
+        else:
+            for const in constr:
+                other = const.va if new is const.vb else const.vb
+                self._constr[other].discard(const)
+                self.add_constraint(const.va, const.vb, const.constraint)
+        self.unconstrained = self.unconstrained or old.value != new.value
 
     def connect(self, other):
         """
@@ -343,7 +351,7 @@ class ConstraintNetwork(object):
             ConstraintNetwork to be joined with this.
         """
         for var in other._constr:
-            if not self._constr.has_key(var):
+            if var not in self._constr:
                 self._constr[var] = set()
             self._constr[var] = self._constr[var].union(other._constr[var])
         self.unconstrained = True
