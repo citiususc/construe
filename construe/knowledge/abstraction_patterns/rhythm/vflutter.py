@@ -8,19 +8,18 @@ This module defines the abstraction pattern for ventricular flutter.
 @author: T. Teijeiro
 """
 
+import math
+import numpy as np
+from scipy.signal.signaltools import resample
 import construe.knowledge.observables as o
 import construe.acquisition.signal_buffer as sig_buf
 import construe.knowledge.constants as C
 from construe.utils.signal_processing import fft_filt
 from construe.utils.units_helper import SAMPLING_FREQ
 from construe.model import verify, Interval as Iv
-from construe.model.automata import (PatternAutomata, ABSTRACTED,
-                                        ENVIRONMENT, BASIC_TCONST)
+from construe.model.automata import PatternAutomata, ABSTRACTED, ENVIRONMENT
 from construe.utils.signal_processing.xcorr_similarity import (xcorr_valid,
                                                            signal_unmatch)
-import numpy as np
-import math
-from scipy.signal.signaltools import resample
 
 
 def _contains_qrs(pattern):
@@ -35,7 +34,7 @@ def _contains_qrs(pattern):
     defls = pattern.evidence[o.Deflection]
     if len(defls) > 1:
         limit = (defls[-3].lateend if len(defls) > 2 else qrs.lateend)
-        sig  = {}
+        sig = {}
         #We take the signal fragment with maximum correlation with the QRS
         #signal in each lead, and we check if the two fragments can be
         #clustered as equal QRS complexes.
@@ -72,14 +71,12 @@ def _contains_qrs(pattern):
 
 def _prev_rhythm_tconst(pattern, rhythm):
     """Temporal constraints of the flutter with the precedent rhythm"""
-    BASIC_TCONST(pattern, rhythm)
     pattern.tnet.set_equal(pattern.hypothesis.start, rhythm.end)
     pattern.tnet.add_constraint(pattern.hypothesis.start, pattern.hypothesis.end,
                                                Iv(C.VFLUT_MIN_DUR, np.inf))
 
 def _def0_tconst(pattern, defl):
     """Temporal constraints of the first deflection"""
-    BASIC_TCONST(pattern, defl)
     pattern.tnet.add_constraint(pattern.hypothesis.start, defl.time, C.VFLUT_LIM_INTERV)
     pattern.tnet.set_before(defl.time, pattern.hypothesis.end)
 
@@ -91,7 +88,6 @@ def _deflection_tconst(pattern, defl):
     tnet = pattern.tnet
     prev = defls[idx-1]
     tnet.add_constraint(prev.time, defl.time, C.VFLUT_WW_INTERVAL)
-    BASIC_TCONST(pattern, defl)
     tnet.add_constraint(defl.start, defl.end, Iv(0, C.VFLUT_WW_INTERVAL.end))
     tnet.set_before(defl.time, hyp.end)
 
@@ -100,7 +96,6 @@ def _qrs0_tconst(pattern, qrs):
     Temporal constraints of the QRS complex that must be at the beginning of
     the flutter.
     """
-    BASIC_TCONST(pattern, qrs)
     pattern.tnet.set_equal(pattern.hypothesis.start, qrs.time)
     pattern.tnet.add_constraint(pattern.hypothesis.start, pattern.hypothesis.end,
                                                    Iv(C.VFLUT_MIN_DUR, np.inf))
@@ -108,7 +103,6 @@ def _qrs0_tconst(pattern, qrs):
 def _qrs_tconst(pattern, qrs):
     """Temporal constraints of the QRS complex that determines the end of the
     flutter"""
-    BASIC_TCONST(pattern, qrs)
     defl = pattern.evidence[o.Deflection][-1]
     pattern.tnet.add_constraint(defl.time, qrs.time, C.VFLUT_LIM_INTERV)
     pattern.tnet.set_equal(pattern.hypothesis.end, qrs.time)
@@ -181,7 +175,7 @@ def _vflut_gconst(pattern, _):
     lpos = 0.
     ltot = 0.
     for lead in sig_buf.get_available_leads():
-        if _is_VF(sig_buf.get_signal_fragment(beg, end, lead= lead)[0]):
+        if _is_VF(sig_buf.get_signal_fragment(beg, end, lead=lead)[0]):
             lpos += 1
         ltot += 1
     verify(lpos/ltot > 0.5)
@@ -189,7 +183,7 @@ def _vflut_gconst(pattern, _):
     if len(defls) > 1:
         rrs = np.diff([defl.earlystart for defl in defls])
         hyp.meas = o.CycleMeasurements((np.mean(rrs), np.std(rrs)),
-                                                                  (0,0), (0,0))
+                                                                (0, 0), (0, 0))
 
 
 VFLUTTER_PATTERN = PatternAutomata()
@@ -211,4 +205,3 @@ VFLUTTER_PATTERN.freeze()
 
 if __name__ == "__main__":
     pass
-

@@ -9,21 +9,20 @@ rhythms.
 @author: T. Teijeiro
 """
 
+from collections import Counter
+import numpy as np
 import construe.knowledge.observables as o
 import construe.acquisition.signal_buffer as sig_buf
 from construe.knowledge.abstraction_patterns.segmentation.QRS import (
                                                                     QRS_SHAPES)
 import construe.knowledge.constants as C
 from construe.model import verify, Interval as Iv
-from construe.model.automata import (PatternAutomata, ABSTRACTED,
-                                                    ENVIRONMENT, BASIC_TCONST)
+from construe.model.automata import PatternAutomata, ABSTRACTED, ENVIRONMENT
 from construe.utils.signal_processing.xcorr_similarity import (xcorr_valid,
                                                            signal_match,
                                                            signal_unmatch)
 from construe.utils.units_helper import (msec2samples as ms2sp,
                                          samples2sec as sp2sc)
-from collections import Counter
-import numpy as np
 
 #####################################################
 ### New definition of the regular rhythm patterns ###
@@ -122,11 +121,11 @@ def _check_missed_beats(pattern):
             else:
                 limit = prevobs.lateend
         else:
-            limit =  pattern.hypothesis.earlystart
+            limit = pattern.hypothesis.earlystart
         ulimit = qrs.earlystart-C.TACHY_RR.start
         if limit >= ulimit:
             return
-        sig  = {}
+        sig = {}
         #We take the signal fragment with maximum correlation with the QRS
         #signal in each lead, and we check if the two fragments can be
         #clustered as equal QRS complexes.
@@ -293,7 +292,6 @@ def _p_qrs_tconst(pattern, pwave):
     """
     Temporal constraints of the P Waves wrt the corresponding QRS complex
     """
-    BASIC_TCONST(pattern, pwave)
     tnet = pattern.tnet
     tnet.add_constraint(pwave.start, pwave.end, C.PW_DURATION)
     #We find the QRS observed just before that P wave.
@@ -315,7 +313,6 @@ def _t_qrs_tconst(pattern, twave):
     """
     Temporal constraints of thw T Waves wrt the corresponding QRS complex.
     """
-    BASIC_TCONST(pattern, twave)
     obseq = pattern.obs_seq
     idx = pattern.get_step(twave)
     try:
@@ -351,11 +348,10 @@ def _t_qrs_tconst(pattern, twave):
 
 def _prev_rhythm_tconst(pattern, rhythm):
     """Temporal constraints of a cardiac rhythm with the precedent one."""
-    BASIC_TCONST(pattern, rhythm)
-    tnet = pattern.tnet
-    tnet.set_equal(pattern.hypothesis.start, rhythm.end)
-    tnet.add_constraint(pattern.hypothesis.start, pattern.hypothesis.end,
-                                                  Iv(C.TACHY_RR.start, np.inf))
+    pattern.tnet.set_equal(pattern.hypothesis.start, rhythm.end)
+    pattern.tnet.add_constraint(pattern.hypothesis.start,
+                                pattern.hypothesis.end,
+                                Iv(C.TACHY_RR.start, np.inf))
 
 def _prev_rhythm_gconst(pattern, rhythm):
     """General constraints of a cardiac rhythm with the preceden one."""
@@ -437,7 +433,6 @@ def _get_qrs_tconst(rr_bounds):
                     if refbeat is not None:
                         qrs.shape = refbeat.shape
                         qrs.paced = refbeat.paced
-        BASIC_TCONST(pattern, qrs)
         tnet.add_constraint(qrs.start, qrs.end, C.QRS_DUR)
         tnet.set_before(qrs.time, hyp.end)
     return _qrs_tconst

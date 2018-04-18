@@ -9,19 +9,17 @@ a rhythm block.
 @author: T. Teijeiro
 """
 
-from construe.model.automata import (PatternAutomata, ABSTRACTED,
-                                                     ENVIRONMENT, BASIC_TCONST)
+import copy
+from construe.model.automata import PatternAutomata, ABSTRACTED, ENVIRONMENT
 from construe.knowledge.abstraction_patterns.rhythm.regular import (
                                                            _check_missed_beats)
 from construe.model import verify, Interval as Iv
 from construe.utils.signal_processing.xcorr_similarity import signal_match
 import construe.knowledge.constants as C
 import construe.knowledge.observables as o
-import copy
 
 def _prev_rhythm_tconst(pattern, rhythm):
     """Temporal constraints of a cardiac rhythm with the precedent one."""
-    BASIC_TCONST(pattern, rhythm)
     tnet = pattern.tnet
     tnet.set_equal(pattern.hypothesis.start, rhythm.end)
 
@@ -43,7 +41,6 @@ def _prev_asyst_gconst(pattern, asyst):
 
 def _qrs1_tconst(pattern, qrs):
     """Temporal constraints of the first QRS complex"""
-    BASIC_TCONST(pattern, qrs)
     pattern.tnet.add_constraint(qrs.start, qrs.end, C.QRS_DUR)
     if pattern.evidence[o.Cardiac_Rhythm]:
         pattern.tnet.set_before(qrs.end,
@@ -51,7 +48,6 @@ def _qrs1_tconst(pattern, qrs):
 
 def _qrs2_tconst(pattern, qrs):
     """Temporal constraints of the second QRS complex"""
-    BASIC_TCONST(pattern, qrs)
     tnet = pattern.tnet
     tnet.set_equal(pattern.hypothesis.start, qrs.time)
     tnet.add_constraint(qrs.start, qrs.end, C.QRS_DUR)
@@ -66,7 +62,6 @@ def _qrs2_tconst(pattern, qrs):
 
 def _qrs3_tconst(pattern, qrs):
     """Temporal constraints of the third QRS complex"""
-    BASIC_TCONST(pattern, qrs)
     tnet = pattern.tnet
     tnet.set_before(qrs.time, pattern.hypothesis.end)
     tnet.add_constraint(qrs.start, qrs.end, C.QRS_DUR)
@@ -113,7 +108,6 @@ def _qrsn_tconst(pattern, qrs):
     if isinstance(obseq[oidx-1], o.TWave):
         prevt = obseq[oidx-1]
         tnet.set_before(prevt.end, qrs.start)
-    BASIC_TCONST(pattern, qrs)
     tnet.add_constraint(qrs.start, qrs.end, C.QRS_DUR)
     tnet.set_before(qrs.time, hyp.end)
     #We can introduce constraints on the morphology of the new QRS complex.
@@ -125,7 +119,6 @@ def _p_qrs_tconst(pattern, pwave):
     """
     Temporal constraints of the P waves with the corresponding QRS complex.
     """
-    BASIC_TCONST(pattern, pwave)
     obseq = pattern.obs_seq
     idx = pattern.get_step(pwave)
     #We find the qrs observation precedent to this P wave.
@@ -142,7 +135,6 @@ def _t_qrs_tconst(pattern, twave):
     """
     Temporal constraints of the T waves with the corresponding QRS complex
     """
-    BASIC_TCONST(pattern, twave)
     obseq = pattern.obs_seq
     idx = pattern.get_step(twave)
     #We find the qrs observation precedent to this T wave.
@@ -224,4 +216,3 @@ RHYTHMBLOCK_PATTERN.final_states.add(6)
 RHYTHMBLOCK_PATTERN.abstractions[o.QRS] = (RHYTHMBLOCK_PATTERN.transitions[4],)
 RHYTHMBLOCK_PATTERN.obs_proc = _rhythmblock_obs_proc
 RHYTHMBLOCK_PATTERN.freeze()
-

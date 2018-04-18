@@ -9,6 +9,7 @@ T and P waves.
 @author: T. Teijeiro
 """
 
+import numpy as np
 import construe.knowledge.observables as o
 import construe.utils.signal_processing.Douglas_Peucker as DP
 import construe.knowledge.constants as C
@@ -20,9 +21,7 @@ from construe.utils.units_helper import (samples2msec as sp2ms,
                                             phys2digital as ph2dg,
                                             SAMPLING_FREQ)
 from construe.model import verify, Interval as Iv, InconsistencyError
-from construe.model.automata import (PatternAutomata, ABSTRACTED,
-                                        ENVIRONMENT, BASIC_TCONST)
-import numpy as np
+from construe.model.automata import PatternAutomata, ABSTRACTED, ENVIRONMENT
 
 
 ######################
@@ -128,7 +127,7 @@ def _delimit_t(signal, baseline, ls_lim, ee_lim, qrs_shape):
         rang = max(baseline, signal.max()) - min(signal.min(), baseline)
         #There must be between one and 3 peaks in the T Wave.
         for i in xrange(len(bpts)):
-            sigpt = signal[points[i:np.where(points==Tend)[0][0]+1]]
+            sigpt = signal[points[i:np.where(points == Tend)[0][0]+1]]
             npks = len(get_peaks(sigpt)) if len(sigpt) >= 3 else 0
             if (npks < 1 or npks > 2 or np.ptp(sigpt) <= ph2dg(0.05)):
                 continue
@@ -147,7 +146,6 @@ def _t_qrs_tconst(pattern, qrs):
     """
     Temporal constraints wrt the leading QRS complex.
     """
-    BASIC_TCONST(pattern, qrs)
     twave = pattern.hypothesis
     tc = pattern.tnet
     tc.add_constraint(qrs.end, twave.start, C.ST_INTERVAL)
@@ -159,7 +157,6 @@ def _t_defl_tconst(pattern, defl):
     """
     Temporal constraints wrt the abstracted energy interval.
     """
-    BASIC_TCONST(pattern, defl)
     qrs = pattern.evidence[o.QRS][0] if pattern.evidence[o.QRS] else None
     twave = pattern.hypothesis
     tc = pattern.tnet
@@ -194,7 +191,7 @@ def _t_gconst(pattern, defl):
     ee_lim = int(twave.earlyend - beg)
     #Start and end estimation.
     endpoints = {}
-    for lead in sorted(qrs.shape, key= lambda l: qrs.shape[l].amplitude,
+    for lead in sorted(qrs.shape, key=lambda l: qrs.shape[l].amplitude,
                                                              reverse=True):
         baseline, _ = characterize_baseline(lead, beg, end)
         sig = sig_buf.get_signal_fragment(beg, end, lead=lead)[0]
@@ -203,7 +200,7 @@ def _t_gconst(pattern, defl):
         if ep is not None:
             endpoints[lead] = ep
     verify(endpoints)
-    limits = max(endpoints.iteritems(), key= lambda ep:ep[1][1])[1][0]
+    limits = max(endpoints.iteritems(), key=lambda ep: ep[1][1])[1][0]
     #We verify that in all leads the maximum slope of the T wave fragment does
     #not exceed the threshold.
     for lead in endpoints:
@@ -215,7 +212,7 @@ def _t_gconst(pattern, defl):
         if lead in endpoints:
             mx, mn = np.amax(sig), np.amin(sig)
             pol = (1.0 if max(mx-sig[0], mx-sig[-1])
-                                        >= -min(mn-sig[0],mn-sig[1]) else -1.0)
+                                       >= -min(mn-sig[0], mn-sig[1]) else -1.0)
             twave.amplitude[lead] = pol*np.ptp(sig)
     twave.start.value = Iv(beg+limits.start, beg+limits.start)
     twave.end.value = Iv(beg+limits.end, beg+limits.end)
@@ -257,10 +254,8 @@ def _check_histogram(hist, value):
     i = 0
     while i < len(hist[1]) and value > hist[1][i]:
         i += 1
-    if i == 0 or i == len(hist[1]):
-        return 0.0
-    else:
-        return hist[0][i-1]
+    return 0.0 if i == 0 or i == len(hist[1]) else hist[0][i-1]
+
 
 #####################################
 #### Static variables definition ####

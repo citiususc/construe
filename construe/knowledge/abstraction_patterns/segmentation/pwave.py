@@ -8,6 +8,9 @@ This module contains the definition of the P wave abstraction pattern.
 @author: T. Teijeiro
 """
 
+import pickle
+import numpy as np
+import sklearn.preprocessing as preproc
 import construe.knowledge.observables as o
 import construe.utils.signal_processing.Douglas_Peucker as DP
 import construe.knowledge.constants as C
@@ -16,11 +19,8 @@ from construe.utils.units_helper import (samples2msec as sp2ms,
                                             phys2digital as ph2dg,
                                             digital2phys as dg2ph)
 from construe.model import verify, Interval as Iv
-from construe.model.automata import (PatternAutomata, ABSTRACTED,
-                                        ENVIRONMENT, BASIC_TCONST)
-import numpy as np
-import pickle
-import sklearn.preprocessing as preproc
+from construe.model.automata import PatternAutomata, ABSTRACTED, ENVIRONMENT
+
 
 ####################################################
 ### Definition of the P Wave abstraction pattern ###
@@ -113,7 +113,6 @@ def _p_qrs_tconst(pattern, qrs):
     """
     Adds the temporal constraints wrt the qrs environment observation.
     """
-    BASIC_TCONST(pattern, qrs)
     pwave = pattern.hypothesis
     #Temporal constraints
     tnet = pattern.tnet
@@ -127,7 +126,6 @@ def _p_defl_tconst(pattern, defl):
     """
     Temporal constraints definition wrt the abstracted energy interval.
     """
-    BASIC_TCONST(pattern, defl)
     pwave = pattern.hypothesis
     qrs = None
     if pattern.evidence[o.QRS]:
@@ -202,10 +200,7 @@ def _check_histogram(hist, value):
     i = 0
     while i < len(hist[1]) and value > hist[1][i]:
         i += 1
-    if i == 0 or i == len(hist[1]):
-        return 0.0
-    else:
-        return hist[0][i-1]
+    return 0.0 if i == 0 or i == len(hist[1]) else hist[0][i-1]
 
 
 #Static definition of the PR histogram

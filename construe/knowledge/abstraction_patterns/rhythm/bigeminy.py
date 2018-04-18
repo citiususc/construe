@@ -9,14 +9,14 @@ a bigeminy rhythm.
 @author: T. Teijeiro
 """
 
+import numpy as np
 from construe.model.automata import (PatternAutomata, ABSTRACTED as ABS,
-                                        ENVIRONMENT as ENV, BASIC_TCONST)
+                                     ENVIRONMENT as ENV)
 from construe.model import verify, Interval as Iv
 import construe.knowledge.observables as o
 import construe.knowledge.constants as C
 from construe.knowledge.abstraction_patterns.rhythm.regular import (
                                                            _check_missed_beats)
-import numpy as np
 
 def _rhythm_obs_proc(pattern):
     """Observation procedure executed once the rhythm pattern has finished"""
@@ -34,7 +34,6 @@ def _prev_rhythm_gconst(_, rhythm):
 
 def _prev_rhythm_tconst(pattern, rhythm):
     """Temporal constraints of a cardiac rhythm with the precedent one."""
-    BASIC_TCONST(pattern, rhythm)
     pattern.tnet.set_equal(pattern.hypothesis.start, rhythm.end)
 
 #################################
@@ -63,7 +62,6 @@ def _reg_qrs_tconst(pattern, qrs):
     idx = beats.index(qrs)
     tnet = pattern.tnet
     hyp = pattern.hypothesis
-    BASIC_TCONST(pattern, qrs)
     tnet.add_constraint(qrs.start, qrs.end, C.NQRS_DUR)
     tnet.set_before(qrs.time, hyp.end)
     #Constraints with the precedent T Wave
@@ -144,7 +142,6 @@ def _ect_qrs_tconst(pattern, qrs):
                       Iv(C.TACHY_RR.start, max(C.TACHY_RR.start, refrr-stdrr)))
         #Beats cannot overlap
         tnet.add_constraint(prev.end, qrs.start, Iv(C.TQ_INTERVAL_MIN, np.Inf))
-    BASIC_TCONST(pattern, qrs)
     tnet.add_constraint(qrs.start, qrs.end, C.QRS_DUR)
     tnet.set_before(qrs.time, hyp.end)
     #Constraints with the precedent T Wave
@@ -177,7 +174,6 @@ def get_p_tconst(qrsidx):
     """
     def _p_tconst(pattern, pwave):
         """P waves temporal constraints"""
-        BASIC_TCONST(pattern, pwave)
         tnet = pattern.tnet
         tnet.add_constraint(pwave.start, pwave.end, C.PW_DURATION)
         #We find the associated QRS.
@@ -211,7 +207,6 @@ def get_t_tconst(qrsidx):
         """
         Temporal constraints of the T Waves wrt the corresponding QRS complex.
         """
-        BASIC_TCONST(pattern, twave)
         tnet = pattern.tnet
         obseq = pattern.obs_seq
         idx = pattern.get_step(twave)
@@ -265,7 +260,7 @@ def get_t_tconst(qrsidx):
 ### General Constraints ###
 ###########################
 
-def _get_measures(pattern, even = 0):
+def _get_measures(pattern, even=0):
     """
     Obtains the characteristic measures of the cardiac rhythms (RR, PQ and RT
     intervals), allowing to filter by the beat type. If even==0, then the

@@ -15,7 +15,7 @@ from .automata import ABSTRACTED, BASIC_TCONST
 from .FreezableObject import clone_attrs
 import copy
 import bisect
-from collections import deque, Counter
+from collections import Counter
 
 class AbstractionPattern(object):
     """
@@ -121,9 +121,11 @@ class AbstractionPattern(object):
             #rebuild and recheck all the constraints from the initial to the
             #final state.
             pat.tnet = ConstraintNetwork()
+            BASIC_TCONST(pat, pat.hypothesis)
             try:
                 for i in xrange(len(pat.trseq)):
                     trans, obs = pat.trseq[i]
+                    BASIC_TCONST(pat, obs)
                     trans.tconst(pat, obs)
                     pat.check_temporal_consistency()
                     if all(o is not pat.finding for _, o in pat.trseq[:i+1]):
@@ -142,6 +144,7 @@ class AbstractionPattern(object):
                 if newobs is not None:
                     pat.evidence[trans.observable].append(newobs)
                     pat.finding = newobs
+                    BASIC_TCONST(pat, newobs)
                 pat.trseq.append((trans, newobs))
                 trans.tconst(pat, newobs)
                 try:

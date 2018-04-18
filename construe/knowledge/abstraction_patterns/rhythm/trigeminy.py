@@ -9,14 +9,14 @@ a trigeminy rhythm.
 @author: T. Teijeiro
 """
 
+import numpy as np
 from construe.model.automata import (PatternAutomata, ABSTRACTED as ABS,
-                                        ENVIRONMENT as ENV, BASIC_TCONST)
+                                     ENVIRONMENT as ENV)
 from construe.model import verify, Interval as Iv
 from construe.knowledge.abstraction_patterns.rhythm.regular import (
                                                            _check_missed_beats)
 import construe.knowledge.observables as o
 import construe.knowledge.constants as C
-import numpy as np
 
 ###############################
 ### Miscellaneous functions ###
@@ -39,7 +39,7 @@ def _is_ectopic(qidx):
     """
     return (qidx-1) % 3 == 0
 
-def _get_measures(pattern, ectopic= False):
+def _get_measures(pattern, ectopic=False):
     """
     Obtains the characteristic measures of the cardiac rhythms (RR, PQ and RT
     intervals), allowing to filter by the beat type, by using the *ectopic*
@@ -87,7 +87,6 @@ def _rhythm_obs_proc(pattern):
 
 def _prev_rhythm_tconst(pattern, rhythm):
     """Temporal constraints of a cardiac rhythm with the precedent one."""
-    BASIC_TCONST(pattern, rhythm)
     pattern.tnet.set_equal(pattern.hypothesis.start, rhythm.end)
 
 
@@ -111,7 +110,6 @@ def _qrs_after_twave(pattern, qrs):
 def _env_qrs_tconst(pattern, qrs):
     """Temporal constraints for the environment QRS observation, the first QRS
     of the pattern"""
-    BASIC_TCONST(pattern, qrs)
     pattern.tnet.set_equal(pattern.hypothesis.start, qrs.time)
     pattern.tnet.set_before(qrs.time, pattern.hypothesis.end)
     pattern.tnet.add_constraint(qrs.start, qrs.end, C.QRS_DUR)
@@ -126,7 +124,6 @@ def _reg_ae_tconst(pattern, qrs):
     assert _is_ectopic(idx-1)
     tnet = pattern.tnet
     hyp = pattern.hypothesis
-    BASIC_TCONST(pattern, qrs)
     tnet.add_constraint(qrs.start, qrs.end, C.NQRS_DUR)
     tnet.set_before(qrs.time, hyp.end)
     #Constraints with the precedent T Wave
@@ -168,7 +165,6 @@ def _reg_nae_tconst(pattern, qrs):
     #RR evolution constraint.
     tnet.add_constraint(prev.time, qrs.time,
                                 Iv(rrev - C.RR_MAX_DIFF, rrev + C.RR_MAX_DIFF))
-    BASIC_TCONST(pattern, qrs)
     tnet.add_constraint(qrs.start, qrs.end, C.NQRS_DUR)
     tnet.set_before(qrs.time, hyp.end)
     #Constraints with the precedent T Wave
@@ -186,7 +182,6 @@ def _ect_qrs_tconst(pattern, qrs):
     idx = beats.index(qrs)
     tnet = pattern.tnet
     hyp = pattern.hypothesis
-    BASIC_TCONST(pattern, qrs)
     tnet.add_constraint(qrs.start, qrs.end, C.QRS_DUR)
     tnet.set_before(qrs.time, hyp.end)
     #Constraints with the precedent T Wave
@@ -247,7 +242,6 @@ def get_p_tconst(qrsidx):
     """
     def _p_tconst(pattern, pwave):
         """P waves temporal constraints"""
-        BASIC_TCONST(pattern, pwave)
         tnet = pattern.tnet
         tnet.add_constraint(pwave.start, pwave.end, C.PW_DURATION)
         #We find the associated QRS.
@@ -281,7 +275,6 @@ def get_t_tconst(qrsidx):
         """
         Temporal constraints of the T Waves wrt the corresponding QRS complex.
         """
-        BASIC_TCONST(pattern, twave)
         tnet = pattern.tnet
         #We find the associated QRS.
         beats = pattern.evidence[o.QRS]

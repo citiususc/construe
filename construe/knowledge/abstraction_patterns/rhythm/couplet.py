@@ -10,16 +10,16 @@ between two normal complexes.
 @author: T. Teijeiro
 """
 
+import copy
+import numpy as np
 from construe.model.automata import (PatternAutomata, ABSTRACTED as ABS,
-                                        ENVIRONMENT as ENV, BASIC_TCONST)
+                                     ENVIRONMENT as ENV)
 from construe.model import verify, Interval as Iv
 import construe.knowledge.observables as o
 import construe.knowledge.constants as C
 from construe.utils.signal_processing.xcorr_similarity import signal_unmatch
 from construe.knowledge.abstraction_patterns.rhythm.regular import (
                                                            _check_missed_beats)
-import copy
-import numpy as np
 
 ###################################
 ### Previous rhythm constraints ###
@@ -27,7 +27,6 @@ import numpy as np
 
 def _prev_rhythm_tconst(pattern, rhythm):
     """Temporal constraints of a cardiac rhythm with the precedent one."""
-    BASIC_TCONST(pattern, rhythm)
     pattern.tnet.set_equal(pattern.hypothesis.start, rhythm.end)
 
 
@@ -50,10 +49,8 @@ def _qrs_after_twave(pattern, qrs):
 
 def _common_qrs_constraints(pattern, qrs):
     """Temporal constraints affecting all QRS complex."""
-    hyp = pattern.hypothesis
-    BASIC_TCONST(pattern, qrs)
     pattern.tnet.add_constraint(qrs.start, qrs.end, C.QRS_DUR)
-    pattern.tnet.set_before(qrs.time, hyp.end)
+    pattern.tnet.set_before(qrs.time, pattern.hypothesis.end)
 
 def _n0_tconst(pattern, qrs):
     """Temporal constraints of the first environment QRS complex"""
@@ -161,7 +158,6 @@ def _p_tconst(pattern, pwave):
     """
     Temporal constraints of the P Waves wrt the corresponding QRS complex
     """
-    BASIC_TCONST(pattern, pwave)
     tnet = pattern.tnet
     tnet.add_constraint(pwave.start, pwave.end, C.PW_DURATION)
     #We find the QRS observed just before that P wave.
@@ -176,7 +172,6 @@ def _t_tconst(pattern, twave):
     """
     Temporal constraints of the T Waves wrt the corresponding QRS complex.
     """
-    BASIC_TCONST(pattern, twave)
     obseq = pattern.obs_seq
     idx = pattern.get_step(twave)
     try:
@@ -208,7 +203,6 @@ def _tv0_tconst(pattern, twave):
     Temporal constraints for the T Wave of the first extrasystole, that is
     only observed after the second extrasystole QRS has been properly observed.
     """
-    BASIC_TCONST(pattern, twave)
     beats = pattern.evidence[o.QRS]
     #The T wave must be in the hole between the two QRS complexes, and must
     #finish at least 1mm before the next QRS starts.

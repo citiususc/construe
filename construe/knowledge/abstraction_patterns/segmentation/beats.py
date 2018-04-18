@@ -8,13 +8,12 @@ This module contains the definition of beat-related abstraction patterns.
 @author: T. Teijeiro
 """
 
-from construe.model.automata import (PatternAutomata, ABSTRACTED, ENVIRONMENT,
-                                                                  BASIC_TCONST)
+import numpy as np
+from construe.model.automata import PatternAutomata, ABSTRACTED, ENVIRONMENT
 from construe.model import Interval as Iv
 from construe.utils.units_helper import msec2samples, samples2msec
 import construe.knowledge.constants as C
 import construe.knowledge.observables as o
-import numpy as np
 
 #Constant values to initialize the Kalman Filter for QT (actually RT) measure
 QT_ERR_STD = msec2samples(58) #Standard deviation of the QT error (R matrix)
@@ -31,7 +30,6 @@ def _envbeat_tconst(pattern, obs):
     """
     Temporal constraints for the environment QRS and CardiacCycle observation
     """
-    BASIC_TCONST(pattern, obs)
     pattern.tnet.add_constraint(obs.end, pattern.hypothesis.time,
                                      Iv(msec2samples(20), np.inf))
     if isinstance(obs, o.QRS) and isinstance(pattern.obs_seq[0], o.CardiacCycle):
@@ -41,7 +39,6 @@ def _btime_tconst(pattern, qrs):
     """
     Temporal constraints for the abstracted QRS observation
     """
-    BASIC_TCONST(pattern, qrs)
     pattern.tnet.set_equal(qrs.time, pattern.hypothesis.time)
 
 def _qrs_time_tconst(pattern, _):
@@ -56,7 +53,6 @@ def _p_qrs_tconst(pattern, pwave):
     """
     Temporal constraints of the P Wave wrt the corresponding QRS complex
     """
-    BASIC_TCONST(pattern, pwave)
     obseq = pattern.obs_seq
     idx = pattern.get_step(pwave)
     tnet = pattern.tnet
@@ -74,7 +70,6 @@ def _t_qrs_tconst(pattern, twave):
     """
     Temporal constraints of the T waves with the corresponding QRS complex
     """
-    BASIC_TCONST(pattern, twave)
     obseq = pattern.obs_seq
     idx = pattern.get_step(twave)
     tnet = pattern.tnet
