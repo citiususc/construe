@@ -12,6 +12,7 @@ import construe.knowledge.observables as o
 import construe.knowledge.abstraction_patterns as ap
 import construe.utils.pyperclip as pyperclip
 from ..units_helper import msec2samples as m2s
+import matplotlib.animation as animation
 from matplotlib.pyplot import figure
 from matplotlib.patches import Ellipse
 from matplotlib._pylab_helpers import Gcf
@@ -165,7 +166,7 @@ def parallel_plot(signals, fig = None):
     return fig
 
 
-def plot_observations(signal, interpretation, fig = None):
+def plot_observations(signal, interpretation, fig=None, autobound=True):
     """
     Draws a set of observations as filled areas over a background signal
     fragment. Each observable type is painted with a different colour, obtained
@@ -181,7 +182,7 @@ def plot_observations(signal, interpretation, fig = None):
     Returns:
         Reference to the ObservationVisualizer used to draw.
     """
-    obsview = ObservationVisualizer(signal, interpretation, fig)
+    obsview = ObservationVisualizer(signal, interpretation, fig, autobound)
     obsview.draw()
     return obsview
 
@@ -191,10 +192,11 @@ class ObservationVisualizer(object):
     Class that encapsulates a figure, and the behaviour to plot specific
     observations and manage them.
     """
-    def __init__(self, signal, interpretation, fig = None):
+    def __init__(self, signal, interpretation, fig=None, autobound=True):
         self.signal = signal
         self.interpretation = interpretation
         self.fig = fig if fig is not None else figure()
+        self.autobound = autobound
         #Calculation of parameters
         self.sig_limits = (signal.min(), signal.max())
         self.lev_height = (self.sig_limits[1] - self.sig_limits[0]) / LEVELS
@@ -285,8 +287,9 @@ class ObservationVisualizer(object):
             ell.set_linewidth(3.0)
             plot.add_artist(ell)
         #We set the X axes centered at the lateend
-        self.fig.gca().set_xbound(lower= last_point-1000,
-                                                       upper= last_point+1000)
+        if self.autobound:
+            self.fig.gca().set_xbound(lower=last_point-1000,
+                                      upper=last_point+1000)
         self.fig.gca().set_ybound(lower= min_sig-
                                                (self.sig_limits[1]-min_sig)/10,
                                   upper= self.sig_limits[1]+
@@ -507,6 +510,36 @@ def _add_subbranches(interp, graph):
             graph.add_node(chl)
             graph.add_edge(head, chl)
             queue.append(chl)
+
+def save_video(interp, fname, last=None, interval=50):
+    """
+    Saves a video with the sequence of interpretations as they were generated
+    by the interpretation process, beginning with *interp* and using *last* as
+    last frame. Video is stored in *fname* path. Duration of each frame is
+    controlled by *interval*, in milliseconds.
+    """
+    interplist = []
+    queue = deque([interp])
+    while queue:
+        head = queue.popleft()
+        interplist.append(head)
+        queue.extend(head.child)
+    interplist.sort(key=lambda i:int(str(i)))
+    if last is not None:
+        interplist.append(last)
+    sig = sig_buf.get_signal(sig_buf.get_available_leads()[0])
+    fig = figure(figsize=(18, 3), dpi=100, tight_layout=True)
+
+    def update_figure(idx):
+        print str(idx) + '/' + str(len(interplist))
+        intplt = interplist[idx]
+        plot_observations(sig, intplt, fig, False)
+        fig.gca().set_xbound(lower=0, upper=len(sig))
+        return fig
+
+    ani = animation.FuncAnimation(fig, update_figure, len(interplist),
+                                  interval=interval, repeat=False)
+    ani.save(fname, bitrate=2048)
 
 if __name__ == "__main__":
     pass
