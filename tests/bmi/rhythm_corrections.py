@@ -70,7 +70,7 @@ for rec in RECORDS:
                 break
             elif isinstance(nrhythm, (o.Atrial_Fibrillation, o.RhythmBlock)):
                 #Join consecutive AFIB episodes
-                afib.end.value = nrhythm.end.value
+                afib.end.cpy(nrhythm.end)
                 rpeaks = np.array([qrs.time.start for qrs in
                                        interp.get_observations(o.QRS,
                                           filt=lambda q, rh=nrhythm:
@@ -96,7 +96,7 @@ for rec in RECORDS:
                                            else np.diff(tmprpks))
                     if is_afib_rhythm_lian(rrs):
                         #The rhythm is assumed to be part of the afib.
-                        afib.end.value = nrhythm.end.value
+                        afib.end.cpy(nrhythm.end)
                         interp.observations.remove(nrhythm)
                         rpks = tmprpks
                     else:

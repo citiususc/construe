@@ -192,7 +192,7 @@ def _qrs_gconst(pattern, _):
 def _rhythmblock_obs_proc(pattern):
     """Observation procedure executed once the rhythm pattern has finished"""
     #We asign the endpoint of the hypothesis.
-    pattern.hypothesis.end.value = pattern.evidence[o.QRS][-1].time.value
+    pattern.hypothesis.end.cpy(pattern.evidence[o.QRS][-1].time)
 
 
 RHYTHMBLOCK_PATTERN = PatternAutomata()

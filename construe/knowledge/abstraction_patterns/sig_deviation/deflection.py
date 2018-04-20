@@ -109,10 +109,10 @@ def get_gconst(int_idx):
             else:
                 lev += 1
         verify(interval is not None)
-        pattern.hypothesis.start.value = Iv(interval.start + beg - fbeg,
-                                         interval.start + beg - fbeg)
-        pattern.hypothesis.end.value = Iv(interval.end + beg - fbeg,
-                                       interval.end + beg - fbeg)
+        pattern.hypothesis.start.set(interval.start + beg - fbeg,
+                                     interval.start + beg - fbeg)
+        pattern.hypothesis.end.set(interval.end + beg - fbeg,
+                                   interval.end + beg - fbeg)
         for lead in sig_buf.get_available_leads():
             pattern.hypothesis.level[lead] = lev
     return _def_gconst

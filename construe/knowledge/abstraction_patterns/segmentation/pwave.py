@@ -166,8 +166,8 @@ def _p_gconst(pattern, defl):
     verify(endpoints is not None)
     #Now we obtain the amplitudes, and we ensure the QRS amplitude is at
     #least twice the P Wave amplitude in each lead
-    pwave.start.value = Iv(beg + endpoints.start, beg + endpoints.start)
-    pwave.end.value = Iv(beg + endpoints.end, beg + endpoints.end)
+    pwave.start.set(beg + endpoints.start, beg + endpoints.start)
+    pwave.end.set(beg + endpoints.end, beg + endpoints.end)
     for lead in pwave.amplitude:
         verify(pwave.amplitude[lead] <= C.PWAVE_AMP[lead])
         verify(lead not in qrs.shape or

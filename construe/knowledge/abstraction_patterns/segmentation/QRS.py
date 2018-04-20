@@ -732,9 +732,9 @@ def _guided_qrs_observation(hyp):
             end = start + max(s.waves[-1].r for s in hyp.shape.itervalues())
             peak = start + min(s.waves[_reference_wave(s)].m
                                                for s in hyp.shape.itervalues())
-            hyp.start.value = Iv(beg+start, beg+start)
-            hyp.time.value = Iv(beg+peak, beg+peak)
-            hyp.end.value = Iv(beg+end, beg+end)
+            hyp.start.set(beg+start, beg+start)
+            hyp.time.set(beg+peak, beg+peak)
+            hyp.end.set(beg+end, beg+end)
             hyp.clustered = True
         except InconsistencyError:
             hyp.shape = {}
@@ -889,9 +889,9 @@ def _qrs_gconst(pattern, rdef):
                                                for s in hyp.shape.itervalues())
     #7. Segmentation points set
     hyp.paced = any(v[0] for v in limits.itervalues())
-    hyp.time.value = Iv(beg+peak, beg+peak)
-    hyp.start.value = Iv(beg+start, beg+start)
-    hyp.end.value = Iv(beg+end, beg+end)
+    hyp.time.set(beg+peak, beg+peak)
+    hyp.start.set(beg+start, beg+start)
+    hyp.end.set(beg+end, beg+end)
     ###################################################################
     #Amplitude conditions (between 0.5mV and 6.5 mV in at least one
     #lead or an identified pattern in most leads).

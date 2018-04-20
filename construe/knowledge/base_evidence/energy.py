@@ -37,16 +37,14 @@ def changeTime(observations, time_offset):
     """
     if time_offset > 0:
         for obs in observations:
-            obs.end.value = Iv(obs.earlyend + time_offset,
-                               obs.lateend + time_offset)
-            obs.start.value = Iv(obs.earlystart + time_offset,
-                                 obs.latestart + time_offset)
+            obs.end.set(obs.earlyend + time_offset, obs.lateend + time_offset)
+            obs.start.set(obs.earlystart + time_offset,
+                          obs.latestart + time_offset)
     else:
         for obs in observations:
-            obs.start.value = Iv(obs.earlystart + time_offset,
-                                 obs.latestart + time_offset)
-            obs.end.value = Iv(obs.earlyend + time_offset,
-                               obs.lateend + time_offset)
+            obs.start.set(obs.earlystart + time_offset,
+                          obs.latestart + time_offset)
+            obs.end.set(obs.earlyend + time_offset, obs.lateend + time_offset)
 
 
 def get_energy_intervals(energy, level = 0, percentile = 0.95, group = 1):
@@ -126,8 +124,8 @@ def get_deflection_observations(start, end, lead, max_level=0, group=ms2sp(20)):
         obs[i] = []
         for interv in get_energy_intervals(energ, level = i, group = group):
             defl = o.Deflection()
-            defl.start.value = Iv(interv.start, interv.start)
-            defl.end.value = Iv(interv.end, interv.end)
+            defl.start.set(interv.start, interv.start)
+            defl.end.set(interv.end, interv.end)
             defl.level[lead] = i
             obs[i].append(defl)
         #We update the time of the intervals
@@ -243,8 +241,7 @@ def get_combined_energy(start, end, max_level, group=ms2sp(80)):
                 if dicts[lead][i] and wfs[lead][i]:
                     if (wfs[lead][i][0].earlystart - dicts[lead][i][-1].lateend
                                                                      <= group):
-                        dicts[lead][i][-1].end.value = (
-                                                   wfs[lead][i][0].start.value)
+                        dicts[lead][i][-1].end.cpy(wfs[lead][i][0].start)
                         wfs[lead][i].pop(0)
                 dicts[lead][i].extend(wfs[lead][i])
         idx += TWINDOW

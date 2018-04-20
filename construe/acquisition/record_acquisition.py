@@ -12,7 +12,6 @@ with signal records simulating the real-time input.
 from ..utils.MIT import load_MIT_record, read_annotations, is_qrs_annotation
 from ..utils.units_helper import (samples2msec as sp2ms, msec2samples as ms2sp,
                                                         SAMPLING_FREQ, ADCGain)
-from ..model import Interval as Iv
 from ..utils.axel import Event
 import construe.utils.MIT.ECGCodes as ECGCodes
 import construe.acquisition.obs_buffer as BUF
@@ -127,7 +126,7 @@ def get_more_evidence():
                                          init <= a.time < init+nchunks*_STEP)):
             rdef = o.RDeflection()
             atime = ann.time - _OFFSET
-            rdef.time.value = Iv(atime, atime)
+            rdef.time.set(atime, atime)
             #The level is established according to the annotation information.
             rdef.level = {SIG.VALID_LEAD_NAMES[lead] :
                                                     127 for lead in _REC.leads}

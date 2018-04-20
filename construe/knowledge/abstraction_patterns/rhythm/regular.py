@@ -369,7 +369,7 @@ def _rhythm_obs_proc(pattern):
     if isinstance(pattern.hypothesis, o.Tachycardia):
         verify(len(pattern.evidence[o.QRS]) >= 4)
     #We asign the endpoint of the hypothesis.
-    pattern.hypothesis.end.value = pattern.evidence[o.QRS][-1].time.value
+    pattern.hypothesis.end.cpy(pattern.evidence[o.QRS][-1].time)
 
 def _get_qrs_tconst(rr_bounds):
     """

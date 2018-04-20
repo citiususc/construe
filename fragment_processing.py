@@ -45,7 +45,7 @@ args = parser.parse_args()
 if args.l % IN._STEP != 0:
     raise ValueError('Fragment length must be multiple of ' + str(IN._STEP))
 #Searching settings
-TFACTOR = 50.0
+TFACTOR = 5.0
 KFACTOR = 12
 MIN_DELAY = 1750
 MAX_DELAY = int(ms2sp(20000)*TFACTOR)

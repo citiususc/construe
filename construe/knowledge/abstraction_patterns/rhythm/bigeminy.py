@@ -21,7 +21,7 @@ from construe.knowledge.abstraction_patterns.rhythm.regular import (
 def _rhythm_obs_proc(pattern):
     """Observation procedure executed once the rhythm pattern has finished"""
     #We asign the endpoint of the hypothesis.
-    pattern.hypothesis.end.value = pattern.evidence[o.QRS][-1].time.value
+    pattern.hypothesis.end.cpy(pattern.evidence[o.QRS][-1].time)
 
 ###########################################
 ### Previous cardiac rhythm constraints ###

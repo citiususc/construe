@@ -214,8 +214,8 @@ def _t_gconst(pattern, defl):
             pol = (1.0 if max(mx-sig[0], mx-sig[-1])
                                        >= -min(mn-sig[0], mn-sig[1]) else -1.0)
             twave.amplitude[lead] = pol*np.ptp(sig)
-    twave.start.value = Iv(beg+limits.start, beg+limits.start)
-    twave.end.value = Iv(beg+limits.end, beg+limits.end)
+    twave.start.set(beg+limits.start, beg+limits.start)
+    twave.end.set(beg+limits.end, beg+limits.end)
     #The duration of the T Wave must be greater than the QRS
     #(with a security margin)
     verify(twave.earlyend-twave.latestart >

@@ -18,7 +18,6 @@ from construe.acquisition.signal_buffer import VALID_LEAD_NAMES
 from construe.knowledge.abstraction_patterns.segmentation.QRS import _tag_qrs
 from ..units_helper import msec2samples as ms2sp
 from construe.model.interpretation import Interpretation
-from construe.model.interval import Interval as Iv
 from ..signal_processing.wave_extraction import Wave
 import json
 import sortedcontainers
@@ -55,8 +54,8 @@ def ann2interp(record, anns, fmt=False):
                                                      and a.code == C.WFON).time
                 end = next(a for a in anns[i:] if a.time > ann.time
                                                     and a.code == C.WFOFF).time
-            obs.start.value = Iv(beg, beg)
-            obs.end.value = Iv(end, end)
+            obs.start.set(beg, beg)
+            obs.end.set(end, end)
             if fmt:
                 amp = json.loads(ann.aux)
                 for l in amp.keys():
@@ -80,7 +79,7 @@ def ann2interp(record, anns, fmt=False):
             observations.append(obs)
         elif MIT.is_qrs_annotation(ann):
             obs = o.QRS()
-            obs.time.value = Iv(ann.time, ann.time)
+            obs.time.set(ann.time, ann.time)
             obs.tag = ann.code
             delin = json.loads(ann.aux)
             #QRS start and end is first tried to set according to delineation
@@ -104,8 +103,8 @@ def ann2interp(record, anns, fmt=False):
                 end = next(a for a in anns[i:] if a.code == C.WFOFF
                            and extra_cond(a)).time
             #Endpoints set
-            obs.start.value = Iv(beg, beg)
-            obs.end.value = Iv(end, end)
+            obs.start.set(beg, beg)
+            obs.end.set(end, end)
             for lead in delin:
                 assert len(delin[lead]) % 3 == 0, 'Unrecognized delineation'
                 sidx = record.leads.index(lead)
@@ -142,14 +141,14 @@ def ann2interp(record, anns, fmt=False):
             rhclazz = next(rh for rh in C.RHYTHM_AUX
                            if C.RHYTHM_AUX[rh] == ann.aux)
             obs = rhclazz()
-            obs.start.value = Iv(ann.time, ann.time)
+            obs.start.set(ann.time, ann.time)
             end = next((a.time for a in anns[i+1:] if a.code is C.RHYTHM),
                        anns[-1].time)
-            obs.end.value = Iv(end, end)
+            obs.end.set(end, end)
             observations.append(obs)
         elif ann.code is C.ARFCT:
             obs = o.RDeflection()
-            obs.time.value = Iv(ann.time, ann.time)
+            obs.time.set(ann.time, ann.time)
             observations.append(obs)
     interp.observations = sortedcontainers.SortedList(observations)
     return interp

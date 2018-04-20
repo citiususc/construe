@@ -290,8 +290,8 @@ class AbstractionPattern(object):
         Returns
         -------
         out:
-            Set of *Variable* objects that have been modified in the
-            consistency checking.
+            Set of *Interval* objects representing the variables that have been
+            modified in the consistency checking.
         """
         variables = variables or frozenset()
         return (self.tnet.minimize_network() if self.tnet.unconstrained
