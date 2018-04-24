@@ -147,8 +147,8 @@ class AbstractionPattern(object):
                     pat.evidence[trans.observable].append(newobs)
                     pat.finding = newobs
                 pat.trseq.append((trans, newobs))
-                trans.tconst(pat, newobs)
                 try:
+                    trans.tconst(pat, newobs)
                     pat.check_temporal_consistency()
                     #For empty string transitions, general constraints are
                     #inmediately checked.

@@ -226,6 +226,9 @@ class ConstraintNetwork(object):
                 else:
                     start = max(candidate.constraint.start, -const.end)
                     end = min(candidate.constraint.end, -const.start)
+                if start > end:
+                    raise InconsistencyError('Inconsistency with existing '
+                                       'constraint between the same variables')
                 newint = Interval(start, end)
                 if candidate.constraint != newint:
                     candidate.constraint = newint
