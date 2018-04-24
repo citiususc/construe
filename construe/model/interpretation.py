@@ -148,6 +148,16 @@ class Focus(object):
                    if p is not None and o is p.hypothesis)
 
     @property
+    def nabd(self):
+        """
+        Returns the number of abducible abstraction hypothesis in this focus.
+        This number is used to correct the valuation heuristics in the
+        searching algorithm.
+        """
+        return sum(1 for o, p in self._lst if p is not None
+                   and o is p.hypothesis and ap.is_abducible(type(o)))
+
+    @property
     def earliest_time(self):
         """
         Returns the minimum starting time of observations or findings in

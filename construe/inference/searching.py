@@ -52,11 +52,7 @@ def valuation(node, time=None):
                        if ap.get_obs_level(type(o)) == 0)
         abst += len(node.abstracted)
         nhyp += len(node.observations) + node.focus.nhyp
-    total = IN.BUF.nobs_before(time) + node.nabd
-    if node.focus:
-        focustp = type(node.focus.top[0])
-        if ap.is_abducible(focustp) and ap.get_obs_level(focustp) > 0:
-            total -= 1
+    total = IN.BUF.nobs_before(time) + node.nabd - node.focus.nabd
     assert abst<=total
     return ((1.0 - abst/float(total), -abstime, nhyp) if total > 0
                                                       else (0.0, 0.0, 0.0))
