@@ -10,15 +10,15 @@ for the Construe Algorithm.
 @author: T. Teijeiro
 """
 
-from ..utils.predictable_iter import PredictableIter
+import weakref
+from operator import attrgetter
+from collections import namedtuple
+from sortedcontainers import SortedList
+import numpy as np
 import construe.acquisition.record_acquisition as IN
 import construe.knowledge.abstraction_patterns as ap
 import construe.inference.reasoning as reasoning
-import numpy as np
-import weakref
-from sortedcontainers import SortedList
-from operator import attrgetter
-from collections import namedtuple
+from ..utils.predictable_iter import PredictableIter
 
 #Tuple containing the search heuristic.
 Heuristic = namedtuple('Heuristic', 'ocov, scov, time, nhyp')
@@ -53,10 +53,14 @@ def valuation(node, time=None):
         abst += len(node.abstracted)
         nhyp += len(node.observations) + node.focus.nhyp
     total = IN.BUF.nobs_before(time) + node.nabd
-    if total == 0:
-        return (0.0, 0.0, 0.0)
-    else:
-        return (1.0 - abst/float(total), -abstime, nhyp)
+    if node.focus:
+        focustp = type(node.focus.top[0])
+        if ap.is_abducible(focustp) and ap.get_obs_level(focustp) > 0:
+            total -= 1
+    assert abst<=total
+    return ((1.0 - abst/float(total), -abstime, nhyp) if total > 0
+                                                      else (0.0, 0.0, 0.0))
+
 
 def goal(node):
     """
@@ -145,7 +149,7 @@ class Construe(object):
 
         for _ in xrange(self.K):
             node = next((n for n in self.open if filt(n)
-                              and not (optimal and n.node in ancestors)), None)
+                         and not (optimal and n.node in ancestors)), None)
             #The search stops if no nodes can be expanded or if, being in an
             #optimal context, we need to expand a non-optimal node.
             if node is None or (optimal and node.h.ocov > 0.0):
