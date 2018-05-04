@@ -43,7 +43,7 @@ def generate_Deflection_Patterns(npats):
         area delimited by the hypothesis.
     """
     pats = []
-    for i in xrange(npats):
+    for i in range(npats):
         pat = PatternAutomata()
         pat.name = "Deflection"
         pat.Hypothesis = o.Deflection

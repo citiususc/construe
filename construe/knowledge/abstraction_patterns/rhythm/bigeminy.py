@@ -271,7 +271,7 @@ def _get_measures(pattern, even=0):
     n = 20  #Number of observations to get the statistical measures.
     beats = [q for q in pattern.evidence[o.QRS] if q is not pattern.finding]
     #RR
-    rrs = np.diff([beats[i].time.start for i in xrange(len(beats))
+    rrs = np.diff([beats[i].time.start for i in range(len(beats))
                                    if i % 2 == even and len(beats)-i <= n])/2.0
     #RT
     rts = []

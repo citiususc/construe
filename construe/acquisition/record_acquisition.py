@@ -115,7 +115,7 @@ def get_more_evidence():
     if dtime - sp2ms(cursize) > sp2ms(_STEP):
         nchunks = int((min(ms2sp(dtime), _DURATION) - cursize)/_STEP)
         init = _OFFSET + cursize
-        for i in xrange(len(_REC.leads)):
+        for i in range(len(_REC.leads)):
             fragment = _REC.signal[i, init:init+nchunks*_STEP]
             if len(fragment) < nchunks*_STEP:
                 fragment = np.concatenate((fragment,

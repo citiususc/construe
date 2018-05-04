@@ -177,7 +177,7 @@ def _t_tconst(pattern, twave):
     try:
         tnet = pattern.tnet
         #We find the qrs observation precedent to this T wave.
-        qrs = next(obseq[i] for i in xrange(idx-1, -1, -1)
+        qrs = next(obseq[i] for i in range(idx-1, -1, -1)
                                                 if isinstance(obseq[i], o.QRS))
         #If we have more than one QRS, it is possible to constrain even more
         #the location of the T-Wave, based on rhythm information.

@@ -132,7 +132,7 @@ def _is_VF(signal):
     n = int(math.ceil(len(signal)/float(window)))
     isvf = True
     #The conditions are validated in fragments of *window* size
-    for i in xrange(n):
+    for i in range(n):
         if i == n-1 and n > 1:
             frag = signal[-window-tau:-tau]
             dfrag = signal[-min(len(frag), window):]

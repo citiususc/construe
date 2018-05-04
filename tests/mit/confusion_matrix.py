@@ -25,15 +25,15 @@ def pprint_matrix(tags, matrix):
         sys.stdout.write('{:6}'.format(c))
     sys.stdout.write('\n')
     #Matrix rows
-    for i in xrange(len(tags)):
+    for i in range(len(tags)):
         sys.stdout.write(C.ICHARMAP(tags[i]) if i > 0 else 'O')
-        for j in xrange(len(tags)):
+        for j in range(len(tags)):
             sys.stdout.write('{:>6d}'.format(int(matrix[i,j])))
         sys.stdout.write('|{:>6d}'.format(int(np.sum(matrix[i]))))
         sys.stdout.write('\n')
     #Column sum
     sys.stdout.write(' ')
-    for i in xrange(len(tags)):
+    for i in range(len(tags)):
         sys.stdout.write('{:>6d}'.format(int(np.sum(matrix[:,i]))))
     sys.stdout.write('\n')
 
@@ -51,7 +51,7 @@ if __name__ == "__main__":
                              for x in (SLC_STR.split(':') + ['', '', ''])[:3]])
     CMATS = {}
     for REC in [l.strip() for l in open(PATH + 'RECORDS')][SLC]:
-        print 'Record {}'.format(REC)
+        print('Record {}'.format(REC))
         tp = fn = fp = 0
         ref = [a for a in MIT.read_annotations(PATH + REC + REF)
                                                    if MIT.is_qrs_annotation(a)]
@@ -83,14 +83,14 @@ if __name__ == "__main__":
                 fp += 1
                 j += 1
         pprint_matrix(tags, cmat)
-        print ''
+        print('')
         CMATS[REC] = (tags, cmat)
     #Global confusion matrix
-    GTAGS = sorted(set.union(*(set(tags) for tags, _ in CMATS.itervalues())))
+    GTAGS = sorted(set.union(*(set(tags) for tags, _ in CMATS.values())))
     GMAT = np.zeros((len(GTAGS), len(GTAGS)))
-    for tags, mat in CMATS.itervalues():
-        for i in xrange(len(tags)):
-            for j in xrange(len(tags)):
+    for tags, mat in CMATS.values():
+        for i in range(len(tags)):
+            for j in range(len(tags)):
                 GMAT[GTAGS.index(tags[i]), GTAGS.index(tags[j])] += mat[i,j]
-    print 'Global confusion matrix:'
+    print('Global confusion matrix:')
     pprint_matrix(GTAGS, GMAT)

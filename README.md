@@ -15,7 +15,7 @@ The *Construe* algorithm is also the basis for the method described in the paper
 
 ## Installation
 
-This project is implemented in pure python, so no installation is required. However, the core algorithms have strong dependencies with the following python packages:
+This project is implemented in pure python 3, so no installation is required. However, the core algorithms have strong dependencies with the following python packages:
 
 1. [sortedcontainers](https://pypi.python.org/pypi/sortedcontainers)
 2. [numpy](https://pypi.python.org/pypi/numpy)
@@ -172,7 +172,13 @@ The source code is structured in the following main modules:
 
 ## Known issues
 
-- On windows and OS-X systems, the *Dynamic Time Warping* utilities included in the `construe.utils.signal_processing.dtw` package probably won't work. These sources are from the discontinued [mlpy](http://mlpy.sourceforge.net) project, and should be compiled using [cython](http://cython.org). The fastest solution is probably to install the *mlpy* package and change the `dtw_std` import in the `construe/knowledge/abstraction_patterns/segmentation/QRS.py` module.
+- On windows and OS-X systems, the *Dynamic Time Warping* utilities included in the `construe.utils.signal_processing.dtw` package probably won't work. These sources are from the discontinued [mlpy](http://mlpy.sourceforge.net) project, and should be compiled using [cython](http://cython.org) with the following commands:
+```bash
+$ cd construe/utils/signal_processing/dtw
+$ python3 setup.py build_ext --inplace
+```
+  	Another possible workaround is to install the *mlpy* package and change the `dtw_std` import in the `construe/knowledge/abstraction_patterns/segmentation/QRS.py` module.
+
 - Abductive interpretation of time-series is NP-Hard [1]. This implementation includes several optimizations to make computations feasible, but still the running times are probably longer than you expect if the selected abstraction level is `rhythm`. Parameter tuning also help to increase the interpretation speed (usually at the cost of worse-quality results). Also try the `-v` flag to get feedback and make the wait less painful ;-).
 
 ## License

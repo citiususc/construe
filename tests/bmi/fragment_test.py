@@ -75,7 +75,7 @@ while cntr.best is None:
     acq_time = IN.get_acquisition_point()
     #HINT debug code
     fstr = 'Int: {0:05d} '
-    for i in xrange(int(sp2ms(acq_time - cntr.last_time)/1000.0)):
+    for i in range(int(sp2ms(acq_time - cntr.last_time)/1000.0)):
         fstr += '-'
     fstr += ' Acq: {1}'
     print(fstr.format(int(cntr.last_time), acq_time))

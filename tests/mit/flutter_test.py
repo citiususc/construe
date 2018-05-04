@@ -37,7 +37,7 @@ for record in RECORDS:
             flut[record].append(rec.signal[:, vfon.time:vfoff.time+1])
         except StopIteration:
             break
-    for i in xrange(len(flut[record])):
+    for i in range(len(flut[record])):
         fl = flut[record][i]
         for l in (0,1):
             isvf = _is_VF(fl[l])

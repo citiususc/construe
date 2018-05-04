@@ -68,9 +68,9 @@ if __name__ == "__main__":
         NAME, _ = os.path.splitext(rec)
         reader = csv.reader(open(PATH+rec), delimiter=' ')
         #The Header is skipped
-        reader.next()
+        next(reader)
         #The first row is used to get the reference time.
-        head = reader.next()
+        head = next(reader)
         tp = dt.datetime.strptime(head[1] + head[2] + '000',
                                   '%Y.%m.%d%H:%M:%S.%f').replace(tzinfo=None)
         sig = np.genfromtxt(head[3:])
@@ -106,12 +106,12 @@ if __name__ == "__main__":
                 bann = MITAnnotation.MITAnnotation()
                 bann.code = ECGCodes.RHYTHM
                 bann.time = int((af.start-tp).total_seconds()*FREQ)
-                bann.aux = '(AFIB'
+                bann.aux = b'(AFIB'
                 eann = MITAnnotation.MITAnnotation()
                 eann.code = ECGCodes.RHYTHM
                 eann.time = int((min(etp, af.end)-tp).total_seconds()*FREQ)
                 #The end of AF is encoded as 'back to normality'
-                eann.aux = '(N'
+                eann.aux = b'(N'
                 annots.append(bann)
                 annots.append(eann)
         #Annotations are stored in a file with the '.mbg' extension.

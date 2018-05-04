@@ -32,7 +32,7 @@ class Deflection(Observable):
         """
         Obtains the representation of the observable as a character string.
         """
-        level = '-' if not self.level else min(self.level.itervalues())
+        level = '-' if not self.level else min(self.level.values())
         lead = '-' if not self.level else min(self.level, key= self.level.get)
         return '{0} ({1}, {2})'.format(super(Deflection, self).__str__(),
                                                                   level, lead)

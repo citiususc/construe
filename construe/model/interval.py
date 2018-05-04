@@ -34,6 +34,9 @@ class Interval(object):
         """The interval's end"""
         return self._end
 
+    def __iter__(self):
+        yield self._start
+        yield self._end
 
     def __str__(self):
         "As string."
@@ -45,12 +48,17 @@ class Interval(object):
         return '[{0},{1}]'.format(self._start, self._end)
 
 
-    def __cmp__(self, other):
-        "Compare."
+    def __lt__(self, other):
         if other is None:
-            return 1
-        start_cmp = cmp(self._start, other.start)
-        return start_cmp if start_cmp != 0 else cmp(self._end, other.end)
+            return False
+        return self._start < other.start or (self._start == other.start
+                                             and self._end < other.end)
+        
+    def __le__(self, other):
+        if other is None:
+            return False
+        return self < other or (self._start == other.start 
+                                and self._end == other.end)
 
 
     def cpy(self, other):

@@ -92,8 +92,8 @@ def print_results(results):
     testlabels = sorted(rtags.intersection(ttags)) + sorted(ttags - rtags)
     #Confusion matrix
     mat = np.zeros((len(reflabels), len(testlabels)))
-    for i in xrange(len(reflabels)):
-        for j in xrange(len(testlabels)):
+    for i in range(len(reflabels)):
+        for j in range(len(testlabels)):
             mat[i, j] = results[(reflabels[i], testlabels[j])]
     #Normalized results
     #HINT change by mat to get absolute results.
@@ -113,8 +113,8 @@ def print_results(results):
     n, m = out.shape
     #String representation of the confusion matrix
     outstr = ''
-    for i in xrange(n):
-        for j in xrange(m):
+    for i in range(n):
+        for j in range(m):
             if j == m-1:
                 outstr += '|'
             outstr += str(out[i, j]).rjust(9)
@@ -254,19 +254,19 @@ if __name__ == "__main__":
         #Output
         print('==== {0} ({1:2.2f}%) ====\n'.format(rec, hitrate(results[rec])))
         print_results(results[rec])
-        for rhtag in sorted(set(epicmpres.iterkeys()).intersection(
+        for rhtag in sorted(set(epicmpres.keys()).intersection(
                           set(rh.code for rh in test_rhythms).union(
                                          set(rh.code for rh in ref_rhythms)))):
             sem, ppm = epicmp(ref_rhythms, test_rhythms, rhtag)
             meas = sem+ppm
             print(print_epicmp_results(rhtag, rec, meas, False))
-            for i in xrange(len(meas)):
+            for i in range(len(meas)):
                 epicmpres[rhtag][i] += meas[i]
     #Global results
     gresults = defaultdict(int)
-    allkeys = set.union(*(set(v.iterkeys()) for v in results.itervalues()))
+    allkeys = set.union(*(set(v.keys()) for v in results.values()))
     for k in allkeys:
-        gresults[k] = sum(v[k] for v in results.itervalues())
+        gresults[k] = sum(v[k] for v in results.values())
     print('====Global results ({0:2.2f}%):===='.format(hitrate(gresults)))
     print_results(gresults)
     #Episode evaluation through epicmp

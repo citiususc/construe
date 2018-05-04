@@ -120,7 +120,7 @@ def get_deflection_observations(start, end, lead, max_level=0, group=ms2sp(20)):
     """
     energ = sig_buf.get_energy_fragment(start, end, lead=lead)[0]
     obs = {}
-    for i in xrange(max_level + 1):
+    for i in range(max_level + 1):
         obs[i] = []
         for interv in get_energy_intervals(energ, level = i, group = group):
             defl = o.Deflection()
@@ -131,7 +131,7 @@ def get_deflection_observations(start, end, lead, max_level=0, group=ms2sp(20)):
         #We update the time of the intervals
         changeTime(obs[i], start)
     #Now we need to remove redundant observations of upper levels
-    for i in xrange(max_level, 0, -1):
+    for i in range(max_level, 0, -1):
         j = 0
         while j < len(obs[i]):
             obj = obs[i][j]
@@ -169,10 +169,10 @@ def combine_energy_intervals(dicts, margin = ms2sp(20)):
     """
     chain = it.chain.from_iterable
     dict1 = dicts[0]
-    for wint in chain(dict1.itervalues()):
-        for i in xrange(1, len(dicts)):
+    for wint in chain(dict1.values()):
+        for i in range(1, len(dicts)):
             conflictive = []
-            for lst in dicts[i].itervalues():
+            for lst in dicts[i].values():
                 if not lst:
                     continue
                 idx = bisect.bisect_left(lst, wint)
@@ -189,13 +189,13 @@ def combine_energy_intervals(dicts, margin = ms2sp(20)):
                         conflictive.append(w)
                     idx += 1
             if conflictive:
-                alleads = set.union(*(set(w.level.iterkeys())
-                            for w in conflictive)) - set(wint.level.iterkeys())
+                alleads = set.union(*(set(w.level.keys())
+                            for w in conflictive)) - set(wint.level.keys())
                 for lead in alleads:
                     wint.level[lead] = min(w.level.get(lead, np.Inf)
                                                           for w in conflictive)
                 for wconf in conflictive:
-                    dicts[i][wconf.level.values()[0]].remove(wconf)
+                    dicts[i][next(wconf.level.values())].remove(wconf)
 
 
 def get_combined_energy(start, end, max_level, group=ms2sp(80)):
@@ -225,7 +225,7 @@ def get_combined_energy(start, end, max_level, group=ms2sp(80)):
     dicts = {}
     for lead in sig_buf.get_available_leads():
         dicts[lead] = {}
-        for i in xrange(max_level + 1):
+        for i in range(max_level + 1):
             dicts[lead][i] = []
     #Energy intervals detection and combination
     idx = start
@@ -237,7 +237,7 @@ def get_combined_energy(start, end, max_level, group=ms2sp(80)):
                                                 lead = lead,
                                                 max_level = max_level,
                                                 group = group)
-            for i in xrange(max_level + 1):
+            for i in range(max_level + 1):
                 if dicts[lead][i] and wfs[lead][i]:
                     if (wfs[lead][i][0].earlystart - dicts[lead][i][-1].lateend
                                                                      <= group):
@@ -246,7 +246,7 @@ def get_combined_energy(start, end, max_level, group=ms2sp(80)):
                 dicts[lead][i].extend(wfs[lead][i])
         idx += TWINDOW
     #Remove overlapping intervals
-    combine_energy_intervals(dicts.values())
+    combine_energy_intervals(list(dicts.values()))
     #Now we flatten the dictionaries, putting all the intervals in a sequence
     #sorted by the earlystart value.
     return SortedList(w for w in it.chain.from_iterable(it.chain.from_iterable(

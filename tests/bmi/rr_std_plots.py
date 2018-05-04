@@ -40,7 +40,7 @@ for rec in RECORDS:
     pwf = []
     #We create one point by minute.
     minutes = int(rpeaks[-1]/60000)
-    for m in xrange(minutes):
+    for m in range(minutes):
         mpks = rpeaks[np.logical_and(rpeaks > m*60000, rpeaks < (m+1)*60000)]
         if len(mpks) < 2:
             rrstd.append(0.0)
@@ -54,7 +54,7 @@ for rec in RECORDS:
             pwf.append(0.0)
     #P wave detection plot on the background
     p1 = par1.bar(np.arange(minutes)-0.5, pwf, 1.0, alpha=0.5)
-    for m in xrange(minutes):
+    for m in range(minutes):
         color = ((200-pwf[m]/100*200)/256.0, pwf[m]/100*200/256.0, 0)
         p1.patches[m].set_facecolor(color)
     par1.set_ylim(0, 100)

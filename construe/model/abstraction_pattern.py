@@ -87,7 +87,7 @@ class AbstractionPattern(object):
         cpy.fstate = self.fstate
         cpy.trseq = self.trseq[:]
         clone_attrs(cpy.hypothesis, self.hypothesis)
-        for observable, observations in self.evidence.iteritems():
+        for observable, observations in self.evidence.items():
             cpy.evidence[observable] = observations[:]
         cpy.finding = self.finding
         cpy.tnet = copy.copy(self.tnet)
@@ -123,7 +123,7 @@ class AbstractionPattern(object):
             pat.tnet = ConstraintNetwork()
             BASIC_TCONST(pat, pat.hypothesis)
             try:
-                for i in xrange(len(pat.trseq)):
+                for i in range(len(pat.trseq)):
                     trans, obs = pat.trseq[i]
                     BASIC_TCONST(pat, obs)
                     trans.tconst(pat, obs)
@@ -207,7 +207,7 @@ class AbstractionPattern(object):
         by this pattern. If the observation has not been inferred in this
         abstraction pattern instance, returns -1. The first step is 0.
         """
-        return next((i for i in xrange(len(self.trseq))
+        return next((i for i in range(len(self.trseq))
                                        if self.trseq[i][1] is observation), -1)
 
     def abstracts(self, observation):
@@ -234,7 +234,7 @@ class AbstractionPattern(object):
         if self.tnet.contains_variable(obs1.end):
             self.tnet.replace_variable(obs1.end, obs2.end)
         #We get the transition that generated obs1
-        tri = next((i for i in xrange(len(self.trseq))
+        tri = next((i for i in range(len(self.trseq))
                                             if self.trseq[i][1] is obs1), None)
         if tri is None:
             raise ValueError('Finding {0} not found'.format(obs1))
@@ -244,9 +244,9 @@ class AbstractionPattern(object):
         verify(isinstance(obs2, trans.observable), '{0} must be {1} instance',
                                                       (obs2, trans.observable))
         obsi = bisect.bisect_left(lst, obs1)
-        obsi = next(i for i in xrange(obsi, len(lst)) if lst[i] is obs1)
+        obsi = next(i for i in range(obsi, len(lst)) if lst[i] is obs1)
         lst[obsi] = obs2
-        verify(max(Counter(lst).itervalues()) == 1, 'Duplicated observation {0}'
+        verify(max(Counter(lst).values()) == 1, 'Duplicated observation {0}'
                                       ' in {1} pattern evidence.', (obs2, self))
         if obs1 is self.finding:
             self.finding = obs2
@@ -265,10 +265,10 @@ class AbstractionPattern(object):
         #the general constraints of the transition have to be checked.
         self.check_temporal_consistency({observation.start, observation.time,
                                                               observation.end})
-        tri = next((i for i in xrange(len(self.trseq))
+        tri = next((i for i in range(len(self.trseq))
                                      if self.trseq[i][1] is observation), None)
         #We check all the general constraints from the matched one to the end
-        for i in xrange(tri, len(self.trseq)):
+        for i in range(tri, len(self.trseq)):
             trans, obs = self.trseq[i]
             if obs is self.finding:
                 break

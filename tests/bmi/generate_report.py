@@ -20,14 +20,14 @@ PATH = ('/home/local/tomas.teijeiro/Dropbox/Investigacion/tese/estadias/' +
 RECORDS = [l.strip() for l in open(PATH + 'RECORDS')]
 ANN = '.iqrs'
 
-RHNAMES = {'(N'   : 'Normal rhythm',
-           '(SVTA': 'Tachycardia',
-           '(SBR' : 'Bradycardia',
-           '(AFIB': 'Atrial Fibrillation',
-           '(T'   : 'Trigeminy',
-           '(B'   : 'Bigeminy',
-           '(VFL' : 'Ventricular Flutter',
-           'P'    : 'Absence of rhythm'}
+RHNAMES = {b'(N'   : 'Normal rhythm',
+           b'(SVTA': 'Tachycardia',
+           b'(SBR' : 'Bradycardia',
+           b'(AFIB': 'Atrial Fibrillation',
+           b'(T'   : 'Trigeminy',
+           b'(B'   : 'Bigeminy',
+           b'(VFL' : 'Ventricular Flutter',
+           b'P'    : 'Absence of rhythm'}
 
 for rec in RECORDS:
     rhctr = Counter()
@@ -39,9 +39,9 @@ for rec in RECORDS:
         continue
     print('Interpretation results for record {0}:'.format(rec))
     print('Rhythm analysis:')
-    nect = len([a for a in anns if a.aux == '(EXT'])
-    nbk = len([a for a in anns if a.aux == '(BK'])
-    ncpt = len([a for a in anns if a.aux == '(CPT'])
+    nect = len([a for a in anns if a.aux == b'(EXT'])
+    nbk = len([a for a in anns if a.aux == b'(BK'])
+    ncpt = len([a for a in anns if a.aux == b'(CPT'])
     while True:
         end = next(rhythms, anns[-1])
         if start.aux in RHNAMES:

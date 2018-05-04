@@ -116,7 +116,8 @@ for rec in RECORDS:
     anns = [a for a in anns if a.code == COD.RHYTHM]
     i = 1
     while i < len(anns):
-        if (anns[i].aux in ('(N', '(SVTA', '(SBR', '(AFIB', '(T', '(B', '(VFL')
+        if (anns[i].aux in (b'(N', b'(SVTA', b'(SBR', b'(AFIB', b'(T', b'(B',
+                                                                       b'(VFL')
                 and anns[i].aux == anns[i-1].aux):
             anns.pop(i)
         else:

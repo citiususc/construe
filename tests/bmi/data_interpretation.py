@@ -57,7 +57,7 @@ for rec in RECORDS[SLC]:
     FR_OVERLAP = int(ms2sp(3000))
     MIN_DELAY = 1750
     MAX_DELAY = 20.0
-    print 'Processing record {0} at 250.0 Hz '.format(rec)
+    print('Processing record {0} at 250.0 Hz '.format(rec))
     ANNOTS = process_record(DATABASE_DIR + str(rec), ANNOTATOR, TFACTOR, FR_LEN,
                                      FR_OVERLAP, MIN_DELAY, MAX_DELAY, KFACTOR)
     MITAnnotation.save_annotations(ANNOTS, fname)

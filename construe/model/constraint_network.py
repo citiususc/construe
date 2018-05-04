@@ -244,7 +244,7 @@ class ConstraintNetwork(object):
         """
         Returns a tuple with all the temporal variables involved in this STP.
         """
-        return self._constr.keys()
+        return tuple(self._constr.keys())
 
     def contains_variable(self, var):
         """Checks if a temporal variable is in this STP"""
@@ -316,7 +316,7 @@ class ConstraintNetwork(object):
         A = np.empty((n, n))
         B = np.empty_like(A)
         A.fill(np.inf)
-        for i in xrange(n):
+        for i in range(n):
             A[i, i] = 0
         #We asign a integer key to each variable, starting in 1
         keys = {}
@@ -334,7 +334,7 @@ class ConstraintNetwork(object):
             A[a, b] = const.constraint.end
             A[b, a] = -const.constraint.start
         #Floyd-Warshall
-        for i in xrange(n):
+        for i in range(n):
             np.add(A[i, :].reshape(1, n), A[:, i].reshape(n, 1), B)
             np.minimum(A, B, A)
         #Rounding to avoid precision errors
@@ -368,10 +368,10 @@ if __name__ == "__main__":
     # pylint: disable-msg=C0103
     import time
 
-    v0, v1, v2, v3 = [Interval(-np.inf, np.inf) for _ in xrange(4)]
+    v0, v1, v2, v3 = [Interval(-np.inf, np.inf) for _ in range(4)]
     v0.set(0, 0)
-    print 'v0:' + str(v0) + ' v1:' + str(v1) +\
-         ' v2:' + str(v2) + ' v3:' + str(v3)
+    print('v0:' + str(v0) + ' v1:' + str(v1) +\
+         ' v2:' + str(v2) + ' v3:' + str(v3))
     nw = ConstraintNetwork()
     nw.set_before(v0, v1)
     nw.add_constraint(v1, v2, Interval(3, 5))
@@ -380,18 +380,18 @@ if __name__ == "__main__":
     nw.add_constraint(v3, v2, Interval(-24, -2))
     nw.update_constraint(v2, v3, Interval(4, 25))
     nw.minimize_network()
-    print 'v0:' + str(v0) + ' v1:' + str(v1) +\
-         ' v2:' + str(v2) + ' v3:' + str(v3)
+    print('v0:' + str(v0) + ' v1:' + str(v1) +\
+         ' v2:' + str(v2) + ' v3:' + str(v3))
     v3.set(89, 89)
     nw.minimize_network()
-    print 'v0:' + str(v0) + ' v1:' + str(v1) +\
-         ' v2:' + str(v2) + ' v3:' + str(v3)
+    print('v0:' + str(v0) + ' v1:' + str(v1) +\
+         ' v2:' + str(v2) + ' v3:' + str(v3))
     v1.set(62, 65)
     nw.minimize_network()
-    print 'v0:' + str(v0) + ' v1:' + str(v1) +\
-         ' v2:' + str(v2) + ' v3:' + str(v3)
+    print('v0:' + str(v0) + ' v1:' + str(v1) +\
+         ' v2:' + str(v2) + ' v3:' + str(v3))
     #Known example assertion (Detcher STP example in TCN paper)
-    v0, v1, v2, v3, v4 = [Interval(-np.inf, np.inf) for _ in xrange(5)]
+    v0, v1, v2, v3, v4 = [Interval(-np.inf, np.inf) for _ in range(5)]
     v0.set(0, 0)
     nw = ConstraintNetwork()
     nw.add_constraint(v0, v1, Interval(10, 20))
@@ -400,20 +400,20 @@ if __name__ == "__main__":
     nw.add_constraint(v3, v4, Interval(40, 50))
     nw.add_constraint(v0, v4, Interval(60, 70))
     nw.minimize_network()
-    assert v0 == Interval(0, 0)
-    assert v1 == Interval(10, 20)
-    assert v2 == Interval(40, 50)
-    assert v3 == Interval(20, 30)
-    assert v4 == Interval(60, 70)
+    assert tuple(v0) == (0, 0)
+    assert tuple(v1) == (10, 20)
+    assert tuple(v2) == (40, 50)
+    assert tuple(v3) == (20, 30)
+    assert tuple(v4) == (60, 70)
     #Performance test
     nvar = 500
-    variables = [Interval(-np.inf, np.inf) for _ in xrange(nvar)]
+    variables = [Interval(-np.inf, np.inf) for _ in range(nvar)]
     variables[0].set(0, 0)
     nwl = ConstraintNetwork()
-    for j in xrange(nvar-1):
+    for j in range(nvar-1):
         nwl.add_constraint(variables[j], variables[j+1], Interval(1, 10))
     t1 = time.clock()
     nwl.minimize_network()
     t2 = time.clock()
-    print 'Time to process {0} constraints: {1:.5f}s'.format(nvar, t2-t1)
+    print('Time to process {0} constraints: {1:.5f}s'.format(nvar, t2-t1))
     #End of performance test

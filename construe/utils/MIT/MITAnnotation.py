@@ -149,7 +149,7 @@ def save_annotations(annots, path):
     path: Path to the file where the list is saved.
     """
     annots = sorted(annots)
-    f = open(path, 'w')
+    f = open(path, 'wb')
     prev_time = 0
     prev_num = 0
     prev_chn = 0
@@ -165,7 +165,7 @@ def save_annotations(annots, path):
             f.write(struct.pack('<H', rel_time >> 16))
             f.write(struct.pack('<H', rel_time & 0xFFFF))
             #The next written position is 0
-            rel_time=0
+            rel_time = 0
         #We write the annotation code and the timestamp
         f.write(struct.pack('<H', anot.code << 10 | rel_time))
         prev_time = anot.time
@@ -183,9 +183,11 @@ def save_annotations(annots, path):
         #Write the AUX field, if present
         if anot.aux != None:
             f.write(struct.pack('<H', AUX_CODE << 10 | len(anot.aux)))
-            f.write(anot.aux)
-            if (len(anot.aux) % 2 != 0):
-                f.write(struct.pack('<b',0))
+            aux = (anot.aux if isinstance(anot.aux, bytes) 
+                                        else bytes(anot.aux, encoding='utf-8'))
+            f.write(aux)
+            if len(anot.aux) % 2 != 0:
+                f.write(struct.pack('<b', 0))
     #Finish the file with a 00
     f.write(struct.pack('<h', 0))
     f.close()
@@ -213,5 +215,5 @@ def convert_annots_freq(spath, sfreq, dpath, dfreq):
 
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     pass

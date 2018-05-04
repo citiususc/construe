@@ -44,7 +44,7 @@ def _focus_mergeable(f1, f2):
     """
     return all(f1._lst[i][0] == f2._lst[i][0]
                and _pat_mergeable(f1._lst[i][1], f2._lst[i][1])
-                                       for i in xrange(len(f1._lst)-1, -1, -1))
+                                       for i in range(len(f1._lst)-1, -1, -1))
 
 
 class PastMetrics(nt('PastMetrics', 'time, abst, abstime, nhyp')):
@@ -110,7 +110,7 @@ class Focus(object):
     def __contains__(self, key):
         return any(key is v for v, _ in self._lst)
 
-    def __nonzero__(self):
+    def __bool__(self):
         return bool(self._lst)
 
     def push(self, obs, pattern):
@@ -171,7 +171,7 @@ class Focus(object):
         the observation is fully observed, or None if the observation will
         not be matched with a finding.
         """
-        for i in xrange(len(self._lst)-1, 0, -1):
+        for i in range(len(self._lst)-1, 0, -1):
             if self._lst[i][0] is observation:
                 f, p = self._lst[i-1]
                 if p is not None and f is p.finding:
@@ -433,11 +433,11 @@ class Interpretation(object):
                 and self.singletons == other.singletons
                 and _focus_mergeable(self.focus, other.focus)
                 and all(self.unintelligible[i] == other.unintelligible[i]
-                        for i in xrange(nunint-1, -1, -1))
+                        for i in range(nunint-1, -1, -1))
                 and all(self.abstracted[i] == other.abstracted[i]
-                        for i in xrange(nabs-1, -1, -1))
+                        for i in range(nabs-1, -1, -1))
                 and all(self.observations[i] == other.observations[i]
-                        for i in xrange(nobs-1, -1, -1)))
+                        for i in range(nobs-1, -1, -1)))
 
     def is_ancestor(self, interpretation):
         """

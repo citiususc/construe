@@ -158,7 +158,7 @@ def parallel_plot(signals, fig = None):
         fig = figure()
     fig.clear()
     fig.subplots_adjust(hspace=0.001)
-    for i in xrange(1, len(signals)+1):
+    for i in range(1, len(signals)+1):
         #Todas las gráficas excepto la primera compartirán los ejes
         shared_axes = None if i == 1 else fig.get_children()[1]
         fig.add_subplot(len(signals), 1, i,
@@ -211,7 +211,7 @@ class ObservationVisualizer(object):
                                  [obs.lateend, bottom],
                                  [obs.earlyend, bottom + self.lev_height],
                                  [obs.latestart, bottom + self.lev_height]]
-            for i in xrange(4):
+            for i in range(4):
                 if self.trapezs[obs][i][0] == np.inf:
                     self.trapezs[obs][i][0] = len(self.signal)
         #Event listeners
@@ -243,13 +243,13 @@ class ObservationVisualizer(object):
         self.fig.clear()
         self.fig.add_subplot(111).plot(self.signal, color= '#000000')
         plot = self.fig.get_children()[1]
-        plot.set_axis_bgcolor('white')
+        plot.set_facecolor('white')
         plot.yaxis.set_ticks([])
         #We obtain the figure limits to plot the observations
         min_sig = self.sig_limits[0]
         #Level annotation
         ypos = min_sig + self.lev_height / 2.0
-        for i in xrange(LEVELS):
+        for i in range(LEVELS):
             plot.hlines(min_sig + i * self.lev_height, 0, len(self.signal),
                                                                color='#DCDCDC')
             plot.text(10, ypos, 'L' + str(i))
@@ -305,7 +305,7 @@ def _point_inside_polygon(x, y, poly):
     n = len(poly)
     inside = False
     p1x, p1y = poly[0]
-    for i in xrange(n+1):
+    for i in range(n+1):
         p2x, p2y = poly[i % n]
         if y > min(p1y, p2y):
             if y <= max(p1y, p2y):
@@ -381,10 +381,10 @@ class InterpretationVisualizer(object):
             while stack:
                 n = stack.pop()
                 self.drnodes.add(n)
-                stack.extend(self.graph[n].keys())
+                stack.extend(list(self.graph[n].keys()))
         self.labels = {}
         labelling = label_funcs or dict({'e': lambda node: ''})
-        for key, func in labelling.iteritems():
+        for key, func in labelling.items():
             self.labels[key] = {}
             for node in self.graph.nodes():
                 self.labels[key][node] = func(node)
@@ -439,7 +439,7 @@ class InterpretationVisualizer(object):
                             n = stack.pop()
                             self.drnodes.add(n)
                             if n is node or not n.is_firm:
-                                stack.extend(self.graph[n].keys())
+                                stack.extend(list(self.graph[n].keys()))
                         self.redraw()
                     #Button 3: Copy the branch name to the clipboard
                     elif event.button == 3:
@@ -456,7 +456,7 @@ class InterpretationVisualizer(object):
         """
         Updates the plot.
         """
-        ldict = ldict or self.labels.values()[0]
+        ldict = ldict or next(iter(self.labels.values()))
         axes = self._fig.gca()
         #Save the axis limits
         x, y = axes.get_xlim(), axes.get_ylim()
@@ -531,7 +531,7 @@ def save_video(interp, fname, last=None, interval=50):
     fig = figure(figsize=(18, 3), dpi=100, tight_layout=True)
 
     def update_figure(idx):
-        print str(idx) + '/' + str(len(interplist))
+        print(str(idx) + '/' + str(len(interplist)))
         intplt = interplist[idx]
         plot_observations(sig, intplt, fig, False)
         fig.gca().set_xbound(lower=0, upper=len(sig))

@@ -99,7 +99,7 @@ def get_peaks(arr):
         while sdif[i] == 0:
             i += 1
         sdif[0] = sdif[i]
-    for i in xrange(1, len(sdif)):
+    for i in range(1, len(sdif)):
         if sdif[i] == 0:
             sdif[i] = sdif[i-1]
     return np.where(sdif[1:]!=sdif[:-1])[0] + 1

@@ -48,12 +48,12 @@ def _get_measures(pattern, ectopic=False):
     """
     beats = [b for b in pattern.evidence[o.QRS] if b is not pattern.finding]
     #RR
-    rrs = np.diff([beats[i].time.start for i in xrange(len(beats))
+    rrs = np.diff([beats[i].time.start for i in range(len(beats))
                                                  if _is_ectopic(i) == ectopic])
     if not ectopic:
         #For normal beats, the RR intervals has to be reduced in the ectopic
         #positions.
-        for i in xrange(0, len(rrs), 2):
+        for i in range(0, len(rrs), 2):
             rrs[i] = rrs[i]/2.0
     #RT
     rts = []

@@ -29,11 +29,12 @@ class MITRecord(object):
     @property
     def length(self):
         """Obtains the length, in samples, of the longest signal"""
-        return max(len(self.signal[i]) for i in xrange(len(self.leads)))
+        return max(len(self.signal[i]) for i in range(len(self.leads)))
 
 def get_leads(record_path):
     """Obtains a list with the name of the leads of a specific record."""
     signals = check_output(['signame', '-r', record_path]).splitlines()
+    signals = [s.decode("utf-8") for s in signals]
     return [s for s in signals if s in SIG.VALID_LEAD_NAMES]
 
 def get_datetime(record_path):
@@ -50,6 +51,7 @@ def get_gain(record_path):
     """
     sigdesc = [s.strip()
                  for s in check_output(['wfdbdesc', record_path]).splitlines()]
+    sigdesc = [s.decode("utf-8") for s in sigdesc]
     gains = set()
     for desc in sigdesc:
         if desc.startswith('Gain:'):
@@ -113,7 +115,7 @@ def load_MIT_record(record_path, physical_units=False, multifreq=False):
     mat = numpy.fromstring(string, sep='\t')
     #We reshape it according to the number of signals + 1 (the first column)
     #is the number of sample, but it is not of our interest.
-    mat = mat.reshape(((len(mat)/(num_signals + 1)), num_signals + 1))
+    mat = mat.reshape(((len(mat) // (num_signals + 1)), num_signals + 1))
     result = MITRecord()
     #We remove the first column, and transpose the result
     result.signal = mat[:, 1:].T

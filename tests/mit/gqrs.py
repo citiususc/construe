@@ -54,7 +54,7 @@ def improve_annotations(orig, annotators):
     annotators:
         Iterable of *sortedlist* of annotations.
     """
-    for i in xrange(len(orig)):
+    for i in range(len(orig)):
         dummy = copy.copy(orig[i])
         dummy.time = dummy.time - C.BEATANN_MIN_DIST
         impr = set([orig[i]])
@@ -75,10 +75,10 @@ def best_quality_lead(rec):
     n = len(rec.leads)
     siglen = len(rec.signal[0])
     quality = np.zeros(n)
-    for i in xrange(n):
+    for i in range(n):
         quality[i] = np.median(np.array([kurtosis(rec.signal[i][j:j+wlen])
-                                            for j in xrange(0, siglen, wlen)]))
-    print record, quality
+                                            for j in range(0, siglen, wlen)]))
+    print(record, quality)
     return quality.argmax()
 
 def best_quality_annotator(annotators, base_time= 0):
@@ -101,7 +101,7 @@ def best_quality_annotator(annotators, base_time= 0):
     #FIXME we assume annotators starting at 0, be careful!
     freqs = [len(ann)/(sp2ms(ann[-1].time - base_time)/60000.0)
                                                          for ann in annotators]
-    gfreqann = [annotators[i] for i in xrange(len(freqs))
+    gfreqann = [annotators[i] for i in range(len(freqs))
                                                       if 30 <= freqs[i] <= 140]
     if gfreqann:
         annotators = gfreqann
@@ -115,7 +115,7 @@ def best_quality_annotator(annotators, base_time= 0):
 #                                                       for amp in amplitudes])]
     #Minimum amplitude variation with std windowing
     return annotators[np.argmin([np.std(
-                          [np.std(amp[i:i+20]) for i in xrange(0,len(amp),20)])
+                          [np.std(amp[i:i+20]) for i in range(0,len(amp),20)])
                                                        for amp in amplitudes])]
     #Minimum amplitude variation with mean windowing
 #    return annotators[np.argmin([np.std(
@@ -173,7 +173,7 @@ for record in RECORDS:
         annotators.append(read_annotations(annpath)[1:])
         os.remove(annpath)
     series[record] = np.array([[a.num for a in ann] for ann in annotators])
-    for i in xrange(len(leads)):
+    for i in range(len(leads)):
         series[record][i] = series[record][i]/np.mean(series[record][i])
     #bestann = annotators[best_quality_lead(mitr)]
     annots = []

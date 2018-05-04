@@ -104,7 +104,7 @@ def set_knowledge_base(knowledge):
                   Cardiac_Rhythm:(Cardiac_Rhythm,)
                   }
     #Automatic expansion of the exclusion relation.
-    for q, qexc in _EXCLUSION.iteritems():
+    for q, qexc in _EXCLUSION.items():
         _EXCLUSION[q] = tuple((q2 for q2 in _OBSERVABLES
                                                       if issubclass(q2, qexc)))
     for q in sorted(_OBSERVABLES, key=_LMAP.get, reverse=True):
@@ -125,7 +125,7 @@ def get_excluded(observable):
 
 def get_max_level():
     """Obtains the maximum abstraction level of the domain."""
-    return max(_LMAP.itervalues())
+    return max(_LMAP.values())
 
 def get_level(nlevel, subclasses=True):
     """

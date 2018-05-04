@@ -360,7 +360,7 @@ def _verify_atrial_activity(pattern):
     #First we get all the signal fragments between ventricular observations,
     #which are the only recognized by this pattern. In these fragments is where
     #atrial activity may be recognized.
-    for i in xrange(idx+1, len(obseq)):
+    for i in range(idx+1, len(obseq)):
         if isinstance(obseq[i], o.QRS):
             beg = next(obs for obs in reversed(obseq[:i])
                                                     if obs is not None).lateend
@@ -368,7 +368,7 @@ def _verify_atrial_activity(pattern):
             if end-beg > ms2sp(200):
                 beg = end - ms2sp(200)
             pw_lims.append((beg, end))
-    for i in xrange(len(beats)-1):
+    for i in range(len(beats)-1):
         beg, end = beats[i].lateend, beats[i+1].earlystart
         for lead in atr_sig:
             atr_sig[lead].append(sig_buf.get_signal_fragment(beg, end,
@@ -391,8 +391,8 @@ def _verify_atrial_activity(pattern):
             if not pwsig:
                 continue
             for wave in pwaves:
-                verify(abs(wave.values()[0].pr -
-                                        pwsig.values()[0].pr) > C.TMARGIN or
+                verify(abs(list(wave.values())[0].pr -
+                           list(pwsig.values())[0].pr) > C.TMARGIN or
                                                  not signal_match(wave, pwsig))
             pwaves.append(pwsig)
 
@@ -468,12 +468,12 @@ AFIB_PATTERN.add_transition(7, 8)
 AFIB_PATTERN.add_transition(8, 7, o.QRS, ABSTRACTED, _qrs_tconst, _qrs_gconst)
 #Else, we need at least AFIB_MIN_NQRS QRS complexes.
 AFIB_PATTERN.add_transition(5, 9, o.QRS, ABSTRACTED, _qrs_tconst, _qrs_gconst)
-for i in xrange(C.AFIB_MIN_NQRS-4):
+for i in range(C.AFIB_MIN_NQRS-4):
     AFIB_PATTERN.add_transition(9+i, 10+i, o.QRS, ABSTRACTED,
                                                       _qrs_tconst, _qrs_gconst)
 #T waves are searched after the necessary QRS have been observed.
 ST = 9 + C.AFIB_MIN_NQRS - 4
-for i in xrange(C.AFIB_MIN_NQRS-2):
+for i in range(C.AFIB_MIN_NQRS-2):
     AFIB_PATTERN.add_transition(ST, ST+1, o.TWave, ABSTRACTED,
                                                              get_t_tconst(i+1))
     AFIB_PATTERN.add_transition(ST, ST+1)

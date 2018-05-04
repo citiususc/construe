@@ -56,9 +56,9 @@ def similarity(sig1, sig2):
     Obtains a measure of the similarity between two multi-lead signals, as the
     mean of the cross-correlation value in every lead.
     """
-    cleads = set(sig1.keys()).intersection(sig2.keys())
+    cleads = set(sig1.keys()).intersection(set(sig2.keys()))
     corrs = []
-    for lead in set(sig1.keys()).union(sig2.keys()):
+    for lead in set(sig1.keys()).union(set(sig2.keys())):
         if lead not in cleads:
             corrs.append(0.0)
         else:
@@ -84,7 +84,7 @@ def signal_match(sig1, sig2):
         the keys are the leads with available information, and the values have
         a property named **sig** that are numpy arrays containing the signal.
     """
-    cleads = set(sig1.keys()).intersection(sig2.keys())
+    cleads = set(sig1.keys()).intersection(set(sig2.keys()))
     lendiff = False
     corrs = []
     if not cleads:
@@ -110,7 +110,7 @@ def identical(sig1, sig2):
     Checks if two QRS are identical.
     """
     corrs = []
-    if set(sig1.iterkeys()) != set(sig2.iterkeys()):
+    if set(sig1.keys()) != set(sig2.keys()):
         return False
     for lead in sig1.keys():
         arr1, arr2 = sig1[lead].sig, sig2[lead].sig
@@ -145,7 +145,7 @@ def signal_unmatch(sig1, sig2):
         signal, and the other one named **amplitude** with amplitude
         information.
     """
-    cleads = set(sig1.keys()).intersection(sig2.keys())
+    cleads = set(sig1.keys()).intersection(set(sig2.keys()))
     if not cleads:
         return True
     for lead in cleads:

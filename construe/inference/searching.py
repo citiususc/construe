@@ -143,7 +143,7 @@ class Construe(object):
         ancestors = set()
         optimal = False
 
-        for _ in xrange(self.K):
+        for _ in range(self.K):
             node = next((n for n in self.open if filt(n)
                          and not (optimal and n.node in ancestors)), None)
             #The search stops if no nodes can be expanded or if, being in an
@@ -152,7 +152,7 @@ class Construe(object):
                 break
             self.open.remove(node)
             #Go a step further
-            nxt = self.successors[node.node].next()
+            nxt = next(self.successors[node.node])
             self.successors[nxt] = PredictableIter(reasoning.firm_succ(nxt))
             nxtime = nxt.time_point
             if nxtime > self.last_time:
@@ -196,7 +196,7 @@ class Construe(object):
             #We track all interesting nodes in the hierarchy.
             saved = set()
             stop = set()
-            for i in xrange(n):
+            for i in range(n):
                 node = self.open[i].node
                 reasoning.save_hierarchy(node, saved)
                 stop.add(node)

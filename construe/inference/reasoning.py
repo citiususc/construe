@@ -31,8 +31,8 @@ import construe.knowledge.observables as OBS
 #numpy.any behavior with generators is not as expected, so we require to modify
 #it
 if any is np.any:
-    import __builtin__
-    any = __builtin__.any
+    import builtins
+    any = builtins.any
 assert any is not np.any
 
 #########################
@@ -230,7 +230,7 @@ def firm_succ(interpretation):
         finished = False
         while not finished:
             try:
-                suc = generator.next()
+                suc = next(generator)
                 if suc.is_firm:
                     #Only original interpretations are cached.
                     if MERGE_STRATEGY and interpretation not in _MERGED:
@@ -265,7 +265,7 @@ def multicall_succ(interpretation):
     yielded = weakref.WeakSet()
     while True:
         nxt = next((n for n in interpretation.child if n not in yielded), None)
-        nxt = nxt or successors.next()
+        nxt = nxt or next(successors)
         yielded.add(nxt)
         yield nxt
 
@@ -559,10 +559,10 @@ def advance(interp, focus, pattern):
     #unexplained observation.
     if not newint.focus:
         try:
-            unexp = newint.get_observations(start=focus.earlystart + 1, filt=
+            unexp = next(newint.get_observations(start=focus.earlystart + 1, filt=
                  lambda ev: ev not in newint.unintelligible
                         and ev not in newint.abstracted
-                        and ap.is_abducible(type(ev))).next()
+                        and ap.is_abducible(type(ev))))
             newint.focus.push(unexp, None)
         except StopIteration:
             newint.discard('No unexplained evidence after the current point')

@@ -25,7 +25,7 @@ import numpy as np
 import warnings
 
 #Specific string used to set the format of the annotations file
-FMT_STRING = 'Construe_format_17.01'
+FMT_STRING = b'Construe_format_17.01'
 
 def ann2interp(record, anns, fmt=False):
     """
@@ -40,7 +40,8 @@ def ann2interp(record, anns, fmt=False):
                                                  and anns[0].aux == FMT_STRING)
     interp = Interpretation()
     observations = []
-    for i in xrange(len(anns)):
+    RH_VALS = set(C.RHYTHM_AUX.values())
+    for i in range(len(anns)):
         ann = anns[i]
         if ann.code in (C.PWAVE, C.TWAVE):
             obs = o.PWave() if ann.code == C.PWAVE else o.TWave()
@@ -93,8 +94,8 @@ def ann2interp(record, anns, fmt=False):
                         if compatible is None:
                             raise ValueError('Unrecognized lead {0}'.format(l))
                         delin[compatible] = delin.pop(l)
-                beg = ann.time + min(d[0] for d in delin.itervalues())
-                end = ann.time + max(d[-1] for d in delin.itervalues())
+                beg = ann.time + min(d[0] for d in delin.values())
+                end = ann.time + max(d[-1] for d in delin.values())
             else:
                 def extra_cond(a):
                     return a.subtype == C.SYSTOLE if fmt else True
@@ -117,7 +118,7 @@ def ann2interp(record, anns, fmt=False):
                 obs.shape[lead].energy = np.sum(np.diff(sig)**2)
                 obs.shape[lead].maxslope = np.max(np.abs(np.diff(sig)))
                 waves = []
-                for i in xrange(0, len(delin[lead]), 3):
+                for i in range(0, len(delin[lead]), 3):
                     wav = Wave()
                     wav.pts = tuple(delin[lead][i:i+3])
                     wav.move(-delin[lead][0])
@@ -137,7 +138,7 @@ def ann2interp(record, anns, fmt=False):
                     obs.shape[lead].waves = tuple(waves)
                     obs.shape[lead].tag = _tag_qrs(waves)
             observations.append(obs)
-        elif ann.code is C.RHYTHM and ann.aux in C.RHYTHM_AUX.values():
+        elif ann.code is C.RHYTHM and ann.aux in RH_VALS:
             rhclazz = next(rh for rh in C.RHYTHM_AUX
                            if C.RHYTHM_AUX[rh] == ann.aux)
             obs = rhclazz()

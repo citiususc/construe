@@ -51,7 +51,7 @@ def _zhang_tendpoint(signal, epts):
     ptwin = int(np.ceil(4.0*fratio))
     swin = 32.0*fratio
     Tval = np.zeros_like(epts)
-    for i in xrange(len(epts)):
+    for i in range(len(epts)):
         pt = epts[i]
         cutlevel = np.sum(sig[pt-ptwin:pt+ptwin+1])/(ptwin*2.0+1)
         corsig = sig[int(pt-swin):pt+1] - cutlevel
@@ -126,7 +126,7 @@ def _delimit_t(signal, baseline, ls_lim, ee_lim, qrs_shape):
         #Range to normalize differences in the signal values
         rang = max(baseline, signal.max()) - min(signal.min(), baseline)
         #There must be between one and 3 peaks in the T Wave.
-        for i in xrange(len(bpts)):
+        for i in range(len(bpts)):
             sigpt = signal[points[i:np.where(points == Tend)[0][0]+1]]
             npks = len(get_peaks(sigpt)) if len(sigpt) >= 3 else 0
             if (npks < 1 or npks > 2 or np.ptp(sigpt) <= ph2dg(0.05)):
@@ -200,7 +200,7 @@ def _t_gconst(pattern, defl):
         if ep is not None:
             endpoints[lead] = ep
     verify(endpoints)
-    limits = max(endpoints.iteritems(), key=lambda ep: ep[1][1])[1][0]
+    limits = max(endpoints.items(), key=lambda ep: ep[1][1])[1][0]
     #We verify that in all leads the maximum slope of the T wave fragment does
     #not exceed the threshold.
     for lead in endpoints:

@@ -45,7 +45,7 @@ args = parser.parse_args()
 if args.l % IN._STEP != 0:
     raise ValueError('Fragment length must be multiple of ' + str(IN._STEP))
 #Searching settings
-TFACTOR = 5.0
+TFACTOR = 5000.0
 KFACTOR = 12
 MIN_DELAY = 1750
 MAX_DELAY = int(ms2sp(20000)*TFACTOR)
@@ -81,7 +81,7 @@ while cntr.best is None:
     acq_time = IN.get_acquisition_point()
     #HINT debug code
     fstr = 'Int: {0:05d} '
-    for i in xrange(int(sp2ms(acq_time - cntr.last_time)/1000.0)):
+    for i in range(int(sp2ms(acq_time - cntr.last_time)/1000.0)):
         fstr += '-'
     fstr += ' Acq: {1}'
     if interp.counter > 100:
@@ -116,8 +116,8 @@ be.recover_all()
 brview = plotter.plot_observations(sig_buf.get_signal(
                                          sig_buf.get_available_leads()[0]), be)
 #Drawing of the search tree
-label_fncs = {}
-label_fncs['n'] = lambda br: str(br)
-label_fncs['e'] = lambda br: ''
-brview = plotter.plot_branch(interp, label_funcs=label_fncs, target=be,
-                             full_tree=True)
+#label_fncs = {}
+##label_fncs['n'] = lambda br: str(br)
+#label_fncs['e'] = lambda br: ''
+#brview = plotter.plot_branch(interp, label_funcs=label_fncs, target=be,
+#                             full_tree=True)

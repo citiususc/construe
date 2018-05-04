@@ -119,7 +119,7 @@ def extract_waves(signal, points, baseline= None):
     if len(pks) == 0:
         return tuple()
     #The limits of the waves will be the baseline level, or an angle decrease.
-    for i in xrange(len(pks)):
+    for i in range(len(pks)):
         newpk = Wave()
         #The limits of each wave is the next and the prevoius peak.
         lb = 0 if i == 0 else pks[i-1]
@@ -184,7 +184,7 @@ def _refine_wave_limits(waves, signal, baseline):
             waves[i].e = np.sum(np.diff(signal[waves[i].l:waves[i].r+1])**2)
             i += 1
     #Now we join waves that are very close
-    for i in xrange(1, len(waves)):
+    for i in range(1, len(waves)):
         sep = waves[i].l - waves[i-1].r
         if 0 < sep < MIN_DUR:
             #We join the waves in the maximum deviation point from the

@@ -43,7 +43,7 @@ def _same_cluster(sig1, sig2):
     Checks if two QRS complexes can be clustered together. Used to
     distinguish ventricular beats in the ventricular tachycardia alarms
     """
-    cleads = set(sig1.keys()).intersection(sig2.keys())
+    cleads = set(sig1.keys()).intersection(set(sig2.keys()))
     corrs = []
     if not cleads:
         return False
@@ -74,7 +74,7 @@ def eval_asyst(annotations, _):
     if uth-beats[-1] > dth:
         return not check_vf(beats[-1], uth)
     rrs = np.diff(beats)
-    for i in xrange(len(rrs)):
+    for i in range(len(rrs)):
         if rrs[i] > dth:
             if not check_vf(beats[i], beats[i+1]):
                 return True
@@ -91,7 +91,7 @@ def eval_brad(annotations, _):
     thres = 45 if variability > ms2sp(200) else 40
     lidx = bisect.bisect_left(beats, lth)
     uidx = bisect.bisect_right(beats, uth)
-    for i in xrange(lidx, uidx-4):
+    for i in range(lidx, uidx-4):
         bpm = int(ms2bpm(sp2ms(beats[i+4]-beats[i])/4.0))
         if bpm <= thres:
             return True
@@ -102,7 +102,7 @@ def eval_tach(annotations, _):
     lth, uth = ms2sp((4*60+30)*1000), ms2sp(5*60*1000)
     beats = np.array([b.time for b in annotations if MIT.is_qrs_annotation(b)
                                                      and lth <= b.time <= uth])
-    for i in xrange(len(beats)-16):
+    for i in range(len(beats)-16):
         if ms2bpm(sp2ms(beats[i+16]-beats[i])/16.0) > 120:
             return True
     return False
@@ -114,7 +114,7 @@ def eval_vflut(anns, _):
     i = 0
     while i < len(anns):
         if anns[i].code is ECGCodes.VFOFF:
-            onset = next((j for j in xrange(i, len(anns))
+            onset = next((j for j in range(i, len(anns))
                                        if anns[j].code is ECGCodes.VFON), None)
             if onset is not None and anns[i].time == anns[onset].time:
                 anns.pop(onset)
@@ -155,7 +155,7 @@ def eval_vtach(anns, rec):
                 qon = ann.time + delin[lead][0]
                 qoff = ann.time + delin[lead][-1]
                 qrs[lead] = SIG(sig=rec.signal[sidx][qon:qoff+1])
-            qrsdur[ann] = max(len(s.sig) for s in qrs.itervalues())
+            qrsdur[ann] = max(len(s.sig) for s in qrs.values())
             clustered = False
             for cluster in clusters:
                 if _same_cluster(cluster[0], qrs):
@@ -172,7 +172,7 @@ def eval_vtach(anns, rec):
                                                     and lth <= ann.time <= uth]
     if len(beats) < 5:
         return False
-    for i in xrange(len(beats)-4):
+    for i in range(len(beats)-4):
         tach = ms2bpm(sp2ms(beats[i+4].time-beats[i].time)/4.0) >= 100
         bset = set(beats[i:i+5])
         ventr = (np.min([qrsdur[b] for b in bset]) > ms2sp(110)
@@ -204,13 +204,13 @@ if __name__ == "__main__":
     RESULTS = np.zeros(N)
     #Validation
     print('Processing records')
-    for idx in xrange(N):
+    for idx in range(N):
         fname = RECORDS[idx]
-        print fname
+        print(fname)
         RESULTS[idx] = int(challenge(fname, ALARMS[idx]))
     #Result writing
     print('Generating results file')
     with open(OUTFILE, 'wb') as output:
         WRITER = csv.writer(output)
-        for idx in xrange(N):
+        for idx in range(N):
             WRITER.writerow([RECORDS[idx], ALARMS[idx], int(RESULTS[idx])])

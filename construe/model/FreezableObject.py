@@ -23,7 +23,7 @@ class FreezableMeta(ABCMeta):
         return ABCMeta.__new__(mcls, name, bases, namespace)
 
 
-class FreezableObject(object):
+class FreezableObject(object, metaclass=FreezableMeta):
     """
     This class provides utilities to "freeze" an object, this is, to guarantee
     that after the freeze operation no attributes of the object can be
@@ -31,23 +31,10 @@ class FreezableObject(object):
     operation is called in depth-last order.
     """
 
-    __metaclass__ = FreezableMeta
-
     __slots__ = ('__weakref__', '__frozen__')
 
     def __init__(self):
         self.__frozen__ = False
-
-    def __eq__(self, other):
-        """
-        Implements equality comparison, by equality comparison of all the
-        attributes but __frozen__
-        """
-        return (type(self) is type(other) and
-                self._fields == other._fields and
-                all(getattr(self, f, None) == getattr(other, f, None)
-                        for f in self._fields
-                                   if f not in  ('__frozen__', '__weakref__')))
 
     @property
     def frozen(self):

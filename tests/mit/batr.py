@@ -28,7 +28,7 @@ def move_to_qrs_onset(ann, mitr):
     if beg<0:
         beg=0
     pts = []
-    for lead in xrange(len(mitr.signal)):
+    for lead in range(len(mitr.signal)):
         sigfr = mitr.signal[lead][beg:end]
         sg = np.sign(np.diff(sigfr))
         idx = len(sg)-1

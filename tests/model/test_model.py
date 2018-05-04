@@ -65,19 +65,6 @@ class TestFreezableObject(TestCase):
         assert isinstance(freezable1, Hashable)
         assert isinstance(freezable2, Hashable)
 
-    def test_equal(self):
-        freezable1 = FreezableTest()
-        freezable2 = FreezableTest()
-
-        freezable1.freeze()
-
-        assert freezable1 == freezable2
-        assert freezable1 is not freezable2
-
-        freezable2.attr2 = "hello"
-
-        assert freezable1 != freezable2
-
 
 class TestInterval(TestCase):
     def test_basic_properties(self):
@@ -186,7 +173,7 @@ class TestInterval(TestCase):
 
     def test_contains(self):
         inter = Interval(0, 100)
-        x = range(101)
+        x = list(range(101))
 
         assert all([k in inter for k in x])
 
@@ -298,57 +285,56 @@ class TestInterval(TestCase):
 
         assert inter1 < inter2
         assert not inter1 > inter2
-        assert inter1 != inter2
+        assert tuple(inter1) != tuple(inter2)
 
         inter2 = Interval(0, 10)
-        assert inter1 == inter2
+        assert tuple(inter1) == tuple(inter2)
         assert not inter1 < inter2
         assert not inter1 > inter2
 
         inter2 = Interval(0, 5)
         assert inter1 > inter2
-        assert inter1 != inter2
+        assert tuple(inter1) != tuple(inter2)
         assert not inter1 < inter2
 
         inter2 = Interval(0, 15)
         assert inter1 < inter2
-        assert inter1 != inter2
+        assert tuple(inter1) != tuple(inter2)
         assert not inter1 > inter2
 
         inter2 = Interval(-5, 10)
         assert inter1 > inter2
         assert not inter1 < inter2
-        assert inter1 != inter2
+        assert tuple(inter1) != tuple(inter2)
 
         inter2 = Interval(5, 10)
         assert inter1 < inter2
         assert not inter1 > inter2
-        assert inter1 != inter2
+        assert tuple(inter1) != tuple(inter2)
 
         inter2 = Interval(-5, 6)
         assert inter1 > inter2
         assert not inter1 < inter2
-        assert inter1 != inter2
+        assert tuple(inter1) != tuple(inter2)
 
         inter2 = Interval(5, 6)
         assert inter1 < inter2
         assert not inter1 > inter2
-        assert inter1 != inter2
+        assert tuple(inter1) != tuple(inter2)
 
         inter2 = Interval(-5, 15)
         assert inter1 > inter2
         assert not inter1 < inter2
-        assert inter1 != inter2
+        assert tuple(inter1) != tuple(inter2)
 
         inter2 = Interval(5, 15)
         assert inter1 < inter2
         assert not inter1 > inter2
-        assert inter1 != inter2
+        assert tuple(inter1) != tuple(inter2)
 
-        inter2 = None
-        assert inter1 > inter2
+        inter2 = None        
         assert not inter1 < inter2
-        assert inter1 != inter2
+        assert tuple(inter1) != inter2
 
 
 class TestVariable(TestCase):
@@ -362,22 +348,22 @@ class TestVariable(TestCase):
 
         var2 = var1.move(5)
         assert var1 < var2
-        assert var1 != var2
+        assert tuple(var1) != tuple(var2)
 
         var2 = var1.move(-5)
         assert var1 > var2
-        assert var1 != var2
+        assert tuple(var1) != tuple(var2)
 
         var2 = Interval(0, 5)
         assert var1 > var2
-        assert var1 != var2
+        assert tuple(var1) != tuple(var2)
 
         var2 = Interval(0, 20)
         assert var1 < var2
-        assert var1 != var2
+        assert tuple(var1) != tuple(var2)
 
         var2 = Interval(0, 15)
-        assert var1 == var2
+        assert tuple(var1) == tuple(var2)
         assert not var1 < var2
         assert not var1 > var2
 
@@ -397,14 +383,14 @@ class TestVariable(TestCase):
         var3 = copy.deepcopy(var1)
 
         assert var1 is not var2 and var1 is not var3
-        assert var1 == var2 and var1 == var3
+        assert tuple(var1) == tuple(var2) and tuple(var1) == tuple(var3)
         assert var2 is not var3
-        assert var2 == var3
+        assert tuple(var2) == tuple(var3)
 
         assert var1 is not var2 and var1 is not var3
-        assert var1 == var2 and var1 == var3
+        assert tuple(var1) == tuple(var2) and tuple(var1) == tuple(var3)
         assert var2 is not var3
-        assert var2 == var3
+        assert tuple(var2) == tuple(var3)
 
 
 class TestConstraintNetWork(TestCase):
@@ -419,8 +405,7 @@ class TestConstraintNetWork(TestCase):
 
         nw.set_before(v1, v0)
         nw.minimize_network()
-        assert v0 == v1
-        assert v0 == v1
+        assert tuple(v0) == tuple(v1)
         assert v0.start == -1
 
     def test_add_constraint(self):
@@ -434,11 +419,11 @@ class TestConstraintNetWork(TestCase):
         nw.add_constraint(v3, v4, Interval(40, 50))
         nw.add_constraint(v0, v4, Interval(60, 70))
         nw.minimize_network()
-        assert v0 == Interval(0, 0)
-        assert v1 == Interval(10, 20)
-        assert v2 == Interval(40, 50)
-        assert v3 == Interval(20, 30)
-        assert v4 == Interval(60, 70)
+        assert tuple(v0) == (0, 0)
+        assert tuple(v1) == (10, 20)
+        assert tuple(v2) == (40, 50)
+        assert tuple(v3) == (20, 30)
+        assert tuple(v4) == (60, 70)
 
         # Testing if a stricker constraint is applied
         v0, v1, v2, v3, v4 = [Interval(-np.inf, np.inf) for _ in range(5)]
@@ -456,11 +441,11 @@ class TestConstraintNetWork(TestCase):
         nw.add_constraint(v3, v4, Interval(40, 45))
         nw.add_constraint(v0, v4, Interval(60, 65))
         nw.minimize_network()
-        assert v0 == Interval(0, 0)
-        assert v1 == Interval(10, 10)
-        assert v2 == Interval(40, 40)
-        assert v3 == Interval(25, 25)
-        assert v4 == Interval(65, 65)
+        assert tuple(v0) == (0, 0)
+        assert tuple(v1) == (10, 10)
+        assert tuple(v2) == (40, 40)
+        assert tuple(v3) == (25, 25)
+        assert tuple(v4) == (65, 65)
 
     def test_equal(self):
         v0 = Interval(0, 10)
@@ -469,7 +454,7 @@ class TestConstraintNetWork(TestCase):
         nw = ConstraintNetwork()
         nw.set_equal(v0, v1)
         nw.minimize_network()
-        assert v0 == v1
+        assert tuple(v0) == tuple(v1)
 
     def test_between(self):
         v0 = Interval(0, 10)

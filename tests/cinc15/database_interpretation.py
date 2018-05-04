@@ -55,7 +55,7 @@ for rec in RECORDS[SLC]:
     T0 = time.time()
     FR_OVERLAP = int(ms2sp(3000))
     MAX_DELAY = 20.0
-    print 'Processing record {0} at 250.0 Hz '.format(rec)
+    print('Processing record {0} at 250.0 Hz '.format(rec))
     #Signal abduction in fragments of FR_LEN length. We start at one fragment
     #before the time of the alarms, that are in minute 5:00
     ANNOTS = process_record(DATABASE_DIR + str(rec), ANNOTATOR, 1000.0, FR_LEN,

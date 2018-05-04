@@ -77,7 +77,7 @@ def _t_qrs_tconst(pattern, twave):
     tnet.set_equal(twave.end, pattern.hypothesis.end)
     #We find the qrs observation precedent to this T wave.
     try:
-        qrs = next(obseq[i] for i in xrange(idx-1, -1, -1)
+        qrs = next(obseq[i] for i in range(idx-1, -1, -1)
                                                 if isinstance(obseq[i], o.QRS))
         #If there is no P Wave, the beat start is the QRS start.
         if pattern.trseq[idx][0].istate in (1, 3):
