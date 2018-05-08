@@ -111,7 +111,7 @@ class Observable(FreezableObject):
     __slots__ = ('start', 'time', 'end')
 
     def __init__(self):
-        super(Observable, self).__init__()
+        super().__init__()
         self.start = Interval(0, inf)
         self.time = Interval(0, inf)
         self.end = Interval(0, inf)

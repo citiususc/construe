@@ -48,8 +48,8 @@ QRS_SHAPES = {
     'QRs' : set(('qRs', 'QRs', 'R'  , 'RS' , 'Rs' , 'QR' , 'qR' , 'Qr' , 'qr' ,
                  'rsR', 'Rr' , 'r'
            )),
-    'QRS' : set(('qRs', 'QRs', 'R'  , 'RS' , 'Rs' , 'QR' , 'qR' , 'Qr' , 'qr' ,
-                 'rsR', 'Rr' , 'r'
+    'QRS' : set(('qRs', 'QRs', 'QRS', 'R'  , 'RS' , 'Rs' , 'QR' , 'qR' , 'Qr' ,
+                 'qr' , 'rsR', 'Rr' , 'r'
            )),
     'QS'  : set(('QrS', 'QRs', 'rS' , 'rSr', 'Q'  , 'QS' , 'qS' , 'Qs' , 'Qr' ,
                  'rs'

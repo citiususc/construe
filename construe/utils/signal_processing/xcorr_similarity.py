@@ -110,7 +110,7 @@ def identical(sig1, sig2):
     Checks if two QRS are identical.
     """
     corrs = []
-    if set(sig1.keys()) != set(sig2.keys()):
+    if sig1.keys() != sig2.keys():
         return False
     for lead in sig1.keys():
         arr1, arr2 = sig1[lead].sig, sig2[lead].sig

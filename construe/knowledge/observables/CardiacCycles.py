@@ -18,7 +18,7 @@ class CardiacCycle(Observable):
     __slots__ = ('meas',)
 
     def __init__(self):
-        super(CardiacCycle, self).__init__()
+        super().__init__()
         #All rhythms have some representative measurements of their constituent
         #cycles.
         self.meas = CycleMeasurements((0, 0), (0, 0), (0, 0))

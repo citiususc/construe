@@ -23,7 +23,7 @@ class Deflection(Observable):
 
     def __init__(self):
         """Creates a new Deflection instance, at level 0"""
-        super(Deflection, self).__init__()
+        super().__init__()
         #The single reference will correspond to the start variable
         self.time = self.start
         self.level = {}
@@ -34,8 +34,7 @@ class Deflection(Observable):
         """
         level = '-' if not self.level else min(self.level.values())
         lead = '-' if not self.level else min(self.level, key= self.level.get)
-        return '{0} ({1}, {2})'.format(super(Deflection, self).__str__(),
-                                                                  level, lead)
+        return '{0} ({1}, {2})'.format(super().__str__(), level, lead)
 
 class RDeflection(Deflection):
     """
@@ -48,6 +47,6 @@ class RDeflection(Deflection):
 
     def __init__(self):
         """Creates a new instance of a R-Deflection, that is instantaneous"""
-        super(RDeflection, self).__init__()
+        super().__init__()
         #Beat annotations are instantaneous observables.
         self.end = self.start

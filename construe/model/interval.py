@@ -8,6 +8,9 @@ class Interval(object):
     Defined as closed interval [start,end), which includes the start and
     end positions.
     Start and end do not have to be numeric types.
+    **NOTE:** This class implements equality and hash operations in a way that
+    violates the Python assumption that *a==b -> hash(a)==hash(b)*. Equality is
+    implemented by attribute comparison, while hash is implemented by object id.
     """
 
     __slots__ = ('_start', '_end')
@@ -42,11 +45,17 @@ class Interval(object):
         "As string."
         return '[{0},{1}]'.format(self._start, self._end)
 
-
     def __repr__(self):
         "String representation."
         return '[{0},{1}]'.format(self._start, self._end)
-
+    
+    def __hash__(self):
+        return super().__hash__()
+    
+    def __eq__(self, other):
+        if other is None:
+            return False
+        return self._start == other.start and self._end == other.end
 
     def __lt__(self, other):
         if other is None:
@@ -57,8 +66,7 @@ class Interval(object):
     def __le__(self, other):
         if other is None:
             return False
-        return self < other or (self._start == other.start 
-                                and self._end == other.end)
+        return self < other or self == other
 
 
     def cpy(self, other):
@@ -67,7 +75,7 @@ class Interval(object):
 
     def intersection(self, other):
         "Intersection. @return: An empty intersection if there is none."
-        if self > other:
+        if other < self:
             other, self = self, other
         if self.end <= other.start:
             return Interval(self.start, self.start)
@@ -75,19 +83,19 @@ class Interval(object):
 
     def hull(self, other):
         "@return: Interval containing both self and other."
-        if self > other:
+        if other < self:
             other, self = self, other
         return Interval(self.start, max(self.end, other.end))
 
     def overlap(self, other):
         "@return: True iff self intersects other."
-        if self > other:
+        if other < self:
             other, self = self, other
         return self.end > other.start
 
     def overlapm(self, other):
         "@return: True iff selfs overlaps or meets other."
-        if self > other:
+        if other < self:
             other, self = self, other
         return self.end >= other.start
 
@@ -131,6 +139,6 @@ class Interval(object):
 
     def separation(self, other):
         "@return: The distance between self and other."
-        if self > other:
+        if other < self:
             other, self = self, other
         return 0 if self.end > other.start else other.start - self.end
