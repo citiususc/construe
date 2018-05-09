@@ -35,12 +35,11 @@ class FreezableObject(object, metaclass=FreezableMeta):
     """
 
     __slots__ = ('__weakref__', '__frozen__')
+    
+    __hash__ = object.__hash__
 
     def __init__(self):
-        self.__frozen__ = False
-        
-    def __hash__(self):
-        return super().__hash__()
+        self.__frozen__ = False        
         
     def __eq__(self, other):
         """

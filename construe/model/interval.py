@@ -14,6 +14,8 @@ class Interval(object):
     """
 
     __slots__ = ('_start', '_end')
+    
+    __hash__ = object.__hash__
 
     def __init__(self, start, end):
         "Construct, start must be <= end"
@@ -48,9 +50,6 @@ class Interval(object):
     def __repr__(self):
         "String representation."
         return '[{0},{1}]'.format(self._start, self._end)
-    
-    def __hash__(self):
-        return super().__hash__()
     
     def __eq__(self, other):
         if other is None:
