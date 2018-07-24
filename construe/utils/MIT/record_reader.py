@@ -107,7 +107,7 @@ def load_MIT_record(record_path, physical_units=False, multifreq=False):
     #We load only the recognized signal names.
     command.append('-s')
     command.extend(leads)
-    string = check_output(command)
+    string = check_output(command).decode('utf-8')
     if physical_units:
         #HINT Bug in some cases with physical units conversion in rdsamp.
         string = string.replace('-', '-0')
