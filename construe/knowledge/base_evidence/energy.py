@@ -9,15 +9,16 @@ interpretation process consisting of energy intervals observations.
 @author: T. Teijeiro
 """
 
+
+import itertools as it
+import bisect
+import numpy as np
+from scipy.stats.mstats import mquantiles
+from sortedcontainers import SortedList
 import construe.acquisition.signal_buffer as sig_buf
 import construe.knowledge.observables as o
 from construe.model import Interval as Iv
 from construe.utils.units_helper import msec2samples as ms2sp
-from scipy.stats.mstats import mquantiles
-import numpy as np
-import itertools as it
-import bisect
-from sortedcontainers import SortedList
 
 ############################
 ### Constants definition ###
@@ -47,7 +48,7 @@ def changeTime(observations, time_offset):
             obs.end.set(obs.earlyend + time_offset, obs.lateend + time_offset)
 
 
-def get_energy_intervals(energy, level = 0, percentile = 0.95, group = 1):
+def get_energy_intervals(energy, level=0, percentile=0.95, group=1):
     """
     Obtains the relevant energy intervals for a specific level, using the
     default wavelet filter. It starts in the maximum energy of the signal, and
@@ -71,7 +72,7 @@ def get_energy_intervals(energy, level = 0, percentile = 0.95, group = 1):
     List of Intervals, detected according the parameters.
     """
     #First, we set the threshold over which we consider relevant a wave.
-    thres = mquantiles(energy, prob = percentile ** (level + 1))[0]
+    thres = mquantiles(energy, prob=percentile ** (level + 1))[0]
     #Filter
     indices = np.nonzero(energy > thres)[0]
     #Integration of consecutive indices
@@ -122,7 +123,7 @@ def get_deflection_observations(start, end, lead, max_level=0, group=ms2sp(20)):
     obs = {}
     for i in range(max_level + 1):
         obs[i] = []
-        for interv in get_energy_intervals(energ, level = i, group = group):
+        for interv in get_energy_intervals(energ, level=i, group=group):
             defl = o.Deflection()
             defl.start.set(interv.start, interv.start)
             defl.end.set(interv.end, interv.end)
@@ -150,7 +151,7 @@ def get_deflection_observations(start, end, lead, max_level=0, group=ms2sp(20)):
     return obs
 
 
-def combine_energy_intervals(dicts, margin = ms2sp(20)):
+def combine_energy_intervals(dicts, margin=ms2sp(20)):
     """
     Combines the overlapping observations in several dicts in the result format
     of the get_deflection_observations() function.
@@ -233,10 +234,10 @@ def get_combined_energy(start, end, max_level, group=ms2sp(80)):
         wfs = {}
         for lead in dicts:
             wfs[lead] = get_deflection_observations(start + idx,
-                                                start + idx + TWINDOW,
-                                                lead = lead,
-                                                max_level = max_level,
-                                                group = group)
+                                                    start + idx + TWINDOW,
+                                                    lead=lead,
+                                                    max_level=max_level,
+                                                    group=group)
             for i in range(max_level + 1):
                 if dicts[lead][i] and wfs[lead][i]:
                     if (wfs[lead][i][0].earlystart - dicts[lead][i][-1].lateend
