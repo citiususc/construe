@@ -113,7 +113,7 @@ def extract_waves(signal, points, baseline= None):
         baseline = signal[0] - (signal[0]-signal[-1])/2.0
     result = []
     #Angle between two points
-    angle = lambda a, b : math.atan(dg2mm(abs(signal[b]-signal[a])/sp2mm(b-a)))
+    angle = lambda a, b : math.atan(dg2mm(abs(signal[b]-signal[a]))/sp2mm(b-a))
     pks = points[get_peaks(signal[points])]
     #If there are no peaks, there are no waves.
     if len(pks) == 0:
