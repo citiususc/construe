@@ -67,7 +67,7 @@ def arrayRDP(arr, epsilon=0.0, n=None):
     dist, idx = max_vdist(arr, 0, len(arr) - 1)
     fragments[(-dist, idx)] = (0, len(arr) - 1)
     while len(fragments) < n-1:
-        (dist, idx), (first, last) = fragments.popitem(last=False)
+        (dist, idx), (first, last) = fragments.popitem(index=0)
         if -dist <= epsilon:
             #We have to put again the last item to prevent loss
             fragments[(dist, idx)] = (first, last)

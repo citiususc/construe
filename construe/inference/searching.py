@@ -124,7 +124,7 @@ class Construe(object):
                     ocov, scov, nhyp = valuation(n, self.last_time)
                 tmplst.add(Node(Heuristic(ocov, scov, ntime, nhyp), n))
         self.closed.clear()
-        self.closed.append(tmplst.pop(0))
+        self.closed.add(tmplst.pop(0))
 
     def step(self, filt=lambda _: True):
         """
