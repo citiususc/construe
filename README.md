@@ -2,15 +2,27 @@
 
 *Construe* is a knowledge-based abductive framework for time series interpretation. It provides a knowledge representation model and a set of algorithms for the interpretation of temporal information, implementing a hypothesize-and-test cycle guided by an attentional mechanism. The framework is fully described in the following paper:
 
- [1]: T. Teijeiro and P. Félix: *On the adoption of abductive reasoning for time series interpretation*, 2016,  [arXiv:1609.05632](http://arxiv.org/abs/1609.05632).
+[1]: T. Teijeiro and P. Félix: *On the adoption of abductive reasoning for time series interpretation*, Artificial Intelligence, 2018, vol. 262, p. 163-188. [DOI:10.1016/j.artint.2018.06.005](https://doi.org/10.1016/j.artint.2018.06.005).
 
 In this repository you will find the complete implementation of the data model and the algorithms, as well as a knowledge base for the interpretation of multi-lead electrocardiogram (ECG) signals, from the basic waveforms (P, QRS, T) to complex rhythm patterns (Atrial fibrillation, Bigeminy, Trigeminy, Ventricular flutter/fibrillation, etc.). In addition, we provide some utility scripts to reproduce the interpretation of all the ECG strips shown in paper [1], and to allow the interpretation of any ECG record in the [MIT-BIH format](https://www.physionet.org/faq.shtml#file_types) with a command-line interface very similar to that of the [WFDB applications](https://physionet.org/physiotools/wfdb.shtml).
 
+
+
 Additionally, the repository includes an algorithm for [automatic heartbeat classification on ECG signals](Beat_Classification.md), described in the paper:
 
- [2]: T. Teijeiro, P. Félix, J.Presedo and D. Castro: *Heartbeat classification using abstract features from the abductive interpretation of the ECG*
+[2]: T. Teijeiro, P. Félix, J.Presedo and D. Castro: *Heartbeat classification using abstract features from the abductive interpretation of the ECG*, IEEE journal of biomedical and health informatics, 2018, vol. 22, no 2, p. 409-420.  [DOI: 10.1109/JBHI.2016.2631247](https://doi.org/10.1109/JBHI.2016.2631247) .
 
-The *Construe* algorithm is also the basis for the method described in the paper *Arrhythmia Classification from the Abductive Interpretation of Short Single-Lead ECG Records*, by T. Teijeiro, C.A. García, D. Castro and P. Félix. This method won First Prize in the [Physionet/Computing in Cardiology Challenge 2017](https://physionet.org/challenge/2017), providing the best results in Atrial Fibrillation detection among the 75 participating teams.
+
+
+The *Construe* algorithm is also the basis for the arrhythmia classification method described in the following papers:
+
+[3]: T. Teijeiro, C.A. García, D. Castro and P. Félix: *Arrhythmia Classification from the Abductive Interpretation of Short Single-Lead ECG Records*, Computing in Cardiology, 2017, vol. 44, p. 1-4. [DOI: 10.22489/CinC.2017.166-054](https://doi.org/10.22489/CinC.2017.166-054).
+
+[4]: T. Teijeiro, C.A. García, D. Castro and P. Félix: *Abductive reasoning as the basis to reproduce expert criteria in ECG Atrial Fibrillation identification*. Physiological Measurement, 39(8), 084006. [DOI: 10.1088/1361-6579/aad7e4](https://doi.org/10.1088/1361-6579/aad7e4)
+
+This method won the First Prize in the [Physionet/Computing in Cardiology Challenge 2017](https://physionet.org/challenge/2017), providing the best results in Atrial Fibrillation detection among the 75 participating teams.
+
+
 
 
 ## Installation
