@@ -38,15 +38,15 @@ In addition, the knowledge base for ECG interpretation depends on the following 
 4. [scikit-learn](https://pypi.python.org/pypi/scikit-learn)
 5. [PyWavelets](https://pypi.python.org/pypi/PyWavelets)
 
-To support visualization of the interpretation results and the interpretations tree and run the usage examples, the following packages are also needed:
+As optional dependencies to support the interactive visualization of the interpretation results and the interpretations tree and to run the demo examples, the following packages are also needed:
 
 6. [matplotlib](https://pypi.python.org/pypi/matplotlib)
 7. [networkx](https://pypi.python.org/pypi/networkx)
-8. [pygraphviz](https://pypi.python.org/pypi/pygraphviz)
+8. [pygraphviz](https://pypi.python.org/pypi/pygraphviz) and [graphviz](https://www.graphviz.org/)
 
 Finally, to read ECG signal records it is necessary to have access to a proper installation of the [WFDB software package](http://www.physionet.org/physiotools/wfdb.shtml).
 
-To make easier the installation of Python dependencies, we recommend the [Anaconda Python distribution](https://www.continuum.io/anaconda-overview). Alternatively, you can install them using pip with the following command:
+To make easier the installation of Python dependencies, we recommend the [Anaconda](https://www.continuum.io/anaconda-overview) or [Miniconda](https://conda.io/miniconda.html) Python distributions. Alternatively, you can install them using pip with the following command:
 
 ```
  ~$ pip install -r requirements.txt
@@ -67,12 +67,13 @@ All signal strips in [1] are included as interactive examples to make it easier 
 
 ![fig4 interpretation](https://cloud.githubusercontent.com/assets/4498106/20661551/a1824bee-b54f-11e6-870f-a2aa14c43e88.png)
 
-
 Once the interpretation is finished, the resulting observations are printed to the terminal, and two interactive figures are shown. One plots the ECG signal with all the observations organized into abstraction levels (deflections, waves, and rhythms), and the other shows the interpretations tree explored to find the result. Each node in the tree can be selected to show the observations at a given time point during the interpretation, allowing to reproduce the *abduce*, *deduce*, *subsume* and *predict* reasoning steps [1].
+
+In order to support this kind of interactive analysis in other arbitrary (short) ECG fragments, the `fragment_processing.py` script is provided. However, this tool is conceived to provide insights into the abductive interpretation algorithms and illustrate the adopted reasoning paradigm, and not as a production tool. As explained below, this is the purpose of  `construe_ecg.py`.
 
 #### Interpreting external ECG records. The `construe-ecg` tool:
 
-Any ECG record in [MIT-BIH format](https://www.physionet.org/physiotools/wag/header-5.htm) can be interpreted with the *Construe* algorithm. For this, we provide two convenient python modules that may be used as command-line tools. The first one (`fragment_processing.py`) is intended to visually show the result of the interpretation of a (small) ECG fragment, allowing to inspect and reproduce the interpretation process by navigating through the interpretations tree. But the main one is the (`construe_ecg.py`) script, which is intended to be used as a production tool that performs background interpretations of full ECG records (or sections). The result is a set of [annotations in the MIT format](https://www.physionet.org/physiotools/wag/annot-5.htm). Both tools try to follow the [WFDB Applications](https://www.physionet.org/physiotools/wag/wag.htm) command-line interface. The usage of the `construe-ecg` tool is as follows:
+Any ECG record in [MIT-BIH format](https://www.physionet.org/physiotools/wag/header-5.htm) can be interpreted with the *Construe* algorithm. This is done via the `construe_ecg.py` script, which is intended to be used as a production command-line tool that performs background interpretations of full ECG records (or sections). The result is a set of [annotations in the MIT format](https://www.physionet.org/physiotools/wag/annot-5.htm). This tool tries to follow the [WFDB Applications](https://www.physionet.org/physiotools/wag/wag.htm) command-line interface. The usage of the `construe-ecg` application is as follows:
 
 ```
 usage: construe_ecg.py [-h] -r record [-a ann] [-o oann]
@@ -143,18 +144,19 @@ optional arguments:
                         output the fragment being interpreted.
   --no-merge            Avoids the use of a branch-merging strategy for
                         interpretation exploration. If the selected
-                        abstraction level is "conduction", this parameter is
+                        abstraction level is "conduction", this parameter is 
+                        ignored.
 ```
 
 #### Some common usage examples
 
-Perform a full interpretation of record `100` from the [MIT-BIH Arrhythmia Database](https://www.physionet.org/physiobank/database/mitdb) (the output will be stored in the `100.iqrs` annotations file):
+Perform a full interpretation of record `100` from the [MIT-BIH Arrhythmia Database](https://www.physionet.org/physiobank/database/mitdb) (the output will be stored in the `100.iqrs` annotation file):
 
 ```
 $ python construe_ecg.py -r 100
 ```
 
-Perform a delineation of the selected heartbeats in the `.man` annotations file for the record `sel30` from the [QT database](https://www.physionet.org/physiobank/database/qtdb), and storing the result in the `sel30.pqt` file.
+Perform a delineation of the selected heartbeats in the `.man` annotation file for the record `sel30` from the [QT database](https://www.physionet.org/physiobank/database/qtdb), and store the result in the `sel30.pqt` file.
 
 ```
 $ python construe_ecg.py -r sel30 -a man -o pqt --level conduction
@@ -166,7 +168,7 @@ The same than before, but avoiding P-Wave delineation (only includes QRS complex
 $ python construe_ecg.py -r sel30 -a man -o pqt --level conduction --exclude-pwaves
 ```
 
-### Using *Construe* in another problems and domains
+### Using *Construe* in other problems and domains
 
 We will be glad if you want to use *Construe* to solve problems different from ECG interpretation, and we will help you to do so. The first step is to understand what is under the hood, and the best reference is [1]. After this, you will have to define the **Abstraction Model** for your problem, based on the **Observable** and **Abstraction Pattern** formalisms. As an example, a high-level description of the ECG abstraction model is available in [2], and its implementation is in the [`knowledge`](construe/knowledge) subdirectory. A tutorial is also available in the project [wiki](https://github.com/citiususc/construe/wiki/How-to-define-abstraction-models).
 
@@ -184,14 +186,14 @@ The source code is structured in the following main modules:
 
 ## Known issues
 
-- On windows and OS-X systems, the *Dynamic Time Warping* utilities included in the `construe.utils.signal_processing.dtw` package probably won't work. These sources are from the discontinued [mlpy](http://mlpy.sourceforge.net) project, and should be compiled using [cython](http://cython.org) with the following commands:
+- On windows and OS-X systems, the *Dynamic Time Warping* utilities included in the `construe.utils.signal_processing.dtw` package may not work. These sources are from the discontinued [mlpy](http://mlpy.sourceforge.net) project, and should be compiled using [cython](http://cython.org) with the following commands:
 ```bash
 $ cd construe/utils/signal_processing/dtw
 $ python3 setup.py build_ext --inplace
 ```
   	Another possible workaround is to install the *mlpy* package and change the `dtw_std` import in the `construe/knowledge/abstraction_patterns/segmentation/QRS.py` module.
 
-- Abductive interpretation of time-series is NP-Hard [1]. This implementation includes several optimizations to make computations feasible, but still the running times are probably longer than you expect if the selected abstraction level is `rhythm`. Parameter tuning also help to increase the interpretation speed (usually at the cost of worse-quality results). Also try the `-v` flag to get feedback and make the wait less painful ;-).
+- Abductive interpretation of time-series is NP-Hard [1]. This implementation includes several optimizations to make computations feasible, but still the running times are probably longer than you expect if the selected abstraction level is `rhythm`. Parameter tuning also helps to increase the interpretation speed (usually at the cost of worse-quality results). Also try the `-v` flag to get feedback and make the wait less painful ;-).
 
 ## License
 
