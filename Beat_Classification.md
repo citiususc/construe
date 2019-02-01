@@ -2,7 +2,7 @@
 
 This project includes an algorithm for automatic beat classification on ECG signals, described in the following paper:
 
- - T. Teijeiro, P. Félix, J.Presedo and D. Castro: *Heartbeat classification using abstract features from the abductive interpretation of the ECG*
+ - T. Teijeiro, P. Félix, J.Presedo and D. Castro: *Heartbeat classification using abstract features from the abductive interpretation of the ECG*, IEEE journal of biomedical and health informatics, 2018, vol. 22, no 2, p. 409-420.  [DOI: 10.1109/JBHI.2016.2631247](https://doi.org/10.1109/JBHI.2016.2631247) .
 
 The algorithm relies on the [abductive interpretation of an ECG record](README.md#interpreting-external-ecg-records) to obtain a set of qualitative morphological and rhythm features for each QRS observation in the interpretation result. Then, a clustering task provides a partition of the full set of QRS observations, and finally a label is assigned to each cluster, classifying all the beats in the record.
 
