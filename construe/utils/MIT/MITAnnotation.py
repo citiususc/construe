@@ -19,13 +19,13 @@ class MITAnnotation(object):
     #annotations are created and managed.
     __slots__ = ('code', 'time', 'subtype', 'chan', 'num', 'aux')
 
-    def __init__(self):
-        self.code = 0
-        self.time = 0
-        self.subtype = 0
-        self.chan = 0
-        self.num = 0
-        self.aux = None
+    def __init__(self, code=0, time=0, subtype=0, chan=0, num=0, aux=None):
+        self.code = code
+        self.time = time
+        self.subtype = subtype
+        self.chan = chan
+        self.num = num
+        self.aux = aux
 
 
     def __str__(self):
@@ -122,12 +122,7 @@ def read_annotations(path):
         elif A == I == 0:
             break
         else:
-            annot = MITAnnotation()
-            annot.code = A
-            annot.time = I + displ
-            annot.chan = chan
-            annot.num = num
-            result.append(annot)
+            result.append(MITAnnotation(code=A, time=I+displ, chan=chan, num=num))
             displ = 0
     f.close()
     #Now, for each annotation we put the absolute time
@@ -183,7 +178,7 @@ def save_annotations(annots, path):
         #Write the AUX field, if present
         if anot.aux != None:
             f.write(struct.pack('<H', AUX_CODE << 10 | len(anot.aux)))
-            aux = (anot.aux if isinstance(anot.aux, bytes) 
+            aux = (anot.aux if isinstance(anot.aux, bytes)
                                         else bytes(anot.aux, encoding='utf-8'))
             f.write(aux)
             if len(anot.aux) % 2 != 0:
