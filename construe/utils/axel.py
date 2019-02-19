@@ -13,7 +13,7 @@
 
 import sys, threading
 try:
-    from Queue import Queue, Empty
+    from queue import Queue, Empty
 except ImportError:
     from queue import Queue, Empty
 

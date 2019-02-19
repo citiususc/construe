@@ -48,8 +48,8 @@ QRS_SHAPES = {
     'QRs' : set(('qRs', 'QRs', 'R'  , 'RS' , 'Rs' , 'QR' , 'qR' , 'Qr' , 'qr' ,
                  'rsR', 'Rr' , 'r'
            )),
-    'QRS' : set(('qRs', 'QRs', 'R'  , 'RS' , 'Rs' , 'QR' , 'qR' , 'Qr' , 'qr' ,
-                 'rsR', 'Rr' , 'r'
+    'QRS' : set(('qRs', 'QRs', 'QRS', 'R'  , 'RS' , 'Rs' , 'QR' , 'qR' , 'Qr' ,
+                 'qr' , 'rsR', 'Rr' , 'r'
            )),
     'QS'  : set(('QrS', 'QRs', 'rS' , 'rSr', 'Q'  , 'QS' , 'qS' , 'Qs' , 'Qr' ,
                  'rs'
@@ -204,29 +204,30 @@ def _combine_limits(limits, siginfo, peak):
         the limits in all leads.
     """
     start = end = None
-    if any(v[0] for v in limits.itervalues()):
+    if any(v[0] for v in limits.values()):
         #There is a pacing detection, we will check if the information of
         #all leads is consistent with detection.
         #First, all spikes must start within a 40ms margin.
         try:
-            spkstart = [v[1].start for v in limits.itervalues() if v[0]]
+            spkstart = [v[1].start for v in limits.values() if v[0]]
             verify(max(spkstart)-min(spkstart) <= C.TMARGIN)
             #Second, all non-paced leads must start their QRS complex in the
             #40 ms after the first spike has appeared.
             spkstart = min(spkstart)
             verify(all(-C.TMARGIN <= v[1].start-spkstart <= C.TMARGIN
-                                 for v in limits.itervalues() if not v[0]))
+                                 for v in limits.values() if not v[0]))
             #We have confirmed the beat is a paced beat, we set the limits
             start = spkstart
-            end = max(v[1].end for v in limits.itervalues() if v[0])
-            for _, endpoints in limits.itervalues():
+            end = max(v[1].end for v in limits.values() if v[0])
+            for _, endpoints in limits.values():
                 if (0 < endpoints.end - end <= C.TMARGIN and
                                          endpoints.end-start <= C.QRS_DUR.end):
                     end = endpoints.end
         except InconsistencyError:
             #We set the non-paced delineation for previously detected paced
             #leads.
-            for lead in (k for k, v in limits.iteritems() if v[0]):
+            paced_leads = [k for k, v in limits.items() if v[0]]
+            for lead in paced_leads:
                 _, sig, points, _, _ = ([info for info in siginfo
                                                           if info[0]==lead][0])
                 endpoints = _qrs_delineation(sig, points, peak)
@@ -239,8 +240,9 @@ def _combine_limits(limits, siginfo, peak):
     #If there is no a paced beat, we join the limits estimation of every
     #lead, by order of quality.
     if start is None:
-        start, end = limits.values()[0][1].start, limits.values()[0][1].end
-        for _, endpoints in limits.itervalues():
+        start = next(iter(limits.values()))[1].start
+        end = next(iter(limits.values()))[1].end
+        for _, endpoints in limits.values():
             if (0 < start-endpoints.start <= C.TMARGIN and
                                          end-endpoints.start <= C.QRS_DUR.end):
                 start = endpoints.start
@@ -279,7 +281,7 @@ def _qrs_delineation(signal, points, peak):
         #Now we perform a clustering operation over each slope, with a certain
         #set of features.
         features = []
-        for i in xrange(len(slopes)):
+        for i in range(len(slopes)):
             #We obtain the midpoint of the segment, and its difference with
             #respect to the peak, applying a temporal margin.
             #We get as representative point of the segment the starting point
@@ -353,7 +355,7 @@ def _paced_qrs_delineation(signal, points, peak, baseline):
         #clustering strategy than regular QRS, but only for the end.
         slopes = (signal[apts][1:]-signal[apts][:-1])/(apts[1:]-apts[:-1])
         features = []
-        for i in xrange(len(slopes)):
+        for i in range(len(slopes)):
             #The features are the slope in logarithmic scale and the distance to
             #the peak.
             features.append([math.log(abs(slopes[i])+1.0),
@@ -407,7 +409,7 @@ def _get_qrs_shape(signal, points, peak, baseline):
         total_energ = sum(w.e for w in waves)
         #We find the longest valid sequence of waves with the highest energy.
         sequences = []
-        for i in xrange(len(waves)):
+        for i in range(len(waves)):
             #Largest valid sequence starting in the i-th wave.
             seq = [waves[i]]
             j = i+1
@@ -528,7 +530,7 @@ def _reference_wave(shape):
     #reference.
     mxe = max(w.e for w in shape.waves)
     idx = -1
-    for i in xrange(len(shape.waves)):
+    for i in range(len(shape.waves)):
         wav = shape.waves[i]
         if wav.e == mxe:
             idx = i
@@ -557,7 +559,7 @@ def _is_qrs_complex(wave_seq):
     this, the waves must be consecutive, and conform a recongined pattern.
     """
     #The waves must be consecutive.
-    for i in xrange(1, len(wave_seq)):
+    for i in range(1, len(wave_seq)):
         if wave_seq[i].l != wave_seq[i-1].r:
             return False
     #The shape must already be valid.
@@ -595,8 +597,8 @@ def _find_spike(signal, points):
     angle = lambda a, b : math.atan(dg2mm(abs(signal[b]-signal[a])/sp2mm(b-a)))
     #First we search for the left edge of the spike.
     spike = []
-    for i in xrange(1, len(points)-3):
-        for j in xrange(i+1, len(points)-2):
+    for i in range(1, len(points)-3):
+        for j in range(i+1, len(points)-2):
             pts = points[i:j+1]
             llim = pts[-1]
             #There can be no peaks inside the left edge.
@@ -682,7 +684,7 @@ def _guided_qrs_observation(hyp):
     """
     if hyp.shape:
         #We perform the alignment in the lead with highest energy.
-        rlead, rshape = max(hyp.shape.iteritems(), key=lambda s:s[1].energy)
+        rlead, rshape = max(hyp.shape.items(), key=lambda s:s[1].energy)
         ref = rshape.sig
         newshape = {}
         start = np.inf
@@ -729,12 +731,12 @@ def _guided_qrs_observation(hyp):
                 start = start + llim
                 for lead in hyp.shape:
                     hyp.shape[lead].move(-llim)
-            end = start + max(s.waves[-1].r for s in hyp.shape.itervalues())
+            end = start + max(s.waves[-1].r for s in hyp.shape.values())
             peak = start + min(s.waves[_reference_wave(s)].m
-                                               for s in hyp.shape.itervalues())
-            hyp.start.value = Iv(beg+start, beg+start)
-            hyp.time.value = Iv(beg+peak, beg+peak)
-            hyp.end.value = Iv(beg+end, beg+end)
+                                               for s in hyp.shape.values())
+            hyp.start.set(beg+start, beg+start)
+            hyp.time.set(beg+peak, beg+peak)
+            hyp.end.set(beg+end, beg+end)
             hyp.clustered = True
         except InconsistencyError:
             hyp.shape = {}
@@ -778,7 +780,7 @@ def _qrs_tconst(pattern, rdef):
     """
     Adds the temporal constraints of the QRS abstraction pattern automata.
     """
-    tnet = pattern.last_tnet
+    tnet = pattern.tnet
     qrs = pattern.hypothesis
     #QRS complex duration constraint
     tnet.add_constraint(qrs.start, qrs.end, C.QRS_DUR)
@@ -886,18 +888,18 @@ def _qrs_gconst(pattern, rdef):
     #6. The definitive peak is assigned to the first relevant wave
     #(each QRS shapeform has a specific peak point.)
     peak = start + min(s.waves[_reference_wave(s)].m
-                                               for s in hyp.shape.itervalues())
+                                               for s in hyp.shape.values())
     #7. Segmentation points set
-    hyp.paced = any(v[0] for v in limits.itervalues())
-    hyp.time.value = Iv(beg+peak, beg+peak)
-    hyp.start.value = Iv(beg+start, beg+start)
-    hyp.end.value = Iv(beg+end, beg+end)
+    hyp.paced = any(v[0] for v in limits.values())
+    hyp.time.set(beg+peak, beg+peak)
+    hyp.start.set(beg+start, beg+start)
+    hyp.end.set(beg+end, beg+end)
     ###################################################################
     #Amplitude conditions (between 0.5mV and 6.5 mV in at least one
     #lead or an identified pattern in most leads).
     ###################################################################
     verify(len(hyp.shape) > len(sig_buf.get_available_leads())/2.0 or
-                ph2dg(0.5) <= max(s.amplitude for s in hyp.shape.itervalues())
+                ph2dg(0.5) <= max(s.amplitude for s in hyp.shape.values())
                                                                 <= ph2dg(6.5))
     hyp.freeze()
 
@@ -916,7 +918,7 @@ QRS_PATTERN.freeze()
 
 
 if __name__ == "__main__":
-    SHAPES = set(QRS_SHAPES.iterkeys())
-    for S, V in QRS_SHAPES.iteritems():
+    SHAPES = set(QRS_SHAPES.keys())
+    for S, V in QRS_SHAPES.items():
         assert S in V
         assert V.issubset(SHAPES)

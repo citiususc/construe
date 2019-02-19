@@ -9,9 +9,8 @@ constraint networks.
 @author: T. Teijeiro
 """
 
-from .interval import Interval
-from .FreezableObject import FreezableObject
 import numpy as np
+from construe.model.interval import Interval
 
 
 def verify(expression, messagestr = None, messageargs = None):
@@ -38,79 +37,21 @@ def verify(expression, messagestr = None, messageargs = None):
                       else InconsistencyError(messagestr.format(*messageargs)))
 
 
-class Variable(FreezableObject):
-    """
-    This class represents a variable in a constraint network, which can take a
-    value constrained by an interval that can be modified according constraints
-    in a network. As value, this class assumes always an Interval object.
-    """
-    __slots__ = ('value', )
-
-    def __init__(self, value = Interval(-np.inf, np.inf)):
-        """
-        Creates a new variable, with a value constrained by an interval. By
-        default, this interval is (-Inf, Inf).
-        """
-        super(Variable, self).__init__()
-        self.value = value
-
-    def __lt__(self, other):
-        """
-        Checks if this variable is less than another one. It is based in the
-        relation between *Interval* objects.
-        """
-        return bool(self.value < other.value)
-
-    def __le__(self, other):
-        return self < other or self == other
-
-    def __eq__(self, other):
-        return self.value == other.value
-
-    def __gt__(self, other):
-        return self.value > other.value
-
-    def __ge__(self, other):
-        return self > other or self == other
-
-    def __deepcopy__(self, memo):
-        """Performs a deep copy operation of this variable."""
-        if id(self) in memo:
-            return memo[id(self)]
-        else:
-            res = Variable(value = Interval(self.value.start, self.value.end))
-            memo[id(self)] = res
-            return res
-
-    def __str__(self):
-        return repr(self.value)
-
-    @property
-    def start(self):
-        """Gets the start value of this variable"""
-        return self.value.start
-
-    @property
-    def end(self):
-        """Gets the end value of this variable"""
-        return self.value.end
-
-
 class Constraint(object):
     """
     This class represents a constraint between two variables in a constraint
-    network. Constraints are represented as intervals.
+    network. Variables and constraints are represented as intervals.
     """
-    __slots__ = ('name', 'va', 'vb', 'constraint')
+    __slots__ = ('va', 'vb', 'constraint')
 
-    def __init__(self, name = '', va = Variable(), vb = Variable(),
+    def __init__(self, va = Interval(-np.inf, np.inf),
+                 vb = Interval(-np.inf, np.inf),
                  constr = Interval(-np.inf, np.inf)):
         """
         Creates a new constraint between two variable instances va and vb, with
         a default interval (-Inf, Inf)
         """
         assert va is not vb
-        self.name = name
         self.va = va
         self.vb = vb
         self.constraint = constr
@@ -120,14 +61,14 @@ class Constraint(object):
 
 
     def __deepcopy__(self, memo):
-        result = Constraint(name = self.name)
+        result = Constraint()
         #va copy
         k = id(self.va)
         vacp = memo.get(k, None)
         if vacp is not None:
             result.va = vacp
         else:
-            result.va = Variable(value = Interval(self.va.start, self.va.end))
+            result.va = Interval(self.va.start, self.va.end)
             memo[k] = result.va
         #vb copy
         k = id(self.vb)
@@ -135,7 +76,7 @@ class Constraint(object):
         if vbcp is not None:
             result.vb = vbcp
         else:
-            result.vb = Variable(value = Interval(self.vb.start, self.vb.end))
+            result.vb = Interval(self.vb.start, self.vb.end)
             memo[k] = result.vb
         #Constraint copy
         result.constraint = Interval(self.constraint.start, self.constraint.end)
@@ -197,9 +138,9 @@ class ConstraintNetwork(object):
         Parameters
         ----------
         va:
-            First Variable of the constraint
+            Interval representing the first variable of the constraint
         vb:
-            Second Variable of the constraint
+            Interval representing the second variable of the constraint
         const:
             Interval representing the constraints between the two variables, so
             constraint.start <= vb-va <= constraint.end
@@ -211,9 +152,9 @@ class ConstraintNetwork(object):
                 raise InconsistencyError('Constraints between the same '
                                                   'variable must contain zero')
         else:
-            if not self._constr.has_key(va):
+            if va not in self._constr:
                 self._constr[va] = set()
-            if not self._constr.has_key(vb):
+            if vb not in self._constr:
                 self._constr[vb] = set()
             #We look up for a possible duplicate
             try:
@@ -276,32 +217,6 @@ class ConstraintNetwork(object):
         """
         return (self._constr[va] & self._constr[vb]).pop()
 
-
-    def remove_constraint(self, va, vb):
-        """
-        Removes the constraint in this network involving two specific variables.
-        If there is no such constraint, an exception is raised.
-
-        Parameters
-        ----------
-        va:
-            One variable of the constraint to remove.
-        vb:
-            Other variable of the constraint to remove.
-        """
-        if va is not vb:
-            #We get the constraint to remove
-            constraint = self.get_constraint(va, vb)
-            #And we remove it from the two involved sets
-            self._constr[va].remove(constraint)
-            self._constr[vb].remove(constraint)
-            #If the variables have no constraints, we remove them from the
-            #network.
-            if not self._constr[va]:
-                self._constr.pop(va)
-            if not self._constr[vb]:
-                self._constr.pop(vb)
-
     def set_equal(self, va, vb):
         """
         Adds a constraint to indicate that variables *va* and *vb* must be
@@ -329,7 +244,7 @@ class ConstraintNetwork(object):
         """
         Returns a tuple with all the temporal variables involved in this STP.
         """
-        return self._constr.keys()
+        return tuple(self._constr.keys())
 
     def contains_variable(self, var):
         """Checks if a temporal variable is in this STP"""
@@ -339,9 +254,10 @@ class ConstraintNetwork(object):
         """
         Returns a list with all the constraint in this network.
         """
-        return list(set.union(*self._constr.values()))
+        return (frozenset() if not self._constr
+                                  else list(set.union(*self._constr.values())))
 
-    def substitute_variable(self, old, new):
+    def replace_variable(self, old, new):
         """
         Substitutes all the ocurrences of the 'old' temporal variable by
         the 'new' temporal variable. It allows for a transparent variable
@@ -349,17 +265,24 @@ class ConstraintNetwork(object):
 
         Parameters
         ----------
-        old - Variable to be substituted.
+        old - Variable to be replaced.
         new - Variable to set instead of 'old'.
         """
         constr = self._constr.pop(old)
         for const in constr:
+            assert const.va is old or const.vb is old
             if const.va is old:
                 const.va = new
-            elif const.vb is old:
+            else:
                 const.vb = new
-        self._constr[new] = constr
-        self.unconstrained = old.value != new.value
+        if new not in self._constr:
+            self._constr[new] = constr
+        else:
+            for const in constr:
+                other = const.va if new is const.vb else const.vb
+                self._constr[other].discard(const)
+                self.add_constraint(const.va, const.vb, const.constraint)
+        self.unconstrained = self.unconstrained or old != new
 
     def connect(self, other):
         """
@@ -373,7 +296,7 @@ class ConstraintNetwork(object):
             ConstraintNetwork to be joined with this.
         """
         for var in other._constr:
-            if not self._constr.has_key(var):
+            if var not in self._constr:
                 self._constr[var] = set()
             self._constr[var] = self._constr[var].union(other._constr[var])
         self.unconstrained = True
@@ -393,7 +316,7 @@ class ConstraintNetwork(object):
         A = np.empty((n, n))
         B = np.empty_like(A)
         A.fill(np.inf)
-        for i in xrange(n):
+        for i in range(n):
             A[i, i] = 0
         #We asign a integer key to each variable, starting in 1
         keys = {}
@@ -401,8 +324,8 @@ class ConstraintNetwork(object):
         #We add the absolute constraints
         for v in var:
             keys[v] = i
-            A[0, i] = v.value.end
-            A[i, 0] = -v.value.start
+            A[0, i] = v.end
+            A[i, 0] = -v.start
             i += 1
         #And now the relative constraints
         for const in self.get_constraints():
@@ -411,7 +334,7 @@ class ConstraintNetwork(object):
             A[a, b] = const.constraint.end
             A[b, a] = -const.constraint.start
         #Floyd-Warshall
-        for i in xrange(n):
+        for i in range(n):
             np.add(A[i, :].reshape(1, n), A[:, i].reshape(n, 1), B)
             np.minimum(A, B, A)
         #Rounding to avoid precision errors
@@ -422,10 +345,16 @@ class ConstraintNetwork(object):
         #Variable interval updating (we know the network is consistent)
         for v in keys:
             key = keys[v]
-            newval = Interval(-A[key, 0], A[0, key])
-            if v.value != newval:
+            if v.start != -A[key, 0] or v.end != A[0, key]:
                 modified.add(v)
-                v.value = newval
+                v.set(-A[key, 0], A[0, key])
+        #Remove all constraints involving fixed-value variables.
+        for v in (k for k in keys if k.empty):
+            for cntr in (c for c in self._constr.pop(v) if c.va is not c.vb):
+                v2 = cntr.vb if v is cntr.va else cntr.va
+                self._constr[v2].remove(cntr)
+                if not v2.empty and not self._constr[v2]:
+                    self._constr.pop(v2)
         self.unconstrained = False
         return modified
 
@@ -439,10 +368,10 @@ if __name__ == "__main__":
     # pylint: disable-msg=C0103
     import time
 
-    v0, v1, v2, v3 = [Variable() for _ in xrange(4)]
-    v0.value = Interval(0, 0)
-    print 'v0:' + str(v0) + ' v1:' + str(v1) +\
-         ' v2:' + str(v2) + ' v3:' + str(v3)
+    v0, v1, v2, v3 = [Interval(-np.inf, np.inf) for _ in range(4)]
+    v0.set(0, 0)
+    print('v0:' + str(v0) + ' v1:' + str(v1) +\
+         ' v2:' + str(v2) + ' v3:' + str(v3))
     nw = ConstraintNetwork()
     nw.set_before(v0, v1)
     nw.add_constraint(v1, v2, Interval(3, 5))
@@ -451,19 +380,19 @@ if __name__ == "__main__":
     nw.add_constraint(v3, v2, Interval(-24, -2))
     nw.update_constraint(v2, v3, Interval(4, 25))
     nw.minimize_network()
-    print 'v0:' + str(v0) + ' v1:' + str(v1) +\
-         ' v2:' + str(v2) + ' v3:' + str(v3)
-    v3.value = Interval(89, 89)
+    print('v0:' + str(v0) + ' v1:' + str(v1) +\
+         ' v2:' + str(v2) + ' v3:' + str(v3))
+    v3.set(89, 89)
     nw.minimize_network()
-    print 'v0:' + str(v0) + ' v1:' + str(v1) +\
-         ' v2:' + str(v2) + ' v3:' + str(v3)
-    v1.value = Interval(62, 65)
+    print('v0:' + str(v0) + ' v1:' + str(v1) +\
+         ' v2:' + str(v2) + ' v3:' + str(v3))
+    v1.set(62, 65)
     nw.minimize_network()
-    print 'v0:' + str(v0) + ' v1:' + str(v1) +\
-         ' v2:' + str(v2) + ' v3:' + str(v3)
+    print('v0:' + str(v0) + ' v1:' + str(v1) +\
+         ' v2:' + str(v2) + ' v3:' + str(v3))
     #Known example assertion (Detcher STP example in TCN paper)
-    v0, v1, v2, v3, v4 = [Variable() for _ in xrange(5)]
-    v0.value = Interval(0, 0)
+    v0, v1, v2, v3, v4 = [Interval(-np.inf, np.inf) for _ in range(5)]
+    v0.set(0, 0)
     nw = ConstraintNetwork()
     nw.add_constraint(v0, v1, Interval(10, 20))
     nw.add_constraint(v1, v2, Interval(30, 40))
@@ -471,27 +400,20 @@ if __name__ == "__main__":
     nw.add_constraint(v3, v4, Interval(40, 50))
     nw.add_constraint(v0, v4, Interval(60, 70))
     nw.minimize_network()
-    assert v0.value == Interval(0, 0)
-    assert v1.value == Interval(10, 20)
-    assert v2.value == Interval(40, 50)
-    assert v3.value == Interval(20, 30)
-    assert v4.value == Interval(60, 70)
-    nw.remove_constraint(v0, v1)
-    try:
-        nw.remove_constraint(v0, v3)
-    except KeyError:
-        pass
-    else:
-        raise ValueError('An exception should be thrown')
+    assert tuple(v0) == (0, 0)
+    assert tuple(v1) == (10, 20)
+    assert tuple(v2) == (40, 50)
+    assert tuple(v3) == (20, 30)
+    assert tuple(v4) == (60, 70)
     #Performance test
     nvar = 500
-    variables = [Variable() for _ in xrange(nvar)]
-    variables[0].value = Interval(0, 0)
+    variables = [Interval(-np.inf, np.inf) for _ in range(nvar)]
+    variables[0].set(0, 0)
     nwl = ConstraintNetwork()
-    for j in xrange(nvar-1):
+    for j in range(nvar-1):
         nwl.add_constraint(variables[j], variables[j+1], Interval(1, 10))
     t1 = time.clock()
     nwl.minimize_network()
     t2 = time.clock()
-    print 'Time to process {0} constraints: {1:.5f}s'.format(nvar, t2-t1)
+    print('Time to process {0} constraints: {1:.5f}s'.format(nvar, t2-t1))
     #End of performance test

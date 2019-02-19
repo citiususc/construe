@@ -43,7 +43,7 @@ def generate_Deflection_Patterns(npats):
         area delimited by the hypothesis.
     """
     pats = []
-    for i in xrange(npats):
+    for i in range(npats):
         pat = PatternAutomata()
         pat.name = "Deflection"
         pat.Hypothesis = o.Deflection
@@ -56,7 +56,7 @@ def generate_Deflection_Patterns(npats):
 def _def_tconst(pattern, _):
     """Temporal constraints for the energy interval abstraction pattern"""
     deflection = pattern.hypothesis
-    pattern.last_tnet.add_constraint(deflection.start, deflection.end, DEF_DUR)
+    pattern.tnet.add_constraint(deflection.start, deflection.end, DEF_DUR)
 
 def get_gconst(int_idx):
     """
@@ -109,10 +109,10 @@ def get_gconst(int_idx):
             else:
                 lev += 1
         verify(interval is not None)
-        pattern.hypothesis.start.value = Iv(interval.start + beg - fbeg,
-                                         interval.start + beg - fbeg)
-        pattern.hypothesis.end.value = Iv(interval.end + beg - fbeg,
-                                       interval.end + beg - fbeg)
+        pattern.hypothesis.start.set(interval.start + beg - fbeg,
+                                     interval.start + beg - fbeg)
+        pattern.hypothesis.end.set(interval.end + beg - fbeg,
+                                   interval.end + beg - fbeg)
         for lead in sig_buf.get_available_leads():
             pattern.hypothesis.level[lead] = lev
     return _def_gconst

@@ -10,7 +10,6 @@ beat annotations using the *gqrs* application.
 """
 
 from construe.model.automata import PatternAutomata
-from construe.model import Interval as Iv
 from construe.utils.MIT.MITAnnotation import read_annotations, MITAnnotation
 from construe.utils.MIT import get_leads
 from construe.model.constraint_network import verify
@@ -106,9 +105,9 @@ def _rdef_gconst(pattern, _):
     verify(eidx > bidx)
     selected = max(ANNOTS[bidx:eidx], key= operator.attrgetter('num'))
     time = selected.time - IN._OFFSET
-    rdef.time.value = Iv(time, time)
-    rdef.start.value = Iv(time, time)
-    rdef.end.value = Iv(time, time)
+    rdef.time.set(time, time)
+    rdef.start.set(time, time)
+    rdef.end.set(time, time)
     rdef.level = {lead : 127 for lead in leads}
     rdef.level[leads[selected.chan]] = 127 - selected.num
 

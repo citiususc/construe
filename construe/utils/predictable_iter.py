@@ -31,7 +31,7 @@ class PredictableIter(object):
         """Returns the iterator object"""
         return self
 
-    def next(self):
+    def __next__(self):
         """Obtains the next element in the sequence"""
         if self._hasnext:
             result = self._thenext

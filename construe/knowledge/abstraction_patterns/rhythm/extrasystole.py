@@ -9,8 +9,8 @@ that allows the recognition of all types of extrasystoles.
 @author: T. Teijeiro
 """
 
-from construe.model.automata import (PatternAutomata, ABSTRACTED,
-                                        ENVIRONMENT, BASIC_TCONST)
+import copy
+from construe.model.automata import PatternAutomata, ABSTRACTED, ENVIRONMENT
 from construe.model.constraint_network import verify
 from construe.model import Interval as Iv
 from construe.knowledge.abstraction_patterns.rhythm.regular import (
@@ -19,15 +19,13 @@ from construe.utils.signal_processing.xcorr_similarity import (signal_match,
                                                            signal_unmatch)
 import construe.knowledge.constants as C
 import construe.knowledge.observables as o
-import copy
 
 def _prev_rhythm_tconst(pattern, rhythm):
     """Temporal constraints of a cardiac rhythm with the precedent one."""
-    BASIC_TCONST(pattern, rhythm)
-    tnet = pattern.last_tnet
-    tnet.set_equal(pattern.hypothesis.start, rhythm.end)
-    tnet.add_constraint(pattern.hypothesis.start, pattern.hypothesis.end,
-                                      Iv(2*C.TACHY_RR.start, 3*C.BRADY_RR.end))
+    pattern.tnet.set_equal(pattern.hypothesis.start, rhythm.end)
+    pattern.tnet.add_constraint(pattern.hypothesis.start,
+                                pattern.hypothesis.end,
+                                Iv(2*C.TACHY_RR.start, 3*C.BRADY_RR.end))
 
 def _prev_rhythm_gconst(pattern, rhythm):
     """General constraints of a cardiac rhythm with the preceden one."""
@@ -44,19 +42,16 @@ def _prev_rhythm_nreg_gconst(pattern, rhythm):
 
 def _qrs_rref_tconst(pattern, qrs):
     """Temporal constraints of the first environment QRS complex"""
-    BASIC_TCONST(pattern, qrs)
     if pattern.evidence[o.Cardiac_Rhythm]:
-        pattern.last_tnet.set_before(qrs.end,
+        pattern.tnet.set_before(qrs.end,
                                      pattern.evidence[o.Cardiac_Rhythm][0].end)
 
 def _qrs_env_tconst(pattern, qrs):
     """Temporal constraints of the second environment QRS complex"""
-    BASIC_TCONST(pattern, qrs)
-    tnet = pattern.last_tnet
-    tnet.set_equal(pattern.hypothesis.start, qrs.time)
+    pattern.tnet.set_equal(pattern.hypothesis.start, qrs.time)
     if pattern.evidence[o.QRS].index(qrs) == 1:
         prev = pattern.evidence[o.QRS][0]
-        tnet.add_constraint(prev.time, qrs.time, Iv(C.TACHY_RR.start,
+        pattern.tnet.add_constraint(prev.time, qrs.time, Iv(C.TACHY_RR.start,
                                                                C.BRADY_RR.end))
 
 def _qrs_ext_tconst(ventricular):
@@ -70,8 +65,7 @@ def _qrs_ext_tconst(ventricular):
         Defines the temporal constraints function for the ectopic beat in an
         extrasystole, depending on its ventricular nature or not.
         """
-        BASIC_TCONST(pattern, qrs)
-        tnet = pattern.last_tnet
+        tnet = pattern.tnet
         tnet.set_before(qrs.end, pattern.hypothesis.end)
         if ventricular:
             tnet.add_constraint(qrs.start, qrs.end, C.VQRS_DUR)
@@ -103,8 +97,7 @@ def _qrs_fin_pause_tconst(pattern, qrs):
     Temporal constraints for the compensatory pause of the last QRS of the
     extrasystole.
     """
-    BASIC_TCONST(pattern, qrs)
-    tnet = pattern.last_tnet
+    tnet = pattern.tnet
     tnet.set_equal(pattern.hypothesis.end, qrs.time)
     beats = pattern.evidence[o.QRS]
     idx = beats.index(qrs)
@@ -145,8 +138,7 @@ def _qrs_fin_npause_tconst(pattern, qrs):
     Temporal constraints of the fourth beat in an extrasystole without
     compensatory pause.
     """
-    BASIC_TCONST(pattern, qrs)
-    tnet = pattern.last_tnet
+    tnet = pattern.tnet
     tnet.set_equal(pattern.hypothesis.end, qrs.time)
     beats = pattern.evidence[o.QRS]
     #We need all previous evidence
@@ -170,31 +162,28 @@ def _p_qrs_tconst(pattern, pwave):
     """
     Temporal constraints of the P waves with the corresponding QRS complex.
     """
-    BASIC_TCONST(pattern, pwave)
     obseq = pattern.obs_seq
     idx = pattern.get_step(pwave)
     #We find the qrs observation precedent to this P wave.
     if idx == 0 or not isinstance(obseq[idx-1], o.QRS):
         return
     qrs = obseq[idx-1]
-    tnet = pattern.last_tnet
-    tnet.add_constraint(pwave.start, pwave.end, C.PW_DURATION)
+    pattern.tnet.add_constraint(pwave.start, pwave.end, C.PW_DURATION)
     #PR interval
-    tnet.add_constraint(pwave.start, qrs.start, C.N_PR_INTERVAL)
-    tnet.set_before(pwave.end, qrs.start)
+    pattern.tnet.add_constraint(pwave.start, qrs.start, C.N_PR_INTERVAL)
+    pattern.tnet.set_before(pwave.end, qrs.start)
 
 def _t_qrs_tconst(pattern, twave):
     """
     Temporal constraints of the T waves with the corresponding QRS complex
     """
-    BASIC_TCONST(pattern, twave)
     obseq = pattern.obs_seq
     idx = pattern.get_step(twave)
     #We find the qrs observation precedent to this T wave.
     try:
-        qrs = next(obseq[i] for i in xrange(idx-1, -1, -1)
+        qrs = next(obseq[i] for i in range(idx-1, -1, -1)
                                                 if isinstance(obseq[i], o.QRS))
-        tnet = pattern.last_tnet
+        tnet = pattern.tnet
         if idx > 0 and isinstance(obseq[idx-1], o.PWave):
             pwave = obseq[idx-1]
             tnet.add_constraint(pwave.end, twave.start, Iv(C.ST_INTERVAL.start,
@@ -273,7 +262,7 @@ EXTRASYSTOLE_PATTERN.add_transition(8, 9, o.TWave, ABSTRACTED, _t_qrs_tconst,
                                                              _extrasyst_gconst)
 EXTRASYSTOLE_PATTERN.add_transition(7, 9, o.TWave, ABSTRACTED, _t_qrs_tconst,
                                                              _extrasyst_gconst)
-EXTRASYSTOLE_PATTERN.add_transition(7, 9, gconst= _extrasyst_gconst)
+EXTRASYSTOLE_PATTERN.add_transition(7, 9, gconst=_extrasyst_gconst)
 ##Second way: Ventricular extrasystole without compensatory pause
 EXTRASYSTOLE_PATTERN.add_transition(3, 10, o.QRS, ABSTRACTED,
                                  _qrs_ext_tconst(True), _qrs_ext_gconst_npause)
@@ -287,10 +276,10 @@ EXTRASYSTOLE_PATTERN.add_transition(13, 14, o.TWave, ABSTRACTED, _t_qrs_tconst,
                                                              _extrasyst_gconst)
 EXTRASYSTOLE_PATTERN.add_transition(12, 14, o.TWave, ABSTRACTED, _t_qrs_tconst,
                                                              _extrasyst_gconst)
-EXTRASYSTOLE_PATTERN.add_transition(12, 14, gconst= _extrasyst_gconst)
+EXTRASYSTOLE_PATTERN.add_transition(12, 14, gconst=_extrasyst_gconst)
 EXTRASYSTOLE_PATTERN.final_states.add(9)
 EXTRASYSTOLE_PATTERN.final_states.add(14)
-EXTRASYSTOLE_PATTERN.abstractions[o.QRS] = (EXTRASYSTOLE_PATTERN.transitions[4]
-                                           ,EXTRASYSTOLE_PATTERN.transitions[8]
-                                          ,EXTRASYSTOLE_PATTERN.transitions[14])
+EXTRASYSTOLE_PATTERN.abstractions[o.QRS] = (EXTRASYSTOLE_PATTERN.transitions[4],
+                                            EXTRASYSTOLE_PATTERN.transitions[8],
+                                           EXTRASYSTOLE_PATTERN.transitions[14])
 EXTRASYSTOLE_PATTERN.freeze()

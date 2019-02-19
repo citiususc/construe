@@ -26,7 +26,7 @@ def array2points(array):
     Creates a list of pairs (x,y) from an array of y values, to make it
     suitable to be processed by the RDP function.
     """
-    return [(i, array[i]) for i in xrange(len(array))]
+    return [(i, array[i]) for i in range(len(array))]
 
 
 def arrayRDP(arr, epsilon=0.0, n=None):
@@ -67,7 +67,7 @@ def arrayRDP(arr, epsilon=0.0, n=None):
     dist, idx = max_vdist(arr, 0, len(arr) - 1)
     fragments[(-dist, idx)] = (0, len(arr) - 1)
     while len(fragments) < n-1:
-        (dist, idx), (first, last) = fragments.popitem(last=False)
+        (dist, idx), (first, last) = fragments.popitem(index=0)
         if -dist <= epsilon:
             #We have to put again the last item to prevent loss
             fragments[(dist, idx)] = (first, last)
@@ -79,7 +79,7 @@ def arrayRDP(arr, epsilon=0.0, n=None):
             dist, newidx = max_vdist(arr, idx, last)
             fragments[(-dist, newidx)] = (idx, last)
     #Now we have to get all the indices in the keys of the fragments in order.
-    result = sortedcontainers.SortedList(i[0] for i in fragments.itervalues())
+    result = sortedcontainers.SortedList(i[0] for i in fragments.values())
     result.add(len(arr) - 1)
     return np.array(result)
 
@@ -132,7 +132,7 @@ def RDP(pts, epsilon):
     last = pts[-1]
     idx = -1
     max_dist = 0
-    for i in xrange(1, len(pts)-1):
+    for i in range(1, len(pts)-1):
         #We obtain the perpendicular distance of each point to the line
         #delimited by the two points.
         if first[0] == last[0]:

@@ -8,11 +8,10 @@ observables.
 
 @author: T. Teijeiro
 """
-from .FreezableObject import FreezableObject
-from .constraint_network import Variable
-from .interval import Interval
+
 from numpy import inf
-import itertools as it
+from .FreezableObject import FreezableObject
+from .interval import Interval
 
 def overlap(obs1, obs2):
     """
@@ -31,8 +30,8 @@ def between(o1, o2, o3):
     #We create a "dummy" observation between o1 and o3, and we check if it
     #overlaps with the checked observation.
     hole = Observable()
-    hole.start.value = o1.end.value
-    hole.end.value = o3.start.value
+    hole.start.cpy(o1.end)
+    hole.end.cpy(o3.start)
     return overlap(hole, o2)
 
 def overlap_any(obs, obs_lst):
@@ -46,14 +45,13 @@ def overlap_any(obs, obs_lst):
     #of considering possible the presence of *obs* in a zero-size interval
     #between two consecutive observations in the list.
     dummy = Observable()
-    dummy.start.value = obs_lst[0].start.value
-    dummy.end.value = obs_lst[0].end.value
+    dummy.start.cpy(obs_lst[0].start)
+    dummy.end.cpy(obs_lst[0].end)
     i = 1
     while i < len(obs_lst):
-        if (dummy.earlyend != dummy.lateend or
-                                    dummy.end.value != obs_lst[i].start.value):
-            dummy.start.value = obs_lst[i].start.value
-        dummy.end.value = obs_lst[i].end.value
+        if dummy.earlyend != dummy.lateend or dummy.end != obs_lst[i].start:
+            dummy.start.cpy(obs_lst[i].start)
+        dummy.end.cpy(obs_lst[i].end)
         if overlap(obs, dummy):
             return True
         i+=1
@@ -103,20 +101,20 @@ class Observable(FreezableObject):
     """
     Base class for all the observables. It has three attributes:
     *start*:
-        The start temporal variable, of type *Variable*.
+        The start temporal variable, of type *Interval*.
     *time*:
         Temporal variable used to represent the observable as a single event.
     *end*:
-        The finish temporal variable, of type *Variable*.
+        The finish temporal variable, of type *Interval*.
     """
 
     __slots__ = ('start', 'time', 'end')
 
     def __init__(self):
-        super(Observable, self).__init__()
-        self.start = Variable(value = Interval(0, inf))
-        self.time = Variable(value = Interval(0, inf))
-        self.end = Variable(value = Interval(0, inf))
+        super().__init__()
+        self.start = Interval(0, inf)
+        self.time = Interval(0, inf)
+        self.end = Interval(0, inf)
 
     def __str__(self):
         """
@@ -148,22 +146,22 @@ class Observable(FreezableObject):
     @property
     def earlystart(self):
         """Returns the earliest start time of the observation"""
-        return self.start.value._start
+        return self.start._start
 
     @property
     def latestart(self):
         """Returns the latest start time of the observation"""
-        return self.start.value._end
+        return self.start._end
 
     @property
     def earlyend(self):
         """Returns the earliest end time of the observation"""
-        return self.end.value._start
+        return self.end._start
 
     @property
     def lateend(self):
         """Returns the latest end time of the observation"""
-        return self.end.value._end
+        return self.end._end
 
 
 class EventObservable(Observable):
@@ -177,7 +175,7 @@ class EventObservable(Observable):
         This type of observables have only one temporal variable, to which the
         two temporal variables of full observables are referenced.
         """
-        self.time = Variable(value = Interval(0, inf))
+        self.time = Interval(0, inf)
         self.start = self.end = self.time
 
 
@@ -188,15 +186,15 @@ if __name__ == "__main__":
     o3 = Observable()
     o4 = Observable()
     e = EventObservable()
-    o.start.value = Interval(2, 4)
-    o.end.value = Interval(6, 6)
-    o2.start.value = Interval(8, 12)
-    o2.end.value = Interval(9, 14)
-    o3.start.value = Interval(3, 4)
-    o3.end.value = Interval(4, 5)
-    o4.start.value = Interval(4, 5)
-    o4.end.value = Interval(7, 9)
-    e.time.value = Interval(10, 10)
+    o.start.set(2, 4)
+    o.end.set(6, 6)
+    o2.start.set(8, 12)
+    o2.end.set(9, 14)
+    o3.start.set(3, 4)
+    o3.end.set(4, 5)
+    o4.start.set(4, 5)
+    o4.end.set(7, 9)
+    e.time.set(10, 10)
     assert o < o2
     assert o < o3
     assert o < o4

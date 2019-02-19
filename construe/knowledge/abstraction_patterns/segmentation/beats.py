@@ -8,13 +8,12 @@ This module contains the definition of beat-related abstraction patterns.
 @author: T. Teijeiro
 """
 
-from construe.model.automata import (PatternAutomata, ABSTRACTED, ENVIRONMENT,
-                                                                  BASIC_TCONST)
+import numpy as np
+from construe.model.automata import PatternAutomata, ABSTRACTED, ENVIRONMENT
 from construe.model import Interval as Iv
 from construe.utils.units_helper import msec2samples, samples2msec
 import construe.knowledge.constants as C
 import construe.knowledge.observables as o
-import numpy as np
 
 #Constant values to initialize the Kalman Filter for QT (actually RT) measure
 QT_ERR_STD = msec2samples(58) #Standard deviation of the QT error (R matrix)
@@ -31,35 +30,32 @@ def _envbeat_tconst(pattern, obs):
     """
     Temporal constraints for the environment QRS and CardiacCycle observation
     """
-    BASIC_TCONST(pattern, obs)
-    pattern.last_tnet.add_constraint(obs.end, pattern.hypothesis.time,
+    pattern.tnet.add_constraint(obs.end, pattern.hypothesis.time,
                                      Iv(msec2samples(20), np.inf))
     if isinstance(obs, o.QRS) and isinstance(pattern.obs_seq[0], o.CardiacCycle):
-        pattern.last_tnet.set_equal(pattern.obs_seq[0].time, obs.time)
+        pattern.tnet.set_equal(pattern.obs_seq[0].time, obs.time)
 
 def _btime_tconst(pattern, qrs):
     """
     Temporal constraints for the abstracted QRS observation
     """
-    BASIC_TCONST(pattern, qrs)
-    pattern.last_tnet.set_equal(qrs.time, pattern.hypothesis.time)
+    pattern.tnet.set_equal(qrs.time, pattern.hypothesis.time)
 
 def _qrs_time_tconst(pattern, _):
     """
     Temporal constraints for beat ending without T wave observation
     """
     qrs = pattern.obs_seq[-2]
-    pattern.last_tnet.set_equal(qrs.start, pattern.hypothesis.start)
-    pattern.last_tnet.set_equal(qrs.end, pattern.hypothesis.end)
+    pattern.tnet.set_equal(qrs.start, pattern.hypothesis.start)
+    pattern.tnet.set_equal(qrs.end, pattern.hypothesis.end)
 
 def _p_qrs_tconst(pattern, pwave):
     """
     Temporal constraints of the P Wave wrt the corresponding QRS complex
     """
-    BASIC_TCONST(pattern, pwave)
     obseq = pattern.obs_seq
     idx = pattern.get_step(pwave)
-    tnet = pattern.last_tnet
+    tnet = pattern.tnet
     #Beat start
     tnet.set_equal(pwave.start, pattern.hypothesis.start)
     tnet.add_constraint(pwave.start, pwave.end, C.PW_DURATION)
@@ -74,15 +70,14 @@ def _t_qrs_tconst(pattern, twave):
     """
     Temporal constraints of the T waves with the corresponding QRS complex
     """
-    BASIC_TCONST(pattern, twave)
     obseq = pattern.obs_seq
     idx = pattern.get_step(twave)
-    tnet = pattern.last_tnet
+    tnet = pattern.tnet
     #Beat end
     tnet.set_equal(twave.end, pattern.hypothesis.end)
     #We find the qrs observation precedent to this T wave.
     try:
-        qrs = next(obseq[i] for i in xrange(idx-1, -1, -1)
+        qrs = next(obseq[i] for i in range(idx-1, -1, -1)
                                                 if isinstance(obseq[i], o.QRS))
         #If there is no P Wave, the beat start is the QRS start.
         if pattern.trseq[idx][0].istate in (1, 3):

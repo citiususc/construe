@@ -55,7 +55,7 @@ def __apply_filter(signal, wavelet, levels):
         Levels used for the reconstruction of the signal.
     """
     coeffs = pywt.wavedec(signal, wavelet)
-    for i in xrange(len(coeffs)):
+    for i in range(len(coeffs)):
         if not i in levels:
             coeffs[i] = np.zeros(len(coeffs[i]))
     return pywt.waverec(coeffs, wavelet)

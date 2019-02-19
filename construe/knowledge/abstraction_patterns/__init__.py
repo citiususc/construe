@@ -13,7 +13,7 @@ from .segmentation.pwave import PWAVE_PATTERN
 from .segmentation.twave import TWAVE_PATTERN
 from .segmentation.beats import FIRST_BEAT_PATTERN, CARDIAC_CYCLE_PATTERN
 from ..observables import *
-from construe.model import Interval, ConstraintNetwork, Variable
+from construe.model import Interval, ConstraintNetwork
 from construe.model.automata import ABSTRACTED
 import numpy
 
@@ -79,7 +79,7 @@ def set_knowledge_base(knowledge):
     #Mapping from observable types to abstraction levels.
     _LMAP = {}
     for q in _OBSERVABLES:
-        _LMAP[q] = Variable(value=Interval(0, numpy.inf))
+        _LMAP[q] = Interval(0, numpy.inf)
     #We set the restrictions, and minimize the network
     #All subclasses must have the same level than the superclasses
     for q in _OBSERVABLES:
@@ -104,7 +104,7 @@ def set_knowledge_base(knowledge):
                   Cardiac_Rhythm:(Cardiac_Rhythm,)
                   }
     #Automatic expansion of the exclusion relation.
-    for q, qexc in _EXCLUSION.iteritems():
+    for q, qexc in _EXCLUSION.items():
         _EXCLUSION[q] = tuple((q2 for q2 in _OBSERVABLES
                                                       if issubclass(q2, qexc)))
     for q in sorted(_OBSERVABLES, key=_LMAP.get, reverse=True):
@@ -125,7 +125,7 @@ def get_excluded(observable):
 
 def get_max_level():
     """Obtains the maximum abstraction level of the domain."""
-    return max(_LMAP.itervalues())
+    return max(_LMAP.values())
 
 def get_level(nlevel, subclasses=True):
     """

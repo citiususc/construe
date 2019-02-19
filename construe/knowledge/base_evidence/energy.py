@@ -9,15 +9,16 @@ interpretation process consisting of energy intervals observations.
 @author: T. Teijeiro
 """
 
+
+import itertools as it
+import bisect
+import numpy as np
+from scipy.stats.mstats import mquantiles
+from sortedcontainers import SortedList
 import construe.acquisition.signal_buffer as sig_buf
 import construe.knowledge.observables as o
 from construe.model import Interval as Iv
 from construe.utils.units_helper import msec2samples as ms2sp
-from scipy.stats.mstats import mquantiles
-import numpy as np
-import itertools as it
-import bisect
-from sortedcontainers import SortedList
 
 ############################
 ### Constants definition ###
@@ -37,19 +38,17 @@ def changeTime(observations, time_offset):
     """
     if time_offset > 0:
         for obs in observations:
-            obs.end.value = Iv(obs.earlyend + time_offset,
-                               obs.lateend + time_offset)
-            obs.start.value = Iv(obs.earlystart + time_offset,
-                                 obs.latestart + time_offset)
+            obs.end.set(obs.earlyend + time_offset, obs.lateend + time_offset)
+            obs.start.set(obs.earlystart + time_offset,
+                          obs.latestart + time_offset)
     else:
         for obs in observations:
-            obs.start.value = Iv(obs.earlystart + time_offset,
-                                 obs.latestart + time_offset)
-            obs.end.value = Iv(obs.earlyend + time_offset,
-                               obs.lateend + time_offset)
+            obs.start.set(obs.earlystart + time_offset,
+                          obs.latestart + time_offset)
+            obs.end.set(obs.earlyend + time_offset, obs.lateend + time_offset)
 
 
-def get_energy_intervals(energy, level = 0, percentile = 0.95, group = 1):
+def get_energy_intervals(energy, level=0, percentile=0.95, group=1):
     """
     Obtains the relevant energy intervals for a specific level, using the
     default wavelet filter. It starts in the maximum energy of the signal, and
@@ -73,7 +72,7 @@ def get_energy_intervals(energy, level = 0, percentile = 0.95, group = 1):
     List of Intervals, detected according the parameters.
     """
     #First, we set the threshold over which we consider relevant a wave.
-    thres = mquantiles(energy, prob = percentile ** (level + 1))[0]
+    thres = mquantiles(energy, prob=percentile ** (level + 1))[0]
     #Filter
     indices = np.nonzero(energy > thres)[0]
     #Integration of consecutive indices
@@ -122,18 +121,18 @@ def get_deflection_observations(start, end, lead, max_level=0, group=ms2sp(20)):
     """
     energ = sig_buf.get_energy_fragment(start, end, lead=lead)[0]
     obs = {}
-    for i in xrange(max_level + 1):
+    for i in range(max_level + 1):
         obs[i] = []
-        for interv in get_energy_intervals(energ, level = i, group = group):
+        for interv in get_energy_intervals(energ, level=i, group=group):
             defl = o.Deflection()
-            defl.start.value = Iv(interv.start, interv.start)
-            defl.end.value = Iv(interv.end, interv.end)
+            defl.start.set(interv.start, interv.start)
+            defl.end.set(interv.end, interv.end)
             defl.level[lead] = i
             obs[i].append(defl)
         #We update the time of the intervals
         changeTime(obs[i], start)
     #Now we need to remove redundant observations of upper levels
-    for i in xrange(max_level, 0, -1):
+    for i in range(max_level, 0, -1):
         j = 0
         while j < len(obs[i]):
             obj = obs[i][j]
@@ -152,7 +151,7 @@ def get_deflection_observations(start, end, lead, max_level=0, group=ms2sp(20)):
     return obs
 
 
-def combine_energy_intervals(dicts, margin = ms2sp(20)):
+def combine_energy_intervals(dicts, margin=ms2sp(20)):
     """
     Combines the overlapping observations in several dicts in the result format
     of the get_deflection_observations() function.
@@ -171,10 +170,10 @@ def combine_energy_intervals(dicts, margin = ms2sp(20)):
     """
     chain = it.chain.from_iterable
     dict1 = dicts[0]
-    for wint in chain(dict1.itervalues()):
-        for i in xrange(1, len(dicts)):
+    for wint in chain(dict1.values()):
+        for i in range(1, len(dicts)):
             conflictive = []
-            for lst in dicts[i].itervalues():
+            for lst in dicts[i].values():
                 if not lst:
                     continue
                 idx = bisect.bisect_left(lst, wint)
@@ -191,13 +190,13 @@ def combine_energy_intervals(dicts, margin = ms2sp(20)):
                         conflictive.append(w)
                     idx += 1
             if conflictive:
-                alleads = set.union(*(set(w.level.iterkeys())
-                            for w in conflictive)) - set(wint.level.iterkeys())
+                alleads = set.union(*(set(w.level.keys())
+                            for w in conflictive)) - set(wint.level.keys())
                 for lead in alleads:
                     wint.level[lead] = min(w.level.get(lead, np.Inf)
                                                           for w in conflictive)
                 for wconf in conflictive:
-                    dicts[i][wconf.level.values()[0]].remove(wconf)
+                    dicts[i][next(wconf.level.values())].remove(wconf)
 
 
 def get_combined_energy(start, end, max_level, group=ms2sp(80)):
@@ -227,7 +226,7 @@ def get_combined_energy(start, end, max_level, group=ms2sp(80)):
     dicts = {}
     for lead in sig_buf.get_available_leads():
         dicts[lead] = {}
-        for i in xrange(max_level + 1):
+        for i in range(max_level + 1):
             dicts[lead][i] = []
     #Energy intervals detection and combination
     idx = start
@@ -235,21 +234,20 @@ def get_combined_energy(start, end, max_level, group=ms2sp(80)):
         wfs = {}
         for lead in dicts:
             wfs[lead] = get_deflection_observations(start + idx,
-                                                start + idx + TWINDOW,
-                                                lead = lead,
-                                                max_level = max_level,
-                                                group = group)
-            for i in xrange(max_level + 1):
+                                                    start + idx + TWINDOW,
+                                                    lead=lead,
+                                                    max_level=max_level,
+                                                    group=group)
+            for i in range(max_level + 1):
                 if dicts[lead][i] and wfs[lead][i]:
                     if (wfs[lead][i][0].earlystart - dicts[lead][i][-1].lateend
                                                                      <= group):
-                        dicts[lead][i][-1].end.value = (
-                                                   wfs[lead][i][0].start.value)
+                        dicts[lead][i][-1].end.cpy(wfs[lead][i][0].start)
                         wfs[lead][i].pop(0)
                 dicts[lead][i].extend(wfs[lead][i])
         idx += TWINDOW
     #Remove overlapping intervals
-    combine_energy_intervals(dicts.values())
+    combine_energy_intervals(list(dicts.values()))
     #Now we flatten the dictionaries, putting all the intervals in a sequence
     #sorted by the earlystart value.
     return SortedList(w for w in it.chain.from_iterable(it.chain.from_iterable(

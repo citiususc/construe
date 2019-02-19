@@ -18,7 +18,7 @@ class RR(Observable):
     two consecutive ventricular depolarizations.
     """
     def __init__(self):
-        super(RR, self).__init__()
+        super().__init__()
         #The single reference will correspond to the start time
         self.time = self.start
 
@@ -28,7 +28,7 @@ class Cardiac_Rhythm(Observable):
     __slots__ = ('meas',)
 
     def __init__(self):
-        super(Cardiac_Rhythm, self).__init__()
+        super().__init__()
         #The single reference will correspond to the start time
         self.time = self.start
         #All rhythms have some representative measurements of their constituent
@@ -42,7 +42,7 @@ CycleMeasurements = namedtuple('CycleMeasurements', ['rr', 'rt', 'pq'])
 class RhythmStart(Cardiac_Rhythm):
     """Class that represents the start of the first detected rhythm."""
     def __init__(self):
-        super(RhythmStart, self).__init__()
+        super().__init__()
         #The rhythm start, in addition to be a rhythm, is an eventual and
         #unique observation.
         self.time = self.end = self.start
@@ -54,7 +54,7 @@ class RegularCardiacRhythm(Cardiac_Rhythm):
     __slots__ = ('morph', )
 
     def __init__(self):
-        super(RegularCardiacRhythm, self).__init__()
+        super().__init__()
         #A regular cardiac rhythm has a single beat morphology. To evaluate
         #the morphology we use a shape similarity strategy.
         self.morph = {}
@@ -101,7 +101,7 @@ class RhythmBlock(Cardiac_Rhythm):
     __slots__ = ('morph',)
 
     def __init__(self):
-        super(RhythmBlock, self).__init__()
+        super().__init__()
         #Rhythm block must keep the same beat morphology throughout its
         #duration. This mophology consists of a QRSShape struct for each lead
         #in the record.
@@ -113,7 +113,7 @@ class Atrial_Fibrillation(Cardiac_Rhythm):
     __slots__ = ('morph',)
 
     def __init__(self):
-        super(Atrial_Fibrillation, self).__init__()
+        super().__init__()
         #Atrial fibrillation must keep the same beat morphology throughout its
         #duration. This mophology consists of a QRSShape struct for each lead
         #in the record.

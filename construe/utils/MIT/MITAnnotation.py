@@ -19,13 +19,13 @@ class MITAnnotation(object):
     #annotations are created and managed.
     __slots__ = ('code', 'time', 'subtype', 'chan', 'num', 'aux')
 
-    def __init__(self):
-        self.code = 0
-        self.time = 0
-        self.subtype = 0
-        self.chan = 0
-        self.num = 0
-        self.aux = None
+    def __init__(self, code=0, time=0, subtype=0, chan=0, num=0, aux=None):
+        self.code = code
+        self.time = time
+        self.subtype = subtype
+        self.chan = chan
+        self.num = num
+        self.aux = aux
 
 
     def __str__(self):
@@ -122,12 +122,7 @@ def read_annotations(path):
         elif A == I == 0:
             break
         else:
-            annot = MITAnnotation()
-            annot.code = A
-            annot.time = I + displ
-            annot.chan = chan
-            annot.num = num
-            result.append(annot)
+            result.append(MITAnnotation(code=A, time=I+displ, chan=chan, num=num))
             displ = 0
     f.close()
     #Now, for each annotation we put the absolute time
@@ -149,7 +144,7 @@ def save_annotations(annots, path):
     path: Path to the file where the list is saved.
     """
     annots = sorted(annots)
-    f = open(path, 'w')
+    f = open(path, 'wb')
     prev_time = 0
     prev_num = 0
     prev_chn = 0
@@ -165,7 +160,7 @@ def save_annotations(annots, path):
             f.write(struct.pack('<H', rel_time >> 16))
             f.write(struct.pack('<H', rel_time & 0xFFFF))
             #The next written position is 0
-            rel_time=0
+            rel_time = 0
         #We write the annotation code and the timestamp
         f.write(struct.pack('<H', anot.code << 10 | rel_time))
         prev_time = anot.time
@@ -183,9 +178,11 @@ def save_annotations(annots, path):
         #Write the AUX field, if present
         if anot.aux != None:
             f.write(struct.pack('<H', AUX_CODE << 10 | len(anot.aux)))
-            f.write(anot.aux)
-            if (len(anot.aux) % 2 != 0):
-                f.write(struct.pack('<b',0))
+            aux = (anot.aux if isinstance(anot.aux, bytes)
+                                        else bytes(anot.aux, encoding='utf-8'))
+            f.write(aux)
+            if len(anot.aux) % 2 != 0:
+                f.write(struct.pack('<b', 0))
     #Finish the file with a 00
     f.write(struct.pack('<h', 0))
     f.close()
@@ -213,5 +210,5 @@ def convert_annots_freq(spath, sfreq, dpath, dfreq):
 
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     pass

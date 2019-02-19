@@ -8,7 +8,7 @@ __author__ = "T. Teijeiro"
 __date__ = "$01-dic-2011 13:59:16$"
 
 import numpy
-import segmentation.wavelets.wavelet_filter as wf
+import construe.acquisition.segmentation.wavelets.wavelet_filter as wf
 from collections import OrderedDict
 
 class Leads:
@@ -110,7 +110,7 @@ def _get_block(array, start, end, blocksize):
     window_size = blocksize * int(numpy.ceil((end - start) / float(blocksize)))
     real_start = start - ((window_size - (end - start)) / 2)
     #If we cannot center the block, we put it at start
-    real_start = 0 if real_start < 0 else real_start
+    real_start = 0 if real_start < 0 else int(real_start)
     block = array[real_start:real_start + window_size + 1]
     return (block, start - real_start, min(end - real_start, len(block)))
 

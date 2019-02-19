@@ -35,9 +35,9 @@ def BASIC_TCONST(pattern, obs):
     the beginning of an observation has to occur before its ending.
     """
     if obs.start is not obs.time:
-        pattern.last_tnet.set_before(obs.start, obs.time)
+        pattern.tnet.set_before(obs.start, obs.time)
     if obs.time is not obs.end:
-        pattern.last_tnet.set_before(obs.time, obs.end)
+        pattern.tnet.set_before(obs.time, obs.end)
 
 
 class Transition(FreezableObject):
@@ -85,7 +85,7 @@ class Transition(FreezableObject):
             observations. These constraints are checked after the matching of
             the finding with an actual observation.
         """
-        super(Transition, self).__init__()
+        super().__init__()
         if istate is None or fstate is None:
             raise ValueError('Initial and final states must be != None')
         self.istate = istate
@@ -140,7 +140,7 @@ class PatternAutomata(FreezableObject):
             for the pattern has been observed. It receives a single parameter,
             the abstraction pattern to apply the procedure.
         """
-        super(PatternAutomata, self).__init__()
+        super().__init__()
         self.name = ''
         self.Hypothesis = Observable
         self.transitions = []
@@ -159,7 +159,7 @@ class PatternAutomata(FreezableObject):
         verify(self.final_states, 'The automata does not have any final state')
         #We use a tuple to avoid posterior changes on the transitions
         self.transitions = tuple(self.transitions)
-        super(PatternAutomata, self).freeze()
+        super().freeze()
 
     def add_transition(self, istate=None, fstate=None, observable=None,
                              abstracted=ABSTRACTED, tconst=NULL_CONST,

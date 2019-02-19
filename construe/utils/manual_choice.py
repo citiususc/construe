@@ -21,13 +21,13 @@ def choice(seq):
         return seq[0]
     #If seq has more than one element, we show all the elements, and ask for an
     #index to return.
-    for i in xrange(len(seq)):
-        print i,': ', seq[i]
-    idx = input('Select index: ')
+    for i in range(len(seq)):
+        print(i,': ', seq[i])
+    idx = eval(input('Select index: '))
     return seq[idx]
     
     
 if __name__ == "__main__":
     import random
-    seq = random.sample(xrange(10), 3)
-    print ('Selected item: ' + str(choice(seq)))
+    seq = random.sample(range(10), 3)
+    print(('Selected item: ' + str(choice(seq))))

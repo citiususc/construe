@@ -18,7 +18,7 @@ class PWave(Observable):
     __slots__ = ('amplitude',)
 
     def __init__(self):
-        super(PWave, self).__init__()
+        super().__init__()
         #The single reference will correspond to the start time
         self.time = self.start
         self.amplitude = {}
@@ -38,7 +38,7 @@ class TWave(Observable):
     __slots__ = ('amplitude',)
 
     def __init__(self):
-        super(TWave, self).__init__()
+        super().__init__()
         #The single reference will correspond to the start time
         self.time = self.start
         self.amplitude = {}
@@ -58,7 +58,7 @@ class QRS(Observable):
     __slots__ = ('shape', 'tag', 'clustered')
 
     def __init__(self):
-        super(QRS, self).__init__()
+        super().__init__()
         self.shape = {}
         #By default, all QRS are tagged as normal.
         self.tag = 1
@@ -99,7 +99,7 @@ class QRSShape(FreezableObject):
     __slots__ = ('waves', 'amplitude', 'energy', 'maxslope', 'tag', 'sig')
 
     def __init__(self):
-        super(QRSShape, self).__init__()
+        super().__init__()
         self.waves = ()
         self.amplitude = 0.0
         self.energy = 0.0
@@ -130,7 +130,7 @@ class Noise(Observable):
     Observable that represents a noisy signal fragment.
     """
     def __init__(self):
-        super(Noise, self).__init__()
+        super().__init__()
         #The single reference will correspond to the start time.
         self.time = self.start
 
@@ -148,7 +148,7 @@ class RPeak(EventObservable):
     __slots__ = ('amplitude',)
 
     def __init__(self):
-        super(RPeak, self).__init__()
+        super().__init__()
         self.amplitude = 0.0
 
 class Baseline(Observable):
@@ -156,7 +156,7 @@ class Baseline(Observable):
     Observable that represents a baseline observation.
     """
     def __init__(self):
-        super(Baseline, self).__init__()
+        super().__init__()
         #The single reference will correspond to the start time
         self.time = self.start
 

@@ -9,4 +9,4 @@ think this is the best option.
 @author: T. Teijeiro
 """
 
-from dtw import dtw_std, dtw_subsequence
+from .dtw import dtw_std, dtw_subsequence

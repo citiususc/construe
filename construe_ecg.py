@@ -14,6 +14,7 @@ if __name__ == '__main__':
     import argparse
     import numpy as np
     import os
+    import warnings
     import os.path
     import subprocess
     import time
@@ -105,12 +106,17 @@ if __name__ == '__main__':
                         help=('Verbose mode. The algorithm will print to '
                               'standard output the fragment being '
                               'interpreted.'))
+    parser.add_argument('--show-warnings', action='store_true',
+                        help=('Shows warnings using the default python '
+                              'options. By default they are filtered.'))
     parser.add_argument('--no-merge', action='store_true',
                         help=('Avoids the use of a branch-merging strategy for'
                               ' interpretation exploration. If the selected '
                               'abstraction level is "conduction", this '
                               'parameter is ignored.'))
     args = parser.parse_args()
+    if not args.show_warnings:
+        warnings.simplefilter("ignore")
     #The first step is to set the global frequency and ADC gain variables that
     #determine the constant values in the knowledge base, which are initialized
     #in the first import of a construe knowledge module.

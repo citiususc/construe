@@ -41,10 +41,10 @@ def _merge_annots(annlst, interp, reftime):
                   and a.time >= beg), None)
     if vflut is not None:
         beg = vflut.time + 1
-    bidx = next((i for i in xrange(len(annlst)) if annlst[i].time >= beg),
+    bidx = next((i for i in range(len(annlst)) if annlst[i].time >= beg),
                 len(annlst))
-    end = next((a.time for a in reversed(annlst)
-                if a.code is ECGCodes.RHYTHM and a.aux == ')'), annlst[-1].time)
+    end = next((a.time for a in reversed(annlst) if a.code is ECGCodes.RHYTHM
+                                           and a.aux == b')'), annlst[-1].time)
     #First we calculate the possible 'join points' of the two sequences.
     jpts = (set(a.time for a in annlst[bidx:]
                 if a.time <= end and a.code is ECGCodes.RHYTHM) &
@@ -95,7 +95,7 @@ def _standardize_rhythm_annots(annots):
             if code is ECGCodes.VFON:
                 newann = MITAnnotation.MITAnnotation()
                 newann.code = ECGCodes.RHYTHM
-                newann.aux = '(VFL'
+                newann.aux = b'(VFL'
                 newann.time = ann.time
                 dest.add(newann)
             ############################################################
@@ -103,7 +103,7 @@ def _standardize_rhythm_annots(annots):
             #bigeminies with more than two pairs, and trigeminies with #
             #more than two triplets,                                   #
             ############################################################
-            if ann.aux == '(B':
+            if ann.aux == b'(B':
                 end = next((a for a in annots if a.time > ann.time
                            and a.code in (ECGCodes.RHYTHM, ECGCodes.VFON)),
                                                                 annots[-1])
@@ -125,9 +125,9 @@ def _standardize_rhythm_annots(annots):
             # Pauses and missed beats are replaced by bradycardias (for #
             # consistency with the reference annotations).              #
             #############################################################
-            if ann.aux in ('(BK', 'P'):
-                ann.aux = '(SBR'
-            if ann.aux not in ('(EXT', '(CPT'):
+            if ann.aux in (b'(BK', b'P'):
+                ann.aux = b'(SBR'
+            if ann.aux not in (b'(EXT', b'(CPT'):
                 prev = next((a for a in reversed(dest)
                                        if a.code is ECGCodes.RHYTHM), None)
                 if prev is None or prev.aux != ann.aux:
@@ -142,7 +142,7 @@ def _standardize_rhythm_annots(annots):
     while True:
         try:
             start = next(a.time for a in iterator
-                         if a.code == ECGCodes.RHYTHM and a.aux == '(AFIB')
+                         if a.code == ECGCodes.RHYTHM and a.aux == b'(AFIB')
             end = next((a.time for a in iterator
                               if a.code == ECGCodes.RHYTHM), dest[-1].time)
             afibtime += end-start
@@ -167,7 +167,7 @@ def _standardize_rhythm_annots(annots):
             if (is_afib_rhythm_lian(rrs) and
                             is_afib_rhythm_lian(rrs[0::2]) and
                                            is_afib_rhythm_lian(rrs[1::2])):
-                start.aux = '(AFIB'
+                start.aux = b'(AFIB'
             #Next rhythm
             start = (end if end.aux in rhythms else
                      next((a for a in iterator
@@ -181,7 +181,7 @@ def _standardize_rhythm_annots(annots):
     pacedrec = sum(1 for a in dest if a.code == ECGCodes.PACE) > 180
     if pacedrec:
         iterator = iter(dest)
-        rhythms = ('(AFIB', '(N', '(SBR', '(SVTA')
+        rhythms = (b'(AFIB', b'(N', b'(SBR', b'(SVTA')
         start = next((a for a in iterator if a.code == ECGCodes.RHYTHM
                                                and a.aux in rhythms), None)
         while start is not None:
@@ -192,7 +192,7 @@ def _standardize_rhythm_annots(annots):
             if any([start.time < a.time < end.time
                     and a.code == ECGCodes.PACE
                         for a in dest[dest.index(start):dest.index(end)]]):
-                start.aux = '(P'
+                start.aux = b'(P'
             #Next rhythm
             start = (end if end.aux in rhythms else
                      next((a for a in iterator

@@ -9,14 +9,14 @@ a trigeminy rhythm.
 @author: T. Teijeiro
 """
 
+import numpy as np
 from construe.model.automata import (PatternAutomata, ABSTRACTED as ABS,
-                                        ENVIRONMENT as ENV, BASIC_TCONST)
-from construe.model import ConstraintNetwork, verify, Interval as Iv
+                                     ENVIRONMENT as ENV)
+from construe.model import verify, Interval as Iv
 from construe.knowledge.abstraction_patterns.rhythm.regular import (
                                                            _check_missed_beats)
 import construe.knowledge.observables as o
 import construe.knowledge.constants as C
-import numpy as np
 
 ###############################
 ### Miscellaneous functions ###
@@ -39,7 +39,7 @@ def _is_ectopic(qidx):
     """
     return (qidx-1) % 3 == 0
 
-def _get_measures(pattern, ectopic= False):
+def _get_measures(pattern, ectopic=False):
     """
     Obtains the characteristic measures of the cardiac rhythms (RR, PQ and RT
     intervals), allowing to filter by the beat type, by using the *ectopic*
@@ -48,12 +48,12 @@ def _get_measures(pattern, ectopic= False):
     """
     beats = [b for b in pattern.evidence[o.QRS] if b is not pattern.finding]
     #RR
-    rrs = np.diff([beats[i].time.start for i in xrange(len(beats))
+    rrs = np.diff([beats[i].time.start for i in range(len(beats))
                                                  if _is_ectopic(i) == ectopic])
     if not ectopic:
         #For normal beats, the RR intervals has to be reduced in the ectopic
         #positions.
-        for i in xrange(0, len(rrs), 2):
+        for i in range(0, len(rrs), 2):
             rrs[i] = rrs[i]/2.0
     #RT
     rts = []
@@ -79,7 +79,7 @@ def _get_measures(pattern, ectopic= False):
 def _rhythm_obs_proc(pattern):
     """Observation procedure executed once the rhythm pattern has finished"""
     #We asign the endpoint of the hypothesis.
-    pattern.hypothesis.end.value = pattern.evidence[o.QRS][-1].time.value
+    pattern.hypothesis.end.cpy(pattern.evidence[o.QRS][-1].time)
 
 ###########################################
 ### Previous cardiac rhythm constraints ###
@@ -87,9 +87,7 @@ def _rhythm_obs_proc(pattern):
 
 def _prev_rhythm_tconst(pattern, rhythm):
     """Temporal constraints of a cardiac rhythm with the precedent one."""
-    BASIC_TCONST(pattern, rhythm)
-    tnet = pattern.last_tnet
-    tnet.set_equal(pattern.hypothesis.start, rhythm.end)
+    pattern.tnet.set_equal(pattern.hypothesis.start, rhythm.end)
 
 
 #################################
@@ -103,21 +101,18 @@ def _qrs_after_twave(pattern, qrs):
     """
     obseq = pattern.obs_seq
     oidx = pattern.get_step(qrs)
-    tnet = pattern.last_tnet
     #If there is a prior T Wave, it must finish before the start
     #of the QRS complex.
     if oidx > 0 and isinstance(obseq[oidx-1], o.TWave):
         prevt = obseq[oidx-1]
-        tnet.set_before(prevt.end, qrs.start)
+        pattern.tnet.set_before(prevt.end, qrs.start)
 
 def _env_qrs_tconst(pattern, qrs):
     """Temporal constraints for the environment QRS observation, the first QRS
     of the pattern"""
-    tnet = pattern.last_tnet
-    BASIC_TCONST(pattern, qrs)
-    tnet.set_equal(pattern.hypothesis.start, qrs.time)
-    tnet.set_before(qrs.time, pattern.hypothesis.end)
-    tnet.add_constraint(qrs.start, qrs.end, C.QRS_DUR)
+    pattern.tnet.set_equal(pattern.hypothesis.start, qrs.time)
+    pattern.tnet.set_before(qrs.time, pattern.hypothesis.end)
+    pattern.tnet.add_constraint(qrs.start, qrs.end, C.QRS_DUR)
 
 
 def _reg_ae_tconst(pattern, qrs):
@@ -127,9 +122,8 @@ def _reg_ae_tconst(pattern, qrs):
     beats = pattern.evidence[o.QRS]
     idx = beats.index(qrs)
     assert _is_ectopic(idx-1)
-    tnet = pattern.last_tnet
+    tnet = pattern.tnet
     hyp = pattern.hypothesis
-    BASIC_TCONST(pattern, qrs)
     tnet.add_constraint(qrs.start, qrs.end, C.NQRS_DUR)
     tnet.set_before(qrs.time, hyp.end)
     #Constraints with the precedent T Wave
@@ -164,20 +158,13 @@ def _reg_nae_tconst(pattern, qrs):
     idx = beats.index(qrs)
     assert not _is_ectopic(idx)
     hyp = pattern.hypothesis
-    tnet = pattern.last_tnet
+    tnet = pattern.tnet
     prev = beats[idx-1]
-    if idx > 3:
-        #We create a new temporal network for the new trigeminy cycle.
-        tnet.remove_constraint(hyp.end, prev.time)
-        tnet = ConstraintNetwork()
-        pattern.temporal_constraints.append(tnet)
-        rrev = beats[idx-3].time.start - beats[idx-4].time.start
-    ##RR evolution constraint.
-    else:
-        rrev = pattern.evidence[o.Cardiac_Rhythm][0].meas.rr[0]
+    rrev = (beats[idx-3].time.start - beats[idx-4].time.start if idx > 3
+                         else pattern.evidence[o.Cardiac_Rhythm][0].meas.rr[0])
+    #RR evolution constraint.
     tnet.add_constraint(prev.time, qrs.time,
                                 Iv(rrev - C.RR_MAX_DIFF, rrev + C.RR_MAX_DIFF))
-    BASIC_TCONST(pattern, qrs)
     tnet.add_constraint(qrs.start, qrs.end, C.NQRS_DUR)
     tnet.set_before(qrs.time, hyp.end)
     #Constraints with the precedent T Wave
@@ -193,9 +180,8 @@ def _ect_qrs_tconst(pattern, qrs):
     """
     beats = pattern.evidence[o.QRS]
     idx = beats.index(qrs)
-    tnet = pattern.last_tnet
+    tnet = pattern.tnet
     hyp = pattern.hypothesis
-    BASIC_TCONST(pattern, qrs)
     tnet.add_constraint(qrs.start, qrs.end, C.QRS_DUR)
     tnet.set_before(qrs.time, hyp.end)
     #Constraints with the precedent T Wave
@@ -256,8 +242,7 @@ def get_p_tconst(qrsidx):
     """
     def _p_tconst(pattern, pwave):
         """P waves temporal constraints"""
-        BASIC_TCONST(pattern, pwave)
-        tnet = pattern.last_tnet
+        tnet = pattern.tnet
         tnet.add_constraint(pwave.start, pwave.end, C.PW_DURATION)
         #We find the associated QRS.
         beats = pattern.evidence[o.QRS]
@@ -290,8 +275,7 @@ def get_t_tconst(qrsidx):
         """
         Temporal constraints of the T Waves wrt the corresponding QRS complex.
         """
-        BASIC_TCONST(pattern, twave)
-        tnet = pattern.last_tnet
+        tnet = pattern.tnet
         #We find the associated QRS.
         beats = pattern.evidence[o.QRS]
         qidx = qrsidx+len(beats) if qrsidx < 0 else qrsidx

@@ -183,19 +183,19 @@ def ICHARMAP(code):
     Obtains the character corresponding to a specific code, by performing an
     inverse search on the CHARMAP dict.
     """
-    return next(k for k, v in CHARMAP.iteritems() if v == code)
+    return next(k for k, v in CHARMAP.items() if v == code)
 
 RHYTHM_AUX = {
 #Stores the AUX text for the different rhythms.
-    o.Sinus_Rhythm:         '(N',
-    o.Tachycardia:          '(SVTA',
-    o.Bradycardia:          '(SBR',
-    o.Atrial_Fibrillation:  '(AFIB',
-    o.Extrasystole:         '(EXT', #Non-standard
-    o.Couplet:              '(CPT', #Non-standard
-    o.Trigeminy:            '(T',
-    o.Bigeminy:             '(B',
-    o.RhythmBlock:          '(BK',
-    o.Ventricular_Flutter:  '(VFL',
-    o.Asystole:             'P'
+    o.Sinus_Rhythm:         b'(N',
+    o.Tachycardia:          b'(SVTA',
+    o.Bradycardia:          b'(SBR',
+    o.Atrial_Fibrillation:  b'(AFIB',
+    o.Extrasystole:         b'(EXT', #Non-standard
+    o.Couplet:              b'(CPT', #Non-standard
+    o.Trigeminy:            b'(T',
+    o.Bigeminy:             b'(B',
+    o.RhythmBlock:          b'(BK',
+    o.Ventricular_Flutter:  b'(VFL',
+    o.Asystole:             b'P'
 }

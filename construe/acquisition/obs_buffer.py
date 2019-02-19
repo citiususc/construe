@@ -10,7 +10,7 @@ to all interpretations.
 @author: T. Teijeiro
 """
 
-from ..model import Observable, EventObservable, Interval as Iv
+from ..model import Observable, EventObservable
 from ..model.observable import overlap, end_cmp_key
 import sortedcontainers
 import numpy as np
@@ -73,12 +73,12 @@ def get_observations(clazz=Observable, start=0, end=np.inf,
     if start == 0:
         idx = 0
     else:
-        dummy.time.value = Iv(start, start)
+        dummy.time.set(start, start)
         idx = _OBS.bisect_left(dummy)
     if end ==np.inf:
         udx = len(_OBS)
     else:
-        dummy.time.value = Iv(end, end)
+        dummy.time.set(end, end)
         udx = _OBS.bisect_right(dummy)
     return (obs for obs in _OBS.islice(idx, udx, reverse)
             if obs.earlystart >= start and isinstance(obs, clazz) and filt(obs))
@@ -93,7 +93,7 @@ def nobs_before(time):
     given time.
     """
     dummy = EventObservable()
-    dummy.time.value = Iv(time, time)
+    dummy.time.set(time, time)
     return _OBS.bisect_right(dummy)
 
 def find_overlapping(observation, clazz=Observable):
@@ -105,7 +105,7 @@ def find_overlapping(observation, clazz=Observable):
     obs1.start < obs2.start, then obs1.end < obs2.end.
     """
     dummy = EventObservable()
-    dummy.time.value = Iv(observation.latestart, observation.latestart)
+    dummy.time.set(observation.latestart, observation.latestart)
     idx = _OBS.bisect_right(dummy)
     while idx < len(_OBS):
         other = _OBS[idx]

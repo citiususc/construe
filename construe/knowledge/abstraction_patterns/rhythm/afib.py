@@ -8,13 +8,17 @@ atrial fibrillation.
 
 @author: T. Teijeiro
 """
+
+import copy
+import collections
+import numpy as np
+import scipy.interpolate
 import construe.knowledge.observables as o
 import construe.knowledge.constants as C
 import construe.acquisition.record_acquisition as IN
 import construe.acquisition.signal_buffer as sig_buf
-from construe.model import ConstraintNetwork, verify, Interval as Iv
-from construe.model.automata import (PatternAutomata, ABSTRACTED,
-                                        ENVIRONMENT, BASIC_TCONST)
+from construe.model import verify, Interval as Iv
+from construe.model.automata import PatternAutomata, ABSTRACTED, ENVIRONMENT
 from construe.knowledge.abstraction_patterns.segmentation.pwave import (
                                                                delineate_pwave)
 from construe.knowledge.abstraction_patterns.rhythm.regular import (
@@ -25,10 +29,6 @@ from construe.knowledge.abstraction_patterns.rhythm.vflutter import _is_VF
 from construe.utils.units_helper import (msec2samples as ms2sp,
                                          samples2sec as sp2sc)
 from construe.utils.signal_processing.xcorr_similarity import signal_match
-import copy
-import numpy as np
-import scipy.interpolate
-import collections
 
 #Global structure to cache atrial activity delineation information. It will be
 #cleared on every reset of the input system.
@@ -102,7 +102,7 @@ def is_afib_rhythm_lian(rrs):
 def _rhythm_obs_proc(pattern):
     """Observation procedure executed once the rhythm pattern has finished"""
     #We asign the endpoint of the hypothesis.
-    pattern.hypothesis.end.value = pattern.evidence[o.QRS][-1].time.value
+    pattern.hypothesis.end.cpy(pattern.evidence[o.QRS][-1].time)
 
 ############################
 ### Temporal constraints ###
@@ -113,8 +113,7 @@ def _prev_afib_tconst(pattern, afib):
     Temporal constraints of the fibrillation wrt a previous atrial
     fibrillation that will helps us to reduce the necessary evidence
     """
-    BASIC_TCONST(pattern, afib)
-    pattern.last_tnet.add_constraint(afib.end, pattern.hypothesis.start,
+    pattern.tnet.add_constraint(afib.end, pattern.hypothesis.start,
                                                        Iv(0, C.AFIB_MAX_DELAY))
 
 def _prev_multrhythm_tconst(pattern, rhythm):
@@ -122,32 +121,26 @@ def _prev_multrhythm_tconst(pattern, rhythm):
     Temporal constraints of the fibrillation with the cardiac rhythms between
     the last atrial fibrillation and the precedent one.
     """
-    BASIC_TCONST(pattern, rhythm)
     const = Iv(1, C.AFIB_MAX_DELAY-1)
-    tnet = pattern.last_tnet
-    tnet.add_constraint(rhythm.start, rhythm.end, const)
-    tnet.add_constraint(rhythm.start, pattern.hypothesis.start, const)
-    tnet.add_constraint(rhythm.end, pattern.hypothesis.start, const)
+    pattern.tnet.add_constraint(rhythm.start, rhythm.end, const)
+    pattern.tnet.add_constraint(rhythm.start, pattern.hypothesis.start, const)
+    pattern.tnet.add_constraint(rhythm.end, pattern.hypothesis.start, const)
 
 
 def _prev_rhythm_tconst(pattern, rhythm):
     """Temporal constraints of the fibrillation with the precedent rhythm"""
-    BASIC_TCONST(pattern, rhythm)
-    tnet = pattern.last_tnet
-    tnet.set_equal(pattern.hypothesis.start, rhythm.end)
+    pattern.tnet.set_equal(pattern.hypothesis.start, rhythm.end)
     #An atrial fibrillation needs at least 7 QRS complexes.
-    tnet.add_constraint(pattern.hypothesis.start, pattern.hypothesis.end,
-                                                Iv(7*C.TACHY_RR.start, np.inf))
+    pattern.tnet.add_constraint(pattern.hypothesis.start,
+                        pattern.hypothesis.end, Iv(7*C.TACHY_RR.start, np.inf))
 
 def _qrs0_tconst(pattern, qrs):
     """
     Temporal constraints of the QRS complex that must be at the beginning of
     the flutter.
     """
-    BASIC_TCONST(pattern, qrs)
-    tnet = pattern.last_tnet
-    tnet.set_equal(pattern.hypothesis.start, qrs.time)
-    tnet.add_constraint(pattern.hypothesis.start, pattern.hypothesis.end,
+    pattern.tnet.set_equal(pattern.hypothesis.start, qrs.time)
+    pattern.tnet.add_constraint(pattern.hypothesis.start, pattern.hypothesis.end,
                                                 Iv(5*C.TACHY_RR.start, np.inf))
 
 def get_t_tconst(qrsidx):
@@ -159,9 +152,8 @@ def get_t_tconst(qrsidx):
         """
         Temporal constraints of the T wave.
         """
-        BASIC_TCONST(pattern, twave)
         beats = pattern.evidence[o.QRS]
-        tnet = pattern.last_tnet
+        tnet = pattern.tnet
         qidx = qrsidx+len(beats) if qrsidx < 0 else qrsidx
         qrs = beats[qidx]
         if qidx < len(beats) - 1:
@@ -192,17 +184,11 @@ def _qrs_tconst(pattern, qrs):
     beats = pattern.evidence[o.QRS]
     idx = beats.index(qrs)
     hyp = pattern.hypothesis
-    tnet = pattern.last_tnet
+    tnet = pattern.tnet
     obseq = pattern.obs_seq
     oidx = pattern.get_step(qrs)
     if idx > 0:
         prev = beats[idx-1]
-        #In cyclic observations, we have to introduce more networks to simplify
-        #the minimization operation.
-        if idx > 5:
-            tnet.remove_constraint(hyp.end, prev.time)
-            tnet = ConstraintNetwork()
-            pattern.temporal_constraints.append(tnet)
         rr_bounds = Iv(C.TACHY_RR.start, C.BRADY_RR.end)
         tnet.add_constraint(prev.time, qrs.time, rr_bounds)
         tnet.add_constraint(prev.start, qrs.start, rr_bounds)
@@ -213,7 +199,6 @@ def _qrs_tconst(pattern, qrs):
         if isinstance(obseq[oidx-1], o.TWave):
             prevt = obseq[oidx-1]
             tnet.set_before(prevt.end, qrs.start)
-    BASIC_TCONST(pattern, qrs)
     tnet.add_constraint(qrs.start, qrs.end, C.QRS_DUR)
     tnet.set_before(qrs.time, hyp.end)
     #We can introduce constraints on the morphology of the new QRS complex.
@@ -375,7 +360,7 @@ def _verify_atrial_activity(pattern):
     #First we get all the signal fragments between ventricular observations,
     #which are the only recognized by this pattern. In these fragments is where
     #atrial activity may be recognized.
-    for i in xrange(idx+1, len(obseq)):
+    for i in range(idx+1, len(obseq)):
         if isinstance(obseq[i], o.QRS):
             beg = next(obs for obs in reversed(obseq[:i])
                                                     if obs is not None).lateend
@@ -383,7 +368,7 @@ def _verify_atrial_activity(pattern):
             if end-beg > ms2sp(200):
                 beg = end - ms2sp(200)
             pw_lims.append((beg, end))
-    for i in xrange(len(beats)-1):
+    for i in range(len(beats)-1):
         beg, end = beats[i].lateend, beats[i+1].earlystart
         for lead in atr_sig:
             atr_sig[lead].append(sig_buf.get_signal_fragment(beg, end,
@@ -406,8 +391,8 @@ def _verify_atrial_activity(pattern):
             if not pwsig:
                 continue
             for wave in pwaves:
-                verify(abs(wave.values()[0].pr -
-                                        pwsig.values()[0].pr) > C.TMARGIN or
+                verify(abs(list(wave.values())[0].pr -
+                           list(pwsig.values())[0].pr) > C.TMARGIN or
                                                  not signal_match(wave, pwsig))
             pwaves.append(pwsig)
 
@@ -483,12 +468,12 @@ AFIB_PATTERN.add_transition(7, 8)
 AFIB_PATTERN.add_transition(8, 7, o.QRS, ABSTRACTED, _qrs_tconst, _qrs_gconst)
 #Else, we need at least AFIB_MIN_NQRS QRS complexes.
 AFIB_PATTERN.add_transition(5, 9, o.QRS, ABSTRACTED, _qrs_tconst, _qrs_gconst)
-for i in xrange(C.AFIB_MIN_NQRS-4):
+for i in range(C.AFIB_MIN_NQRS-4):
     AFIB_PATTERN.add_transition(9+i, 10+i, o.QRS, ABSTRACTED,
                                                       _qrs_tconst, _qrs_gconst)
 #T waves are searched after the necessary QRS have been observed.
 ST = 9 + C.AFIB_MIN_NQRS - 4
-for i in xrange(C.AFIB_MIN_NQRS-2):
+for i in range(C.AFIB_MIN_NQRS-2):
     AFIB_PATTERN.add_transition(ST, ST+1, o.TWave, ABSTRACTED,
                                                              get_t_tconst(i+1))
     AFIB_PATTERN.add_transition(ST, ST+1)

@@ -10,15 +10,15 @@ for the Construe Algorithm.
 @author: T. Teijeiro
 """
 
-from ..utils.predictable_iter import PredictableIter
+import weakref
+from operator import attrgetter
+from collections import namedtuple
+from sortedcontainers import SortedList
+import numpy as np
 import construe.acquisition.record_acquisition as IN
 import construe.knowledge.abstraction_patterns as ap
 import construe.inference.reasoning as reasoning
-import numpy as np
-import weakref
-from sortedcontainers import SortedList
-from operator import attrgetter
-from collections import namedtuple
+from ..utils.predictable_iter import PredictableIter
 
 #Tuple containing the search heuristic.
 Heuristic = namedtuple('Heuristic', 'ocov, scov, time, nhyp')
@@ -52,11 +52,11 @@ def valuation(node, time=None):
                        if ap.get_obs_level(type(o)) == 0)
         abst += len(node.abstracted)
         nhyp += len(node.observations) + node.focus.nhyp
-    total = IN.BUF.nobs_before(time) + node.nabd
-    if total == 0:
-        return (0.0, 0.0, 0.0)
-    else:
-        return (1.0 - abst/float(total), -abstime, nhyp)
+    total = IN.BUF.nobs_before(time) + node.nabd - node.focus.nabd
+    assert abst<=total
+    return ((1.0 - abst/float(total), -abstime, nhyp) if total > 0
+                                                      else (0.0, 0.0, 0.0))
+
 
 def goal(node):
     """
@@ -124,7 +124,7 @@ class Construe(object):
                     ocov, scov, nhyp = valuation(n, self.last_time)
                 tmplst.add(Node(Heuristic(ocov, scov, ntime, nhyp), n))
         self.closed.clear()
-        self.closed.append(tmplst.pop(0))
+        self.closed.add(tmplst.pop(0))
 
     def step(self, filt=lambda _: True):
         """
@@ -143,16 +143,16 @@ class Construe(object):
         ancestors = set()
         optimal = False
 
-        for _ in xrange(self.K):
+        for _ in range(self.K):
             node = next((n for n in self.open if filt(n)
-                              and not (optimal and n.node in ancestors)), None)
+                         and not (optimal and n.node in ancestors)), None)
             #The search stops if no nodes can be expanded or if, being in an
             #optimal context, we need to expand a non-optimal node.
             if node is None or (optimal and node.h.ocov > 0.0):
                 break
             self.open.remove(node)
             #Go a step further
-            nxt = self.successors[node.node].next()
+            nxt = next(self.successors[node.node])
             self.successors[nxt] = PredictableIter(reasoning.firm_succ(nxt))
             nxtime = nxt.time_point
             if nxtime > self.last_time:
@@ -196,7 +196,7 @@ class Construe(object):
             #We track all interesting nodes in the hierarchy.
             saved = set()
             stop = set()
-            for i in xrange(n):
+            for i in range(n):
                 node = self.open[i].node
                 reasoning.save_hierarchy(node, saved)
                 stop.add(node)

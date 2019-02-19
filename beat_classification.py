@@ -37,7 +37,7 @@ Feat = collections.namedtuple('Feat', ["RR", "dRR", "Dur", "dDur", "Axis",
 Cluster = collections.namedtuple('Cluster', ['beats', 'info'])
 
 #Codes for the rhythm.
-REGULAR, AFIB, ADVANCED, DELAYED = range(4)
+REGULAR, AFIB, ADVANCED, DELAYED = list(range(4))
 #Atrial fibrillation beats are tagged as NORMAL in the MIT-BIH Arrhythmia
 #database, but during the classification, we marked them with a different code
 #not used for other purposes, although semantically related with it
@@ -117,9 +117,9 @@ def get_similarity(sig1, sig2):
     Obtains a measure of the similarity between two multi-lead signals, as the
     mean of the cross-correlation maximum value for each lead.
     """
-    cleads = set(sig1.keys()).intersection(sig2.keys())
+    cleads = set(sig1.keys()).intersection(set(sig2.keys()))
     corrs = []
-    for lead in set(sig1.keys()).union(sig2.keys()):
+    for lead in set(sig1.keys()).union(set(sig2.keys())):
         if lead not in cleads:
             corrs.append(0.0)
         else:
@@ -277,7 +277,7 @@ def get_cluster_features(cluster, features):
                                         (axis,))), axis=0)
     #We select as representative the beat with minimum distance.
     info = BeatInfo(cl[np.argmin(eucdist)])
-    info.pwave = np.mean(pwamps.values()) > 0.05
+    info.pwave = np.mean(list(pwamps.values())) > 0.05
     #For the rhythm features, we use all beats
     cl = {b for b in cluster if b in features}
     info.rr = np.mean([features[b].rr for b in cl])
@@ -706,7 +706,7 @@ if __name__ == "__main__":
                                       -len(cl[1].beats))
     #Cluster classification
     classified = []
-    clist = sorted(clusters.iteritems(), key=keyf)
+    clist = sorted(clusters.items(), key=keyf)
     #Single cluster classification
     i = 0
     while i < len(clist):
@@ -747,7 +747,7 @@ if __name__ == "__main__":
     #We also include the clustered artifacts.
     for b in interp.get_observations(o.RDeflection, filt=lambda ba:
                     any([ba in cl.beats and any(isinstance(b, o.QRS)
-                        for b in cl.beats) for cl in clusters.itervalues()])):
+                        for b in cl.beats) for cl in clusters.values()])):
         a = MIT.MITAnnotation.MITAnnotation()
         a.code = b.tag
         a.time = b.time.start

@@ -23,21 +23,24 @@ class FreezableMeta(ABCMeta):
         return ABCMeta.__new__(mcls, name, bases, namespace)
 
 
-class FreezableObject(object):
+class FreezableObject(object, metaclass=FreezableMeta):
     """
     This class provides utilities to "freeze" an object, this is, to guarantee
     that after the freeze operation no attributes of the object can be
     modified. If any of the attributes is also a FreezableObject, the freeze
     operation is called in depth-last order.
+    **NOTE:** This class implements equality and hash operations in a way that
+    violates the Python assumption that a==b -> hash(a)==hash(b). Equality is
+    implemented by attribute comparison, while hash is implemented by object id.
     """
 
-    __metaclass__ = FreezableMeta
-
     __slots__ = ('__weakref__', '__frozen__')
+    
+    __hash__ = object.__hash__
 
     def __init__(self):
-        self.__frozen__ = False
-
+        self.__frozen__ = False        
+        
     def __eq__(self, other):
         """
         Implements equality comparison, by equality comparison of all the
@@ -60,7 +63,7 @@ class FreezableObject(object):
     def __setattr__(self, name, value):
         if self.frozen and name != '__frozen__':
             raise AttributeError(self, 'Object {0} is now frozen'.format(self))
-        return super(FreezableObject, self).__setattr__(name, value)
+        return super().__setattr__(name, value)
 
     def freeze(self):
         """
@@ -132,7 +135,7 @@ if __name__ == "__main__":
 
         """Dummy class to test the FreezableObject hierarchy"""
         def __init__(self):
-            super(FreezableTest, self).__init__()
+            super().__init__()
             self.attr1 = "val1"
             self.attr2 = "val2"
 

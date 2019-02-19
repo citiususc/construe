@@ -31,8 +31,8 @@ import construe.knowledge.observables as OBS
 #numpy.any behavior with generators is not as expected, so we require to modify
 #it
 if any is np.any:
-    import __builtin__
-    any = __builtin__.any
+    import builtins
+    any = builtins.any
 assert any is not np.any
 
 #########################
@@ -188,7 +188,7 @@ def _finding_match(interp, finding, obs, start, end, pred, succ, is_abstr):
     newhyp = interp.focus.top[0]
     #Exclusion and consecutivity violations of the hypothesis are
     #checked only if the value changes.
-    if newhyp.end.value != end or newhyp.start.value != start:
+    if newhyp.end != end or newhyp.start != start:
         interp.verify_exclusion(newhyp)
         interp.verify_consecutivity_violation(newhyp)
     _MATCHED_FINDINGS.add(finding)
@@ -230,7 +230,7 @@ def firm_succ(interpretation):
         finished = False
         while not finished:
             try:
-                suc = generator.next()
+                suc = next(generator)
                 if suc.is_firm:
                     #Only original interpretations are cached.
                     if MERGE_STRATEGY and interpretation not in _MERGED:
@@ -265,7 +265,7 @@ def multicall_succ(interpretation):
     yielded = weakref.WeakSet()
     while True:
         nxt = next((n for n in interpretation.child if n not in yielded), None)
-        nxt = nxt or successors.next()
+        nxt = nxt or next(successors)
         yielded.add(nxt)
         yield nxt
 
@@ -321,13 +321,13 @@ def subsume(interp, finding, pattern):
     the interpretation through a subsumption operation.
     """
     is_abstr = pattern.abstracts(finding)
-    start, end = pattern.hypothesis.start.value, pattern.hypothesis.end.value
+    start, end = pattern.hypothesis.start, pattern.hypothesis.end
     pred, succ = pattern.get_consecutive(finding)
     def valid_subsumption(ev):
         """Constraints that can be checked before subsumption"""
-        return (ev.earlystart in finding.start.value
-                and ev.time.start in finding.time.value
-                and ev.lateend in finding.end.value
+        return (ev.earlystart in finding.start
+                and ev.time.start in finding.time
+                and ev.lateend in finding.end
                 and ev not in interp.unintelligible
                 and (ev not in interp.abstracted if is_abstr else True))
     opt = []
@@ -429,8 +429,8 @@ def deduce(interp, focus, pattern):
                 newint.focus.push(suc.finding, suc)
             #If the hypothesis timing changes, consecutivity and exclusion
             #constraints have to be checked.
-            if (suc.hypothesis.end.value != focus.end.value
-                    or suc.hypothesis.start.value != focus.start.value):
+            if (suc.hypothesis.end != focus.end
+                                       or suc.hypothesis.start != focus.start):
                 newint.verify_exclusion(suc.hypothesis)
                 newint.verify_consecutivity_violation(suc.hypothesis)
             STATS.update(['X+' + str(pattern.automata)])
@@ -514,8 +514,8 @@ def advance(interp, focus, pattern):
             try:
                 patcp.finish()
                 newint = Interpretation(interp)
-                if (focus.end.value != patcp.hypothesis.end.value
-                        or focus.start.value != patcp.hypothesis.start.value):
+                if (focus.end != patcp.hypothesis.end
+                                     or focus.start != patcp.hypothesis.start):
                     newint.verify_consecutivity_violation(patcp.hypothesis)
                     newint.verify_exclusion(patcp.hypothesis)
                 focus = patcp.hypothesis
@@ -529,9 +529,8 @@ def advance(interp, focus, pattern):
             newint.focus.pop()
             pattern = newint.focus.top[1]
             pred, succ = pattern.get_consecutive(finding)
-            _finding_match(newint, finding, focus,
-                           pattern.hypothesis.start.value,
-                           pattern.hypothesis.end.value, pred, succ,
+            _finding_match(newint, finding, focus, pattern.hypothesis.start,
+                           pattern.hypothesis.end, pred, succ,
                            pattern.abstracts(finding))
             #The matched hypothesis is included in the observations list
             newint.observations = newint.observations.copy()
@@ -560,10 +559,10 @@ def advance(interp, focus, pattern):
     #unexplained observation.
     if not newint.focus:
         try:
-            unexp = newint.get_observations(start=focus.earlystart + 1, filt=
+            unexp = next(newint.get_observations(start=focus.earlystart + 1, filt=
                  lambda ev: ev not in newint.unintelligible
                         and ev not in newint.abstracted
-                        and ap.is_abducible(type(ev))).next()
+                        and ap.is_abducible(type(ev))))
             newint.focus.push(unexp, None)
         except StopIteration:
             newint.discard('No unexplained evidence after the current point')

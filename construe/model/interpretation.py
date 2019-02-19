@@ -10,7 +10,6 @@ basic unit of the search process which tries to solve interpretation problems.
 """
 from .observable import (Observable, EventObservable, between, overlap,
                          end_cmp_key)
-from .interval import Interval as Iv
 from .constraint_network import verify
 import construe.knowledge.abstraction_patterns as ap
 import construe.knowledge.constants as C
@@ -45,7 +44,7 @@ def _focus_mergeable(f1, f2):
     """
     return all(f1._lst[i][0] == f2._lst[i][0]
                and _pat_mergeable(f1._lst[i][1], f2._lst[i][1])
-                                       for i in xrange(len(f1._lst)-1, -1, -1))
+                                       for i in range(len(f1._lst)-1, -1, -1))
 
 
 class PastMetrics(nt('PastMetrics', 'time, abst, abstime, nhyp')):
@@ -111,7 +110,7 @@ class Focus(object):
     def __contains__(self, key):
         return any(key is v for v, _ in self._lst)
 
-    def __nonzero__(self):
+    def __bool__(self):
         return bool(self._lst)
 
     def push(self, obs, pattern):
@@ -149,6 +148,16 @@ class Focus(object):
                    if p is not None and o is p.hypothesis)
 
     @property
+    def nabd(self):
+        """
+        Returns the number of abducible abstraction hypothesis in this focus.
+        This number is used to correct the valuation heuristics in the
+        searching algorithm.
+        """
+        return sum(1 for o, p in self._lst if p is not None
+                   and o is p.hypothesis and ap.is_abducible(type(o)))
+
+    @property
     def earliest_time(self):
         """
         Returns the minimum starting time of observations or findings in
@@ -162,7 +171,7 @@ class Focus(object):
         the observation is fully observed, or None if the observation will
         not be matched with a finding.
         """
-        for i in xrange(len(self._lst)-1, 0, -1):
+        for i in range(len(self._lst)-1, 0, -1):
             if self._lst[i][0] is observation:
                 f, p = self._lst[i-1]
                 if p is not None and f is p.finding:
@@ -182,6 +191,11 @@ class Focus(object):
         verify(obs not in pat.evidence[pat.get_evidence_type(f)[0]],
                   'Observation {0} is already in the evidence of {1} pattern',
                                                                     (obs, pat))
+        verify(obs.start.overlapm(finding.start)
+               and obs.time.overlapm(finding.time)
+               and obs.end.overlapm(finding.end),
+               'Observation {0} is temporally inconsistent with finding {1}',
+                                                                (obs, finding))
         patcp = copy.copy(pat)
         patcp.match(f, obs)
         #The hypothesis generating the finding is updated
@@ -334,12 +348,12 @@ class Interpretation(object):
         if start == 0:
             idx = 0
         else:
-            dummy.time.value = Iv(start, start)
+            dummy.time.set(start, start)
             idx = self.observations.bisect_left(dummy)
         if end == np.inf:
             udx = len(self.observations)
         else:
-            dummy.time.value = Iv(end, end)
+            dummy.time.set(end, end)
             udx = self.observations.bisect_right(dummy)
         return (obs for obs in self.observations.islice(idx, udx, reverse)
                 if obs.earlystart >= start
@@ -419,11 +433,11 @@ class Interpretation(object):
                 and self.singletons == other.singletons
                 and _focus_mergeable(self.focus, other.focus)
                 and all(self.unintelligible[i] == other.unintelligible[i]
-                        for i in xrange(nunint-1, -1, -1))
+                        for i in range(nunint-1, -1, -1))
                 and all(self.abstracted[i] == other.abstracted[i]
-                        for i in xrange(nabs-1, -1, -1))
+                        for i in range(nabs-1, -1, -1))
                 and all(self.observations[i] == other.observations[i]
-                        for i in xrange(nobs-1, -1, -1)))
+                        for i in range(nobs-1, -1, -1)))
 
     def is_ancestor(self, interpretation):
         """
@@ -451,7 +465,7 @@ class Interpretation(object):
         verify(other is None,
               'Exclusion relation violation between {0} and {1}', (other, obs))
         dummy = EventObservable()
-        dummy.end.value = Iv(obs.latestart, obs.latestart)
+        dummy.end.set(obs.latestart, obs.latestart)
         idx = self.observations.bisect_right(dummy)
         while idx < len(self.observations):
             other = self.observations[idx]
@@ -481,15 +495,15 @@ class Interpretation(object):
         """
         idx = self.observations.bisect_right(obs1)
         dummy = EventObservable()
-        dummy.end.value = Iv(obs2.earlyend, obs2.earlyend)
+        dummy.end.set(obs2.earlyend, obs2.earlyend)
         udx = self.observations.bisect_left(dummy)
         for obs in self.observations.islice(idx, udx):
             verify(obs is obs2 or not isinstance(obs, clazz),
             '{1} violates the consecutivity constraint between {0} and {2}',
             (obs1, obs, obs2))
         hole = Observable()
-        hole.start.value = Iv(obs1.lateend, obs1.lateend)
-        hole.end.value = Iv(obs2.earlystart, obs2.earlystart)
+        hole.start.set(obs1.lateend, obs1.lateend)
+        hole.end.set(obs2.earlystart, obs2.earlystart)
         other = obsbuf.find_overlapping(hole, clazz)
         verify(other is None,
                '{1} violates the consecutivity constraint between {0} and {2}',
@@ -524,7 +538,7 @@ class Interpretation(object):
         geng = obsbuf.get_observations(clazz, start, end, filt, reverse)
         genl = self._get_proper_obs(clazz, start, end, filt, reverse)
         dummy = EventObservable()
-        dummy.start.value = Iv(np.inf, np.inf)
+        dummy.start.set(np.inf, np.inf)
         nxtg = next(geng, dummy)
         nxtl = next(genl, dummy)
         while True:
@@ -548,7 +562,7 @@ class Interpretation(object):
             time = max(self.past_metrics.time,
                        min(time, self.observations[-nmin].lateend-1))
         dummy = EventObservable()
-        dummy.end.value = Iv(time, time)
+        dummy.end.set(time, time)
         nhyp = abst = abstime = 0.0
         #Old observations are removed from all lists.
         for lstname in ('observations', 'abstracted', 'unintelligible'):
