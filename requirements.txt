@@ -2,6 +2,7 @@ numpy
 sortedcontainers
 scipy
 scikit-learn
+python-dateutil
 PyWavelets
 matplotlib
 networkx
