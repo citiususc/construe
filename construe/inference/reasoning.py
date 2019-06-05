@@ -265,7 +265,9 @@ def multicall_succ(interpretation):
     yielded = weakref.WeakSet()
     while True:
         nxt = next((n for n in interpretation.child if n not in yielded), None)
-        nxt = nxt or next(successors)
+        nxt = nxt or next(successors, None)
+        if nxt is None:
+            return
         yielded.add(nxt)
         yield nxt
 
