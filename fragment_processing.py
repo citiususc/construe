@@ -28,12 +28,20 @@ parser.add_argument('-r', metavar='record', required=True,
                     help='Record to be processed')
 parser.add_argument('-a', metavar='ann', default='qrs',
                     help='Annotator used to set the initial evidence')
+parser.add_argument('-o', metavar='output', 
+                    help='Path of the output figure or video. See "--video"')                    
 parser.add_argument('-f', metavar='init', default=0, type=int,
                     help='Initial time of the fragment, in samples')
 parser.add_argument('-l', metavar='length', default=3840, type=int,
                     help=('Length of the fragment to be processed. It has to '
                           'be multiple of 256, and the maximum value currently'
                           ' allowed is 23040.'))
+parser.add_argument('--video', action = 'store_true',
+                        help= ('The output is saved as a video containing the '
+                               'full interpretation sequence. If this flag is '
+                               'not present, the output is just an image of '
+                               'the best interpretation. This option implies '
+                               '"--full-tree"'))
 parser.add_argument('--full-tree', action = 'store_true',
                         help= ('Does not remove dead-end interpretations, '
                                'keeping them in the interpretation tree'))
@@ -49,7 +57,7 @@ TFACTOR = 5000.0
 KFACTOR = 12
 MIN_DELAY = 1750
 MAX_DELAY = int(ms2sp(20000)*TFACTOR)
-searching.reasoning.SAVE_TREE = args.full_tree
+searching.reasoning.SAVE_TREE = args.full_tree or args.video
 searching.reasoning.MERGE_STRATEGY = not args.no_merge
 
 #Input system configuration
@@ -115,6 +123,14 @@ be.recover_all()
 #Drawing of the best explanation
 brview = plotter.plot_observations(sig_buf.get_signal(
                                          sig_buf.get_available_leads()[0]), be)
+if args.o is not None:
+    if args.video:
+        plotter.save_video(interp, args.o, last=be)
+    else:
+        brview.fig.set_size_inches((12, 6))
+        brview.fig.gca().set_xbound(lower=0, upper=len(sig_buf.get_signal(
+                                         sig_buf.get_available_leads()[0])))
+        brview.fig.savefig(args.o)
 #Drawing of the search tree
 #label_fncs = {}
 ##label_fncs['n'] = lambda br: str(br)
