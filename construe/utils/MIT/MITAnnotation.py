@@ -103,7 +103,7 @@ def read_annotations(path):
         A = (b1 & 0xff) >> 2
         I = ((b1 & 0x03) << 8) | (0xff & b0)
         #Special codes parsing
-        if A is SKIP_CODE and I is 0:
+        if A == SKIP_CODE and I == 0:
             (b0, b1, b2, b3) = struct.unpack('4b', f.read(4))
             displ = ((b1 << 24) | ((b0 & 0xff) << 16) |
                                   ((b3 & 0xff) << 8)  | (b2 & 0xff))
