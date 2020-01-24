@@ -341,16 +341,20 @@ except AttributeError:
     _SCALERS[0].scale_ = _std0
     _SCALERS[1].scale_ = _std1
 
-# Trained classifiers. These classifiers were serialized using the pickle 
-# module. They are instances of sklearn.svm.OneClassSVM, and have been 
-# successfully tested with sklearn versions from 0.15 to 0.19.1
-    
-_localdir = Path(__file__).resolve().parent   
+# Trained classifiers. These classifiers were serialized using the pickle
+# module. They are instances of sklearn.svm.OneClassSVM, and have been
+# successfully tested with sklearn versions from 0.15 to 0.21.3
+
+_localdir = Path(__file__).resolve().parent
 
 with _localdir.joinpath('limb_pw_classifier.pickle').open('rb') as f:
     _LIMB_CLS = pickle.load(f, encoding='latin1')
+    #Fix for scikit-learn >= 0.22
+    _LIMB_CLS._n_support = _LIMB_CLS.__dict__['n_support_']
 
 with _localdir.joinpath('precordial_pw_classifier.pickle').open('rb') as f:
     _PREC_CLS = pickle.load(f, encoding='latin1')
+    #Fix for scikit-learn >= 0.22
+    _PREC_CLS._n_support = _PREC_CLS.__dict__['n_support_']
 
 _CLASSIFIERS = [_LIMB_CLS, _PREC_CLS]
