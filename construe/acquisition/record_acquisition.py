@@ -81,8 +81,8 @@ def get_tfactor():
     """Obtains the temporal factor controlling the current input speed."""
     return _TFACTOR
 
-#Public event that will be fired on acquisition system reset.
-on_reset = Event()
+#Public event that will be fired on acquisition system reset. Run on the main thread.
+on_reset = Event(threads=0)
 
 def reset():
     """Resets the acquisition system"""
