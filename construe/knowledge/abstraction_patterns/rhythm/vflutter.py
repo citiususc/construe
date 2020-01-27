@@ -128,7 +128,10 @@ def _is_VF(signal):
     tau = int(0.5*dfreq)
     #The signal is filtered and resampled to 50 Hz
     signal = fft_filt(signal, (0.5, 25), SAMPLING_FREQ)
-    signal = resample(signal, int(len(signal) * dfreq / SAMPLING_FREQ))
+    dlen = int(len(signal) * dfreq / SAMPLING_FREQ)
+    if dlen < 2:
+        return False
+    signal = resample(signal, dlen)
     n = int(math.ceil(len(signal)/float(window)))
     isvf = True
     #The conditions are validated in fragments of *window* size
