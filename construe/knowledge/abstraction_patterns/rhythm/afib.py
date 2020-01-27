@@ -377,7 +377,7 @@ def _verify_atrial_activity(pattern):
     aflut = set()
     for lead in atr_sig:
         sigfr = np.concatenate(atr_sig[lead])
-        if len(sigfr) > 15 and _is_VF(sigfr):
+        if _is_VF(sigfr):
             aflut.add(lead)
     #FIXME improve flutter check, now is quite poor.
     #aflut = frozenset()
