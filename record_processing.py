@@ -11,6 +11,11 @@ interpretation of a set of records or a full database.
 @author: T. Teijeiro
 """
 
+import time
+import warnings
+import sortedcontainers
+import numpy as np
+from tqdm import tqdm
 import construe.utils.MIT.MITAnnotation as MITAnnotation
 import construe.utils.MIT.ECGCodes as ECGCodes
 import construe.acquisition.record_acquisition as IN
@@ -19,15 +24,9 @@ import construe.inference.reasoning as reasoning
 import construe.knowledge.observables as o
 import construe.knowledge.abstraction_patterns as ap
 from construe.model.interpretation import Interpretation
-import time
-import sortedcontainers
-import warnings
-import numpy as np
-from construe.knowledge.abstraction_patterns.rhythm.afib import (
-                                                           is_afib_rhythm_lian)
+from construe.knowledge.abstraction_patterns.rhythm.afib import is_afib_rhythm_lian
 from construe.utils.MIT.interp2annots import interp2ann
-from construe.utils.units_helper import (msec2samples as ms2sp,
-                                            samples2msec as sp2ms)
+from construe.utils.units_helper import msec2samples as ms2sp, samples2msec as sp2ms
 
 def _merge_annots(annlst, interp, reftime):
     """
@@ -44,13 +43,11 @@ def _merge_annots(annlst, interp, reftime):
     bidx = next((i for i in range(len(annlst)) if annlst[i].time >= beg),
                 len(annlst))
     end = next((a.time for a in reversed(annlst) if a.code is ECGCodes.RHYTHM
-                                           and a.aux == b')'), annlst[-1].time)
+                and a.aux == b')'), annlst[-1].time)
     #First we calculate the possible 'join points' of the two sequences.
-    jpts = (set(a.time for a in annlst[bidx:]
-                if a.time <= end and a.code is ECGCodes.RHYTHM) &
-            set(reftime+r.earlystart for r in interp.get_observations(
-                                                        o.Cardiac_Rhythm,
-                 filt=lambda rh: beg-reftime <= rh.earlystart <= end-reftime)))
+    jpts = (set(a.time for a in annlst[bidx:] if a.time <= end and a.code is ECGCodes.RHYTHM)
+            & set(reftime+r.earlystart for r in interp.get_observations(
+                o.Cardiac_Rhythm, filt=lambda rh: beg-reftime <= rh.earlystart <= end-reftime)))
     #If there are no join points, we give priority to the interpretation.
     if not jpts:
         jpt = beg
@@ -105,8 +102,7 @@ def _standardize_rhythm_annots(annots):
             ############################################################
             if ann.aux == b'(B':
                 end = next((a for a in annots if a.time > ann.time
-                           and a.code in (ECGCodes.RHYTHM, ECGCodes.VFON)),
-                                                                annots[-1])
+                            and a.code in (ECGCodes.RHYTHM, ECGCodes.VFON)), annots[-1])
                 nbeats = searching.ilen(a for a in annots if a.time >= ann.time
                                         and a.time <= end.time and
                                         MITAnnotation.is_qrs_annotation(a))
@@ -114,8 +110,7 @@ def _standardize_rhythm_annots(annots):
                     continue
             if ann.aux == '(T':
                 end = next((a for a in annots if a.time > ann.time
-                           and a.code in (ECGCodes.RHYTHM, ECGCodes.VFON)),
-                                                                annots[-1])
+                            and a.code in (ECGCodes.RHYTHM, ECGCodes.VFON)), annots[-1])
                 nbeats = searching.ilen(a for a in annots if a.time >= ann.time
                                         and a.time <= end.time and
                                         MITAnnotation.is_qrs_annotation(a))
@@ -128,8 +123,7 @@ def _standardize_rhythm_annots(annots):
             if ann.aux in (b'(BK', b'P'):
                 ann.aux = b'(SBR'
             if ann.aux not in (b'(EXT', b'(CPT'):
-                prev = next((a for a in reversed(dest)
-                                       if a.code is ECGCodes.RHYTHM), None)
+                prev = next((a for a in reversed(dest) if a.code is ECGCodes.RHYTHM), None)
                 if prev is None or prev.aux != ann.aux:
                     dest.add(ann)
         else:
@@ -143,8 +137,7 @@ def _standardize_rhythm_annots(annots):
         try:
             start = next(a.time for a in iterator
                          if a.code == ECGCodes.RHYTHM and a.aux == b'(AFIB')
-            end = next((a.time for a in iterator
-                              if a.code == ECGCodes.RHYTHM), dest[-1].time)
+            end = next((a.time for a in iterator if a.code == ECGCodes.RHYTHM), dest[-1].time)
             afibtime += end-start
         except StopIteration:
             break
@@ -152,27 +145,22 @@ def _standardize_rhythm_annots(annots):
     if annots and afibtime > (annots[-1].time-annots[0].time)/20.0:
         iterator = iter(dest)
         rhythms = ('(N', '(SVTA')
-        start = next((a for a in iterator if a.code == ECGCodes.RHYTHM
-                                               and a.aux in rhythms), None)
+        start = next((a for a in iterator if a.code == ECGCodes.RHYTHM and a.aux in rhythms), None)
         while start is not None:
-            end = next((a for a in iterator if a.code == ECGCodes.RHYTHM),
-                                                                  dest[-1])
+            end = next((a for a in iterator if a.code == ECGCodes.RHYTHM), dest[-1])
             #All normal rhythms that satisfy the Lian method to identify
             #afib by rhythm are now considered afib. We also check the
             #method considering alternate RRs to avoid false positives with
             #bigeminies.
             fragment = dest[dest.bisect_left(start):dest.bisect_right(end)]
-            rrs = np.diff([a.time for a in fragment
-                                        if MITAnnotation.is_qrs_annotation(a)])
-            if (is_afib_rhythm_lian(rrs) and
-                            is_afib_rhythm_lian(rrs[0::2]) and
-                                           is_afib_rhythm_lian(rrs[1::2])):
+            rrs = np.diff([a.time for a in fragment if MITAnnotation.is_qrs_annotation(a)])
+            if (is_afib_rhythm_lian(rrs) and is_afib_rhythm_lian(rrs[0::2])
+                    and is_afib_rhythm_lian(rrs[1::2])):
                 start.aux = b'(AFIB'
             #Next rhythm
             start = (end if end.aux in rhythms else
-                     next((a for a in iterator
-                                        if a.code == ECGCodes.RHYTHM
-                                              and a.aux in rhythms), None))
+                     next((a for a in iterator if a.code == ECGCodes.RHYTHM and a.aux in rhythms),
+                          None))
     ##############################
     #Paced rhythm identification #
     ##############################
@@ -182,30 +170,25 @@ def _standardize_rhythm_annots(annots):
     if pacedrec:
         iterator = iter(dest)
         rhythms = (b'(AFIB', b'(N', b'(SBR', b'(SVTA')
-        start = next((a for a in iterator if a.code == ECGCodes.RHYTHM
-                                               and a.aux in rhythms), None)
+        start = next((a for a in iterator if a.code == ECGCodes.RHYTHM and a.aux in rhythms), None)
         while start is not None:
-            end = next((a for a in iterator if a.code == ECGCodes.RHYTHM),
-                                                                  dest[-1])
+            end = next((a for a in iterator if a.code == ECGCodes.RHYTHM), dest[-1])
             #If there are paced beats in a rhythm fragment, the full
             #rhythm is identified as paced.
-            if any([start.time < a.time < end.time
-                    and a.code == ECGCodes.PACE
-                        for a in dest[dest.index(start):dest.index(end)]]):
+            if any([start.time < a.time < end.time and a.code == ECGCodes.PACE
+                    for a in dest[dest.index(start):dest.index(end)]]):
                 start.aux = b'(P'
             #Next rhythm
             start = (end if end.aux in rhythms else
-                     next((a for a in iterator
-                                        if a.code == ECGCodes.RHYTHM
-                                              and a.aux in rhythms), None))
+                     next((a for a in iterator if a.code == ECGCodes.RHYTHM and a.aux in rhythms),
+                          None))
     #########################################
     # Redundant rhythm description removing #
     #########################################
     i = 1
     while i < len(dest):
         if dest[i].code is ECGCodes.RHYTHM:
-            prev = next((a for a in reversed(dest[:i])
-                                       if a.code is ECGCodes.RHYTHM), None)
+            prev = next((a for a in reversed(dest[:i]) if a.code is ECGCodes.RHYTHM), None)
             if prev is not None and prev.aux == dest[i].aux:
                 dest.pop(i)
             else:
@@ -221,15 +204,12 @@ def _clean_artifacts_redundancy(annots):
     well as redundant rhythm annotations.
     """
     DISTANCE = ms2sp(150)
-    banns = [a for a in annots if MITAnnotation.is_qrs_annotation(a) or
-                                                      a.code == ECGCodes.ARFCT]
+    banns = [a for a in annots if MITAnnotation.is_qrs_annotation(a) or a.code == ECGCodes.ARFCT]
     i = 0
     while i < len(banns):
         if (banns[i].code == ECGCodes.ARFCT and
-                ((i > 0 and
-                    banns[i].time-banns[i-1].time < DISTANCE) or
-                (i < len(banns)-1 and
-                    banns[i+1].time-banns[i].time < DISTANCE))):
+                ((i > 0 and banns[i].time-banns[i-1].time < DISTANCE) or
+                 (i < len(banns)-1 and banns[i+1].time-banns[i].time < DISTANCE))):
             #We cannot use 'remove' due to a bug in SortedList.
             j = annots.bisect_left(banns[i])
             while annots[j] is not banns[i]:
@@ -242,8 +222,7 @@ def _clean_artifacts_redundancy(annots):
     i = 1
     while i < len(annots):
         if annots[i].code is ECGCodes.RHYTHM:
-            prev = next((a for a in reversed(annots[:i])
-                                           if a.code is ECGCodes.RHYTHM), None)
+            prev = next((a for a in reversed(annots[:i]) if a.code is ECGCodes.RHYTHM), None)
             if prev is not None and prev.aux == annots[i].aux:
                 annots.pop(i)
             else:
@@ -311,66 +290,58 @@ def process_record_conduction(path, ann='atr', fr_len=512000, initial_pos=0,
     #Annotations buffer
     annots = sortedcontainers.SortedList()
     pos = initial_pos
-    ictr = Interpretation.counter
-    while pos < min(IN.get_record_length(), final_pos):
-        if verbose:
-            print('Processing fragment {0}:{1}'.format(pos, pos+fr_len))
-        #Input start
-        IN.reset()
-        IN.set_offset(pos)
-        IN.start()
-        while IN.BUF.get_status() == IN.BUF.Status.ACQUIRING:
-            IN.get_more_evidence()
+    ulimit = min(IN.get_record_length(), final_pos)
+    with tqdm(total=ulimit-pos, disable=not verbose) as pbar:
+        while pos < ulimit:
+            #Input start
+            IN.reset()
+            IN.set_offset(pos)
+            IN.start()
+            while IN.BUF.get_status() == IN.BUF.Status.ACQUIRING:
+                IN.get_more_evidence()
 
-        #Reasoning and interpretation
-        root = node = Interpretation()
-        try:
-            root.focus.push(next(IN.BUF.get_observations()), None)
-        except (StopIteration, ValueError):
-            pos += fr_len
-            if verbose:
-                print('No evidence found in this fragment. Skipping.')
-            continue
-        successors = {node:reasoning.firm_succ(node)}
-        t0 = time.time()
-        ########################
-        ### Greedy searching ###
-        ########################
-        while True:
+            #Reasoning and interpretation
+            root = node = Interpretation()
             try:
-                node = next(successors[node])
-                if node not in successors:
-                    successors[node] = reasoning.firm_succ(node)
-            except StopIteration:
-                #If the focus contains a top-level hypothesis, then there is
-                #no more evidence to explain.
-                if isinstance(node.focus.top[0], o.CardiacCycle):
-                    break
-                else:
+                root.focus.push(next(IN.BUF.get_observations()), None)
+            except (StopIteration, ValueError):
+                pos += fr_len
+                pbar.update(fr_len)
+                if verbose:
+                    print('No evidence found in this fragment. Skipping.')
+                continue
+            successors = {node:reasoning.firm_succ(node)}
+            ########################
+            ### Greedy searching ###
+            ########################
+            while True:
+                try:
+                    node = next(successors[node])
+                    if node not in successors:
+                        successors[node] = reasoning.firm_succ(node)
+                except StopIteration:
+                    #If the focus contains a top-level hypothesis, then there is
+                    #no more evidence to explain.
+                    if isinstance(node.focus.top[0], o.CardiacCycle):
+                        break
                     #In other case, we perform a backtracking operation
                     node = node.parent
-            except KeyError:
-                node = root
-                break
-        best_explanation = node
-        best_explanation.recover_all()
-        #End of reasoning
-        #We generate and add the annotations for the current fragment
-        newanns = interp2ann(best_explanation, 0, pos, pos == initial_pos)
-        annots.update(newanns)
-        #We go to the next fragment after deleting the current used branch and
-        #clearing the reasoning cache.
-        del root
-        reasoning.reset()
-        if verbose:
-            idur = time.time() - t0
-            print('Fragment finished in {0:.03f} seconds. Real-time factor: '
-                  '{1:.03f}. Created {2} interpretations.'.format(idur,
-                      sp2ms(IN.get_acquisition_point())/(idur*1000.),
-                      Interpretation.counter-ictr))
-        ictr = Interpretation.counter
-        #We introduce an overlapping between consecutive fragments
-        pos += fr_len
+                except KeyError:
+                    node = root
+                    break
+            best_explanation = node
+            best_explanation.recover_all()
+            #End of reasoning
+            #We generate and add the annotations for the current fragment
+            newanns = interp2ann(best_explanation, 0, pos, pos == initial_pos)
+            annots.update(newanns)
+            #We go to the next fragment after deleting the current used branch and
+            #clearing the reasoning cache.
+            del root
+            reasoning.reset()
+            #We introduce an overlapping between consecutive fragments
+            pos += fr_len
+            pbar.update(fr_len)
     #Restore the previous knowledge base
     ap.set_knowledge_base(prev_knowledge)
     return _clean_artifacts_redundancy(annots)
@@ -456,70 +427,62 @@ def process_record_rhythm(path, ann='atr', tfactor=1.0, fr_len=23040,
     #Annotations buffer
     annots = sortedcontainers.SortedList()
     pos = initial_pos
-    ictr = Interpretation.counter
-    while pos < min(IN.get_record_length(), final_pos):
-        if verbose:
-            print('Processing fragment {0}:{1}'.format(pos, pos+fr_len))
-        #Input start
-        IN.reset()
-        IN.set_offset(pos)
-        IN.start()
-        time.sleep(sp2ms(min_delay)/(1000.0*tfactor))
-        IN.get_more_evidence()
-
-        #Reasoning and interpretation
-        root = Interpretation()
-        try:
-            root.focus.push(next(IN.BUF.get_observations()), None)
-            cntr = searching.Construe(root, kfactor)
-        except (StopIteration, ValueError):
-            pos += fr_len - fr_overlap
-            if verbose:
-                print('No evidence found in this fragment. Skipping.')
-            continue
-        t0 = time.time()
-        ltime = (cntr.last_time, t0)
-        while cntr.best is None:
+    ulimit = min(IN.get_record_length(), final_pos)
+    with tqdm(total=ulimit-pos, disable=not verbose) as pbar:
+        while pos < ulimit:
+            #Input start
+            IN.reset()
+            IN.set_offset(pos)
+            IN.start()
+            time.sleep(sp2ms(min_delay)/(1000.0*tfactor))
             IN.get_more_evidence()
-            acq_time = IN.get_acquisition_point()
-            def filt(node):
-                """Filter function to enforce *min_delay*"""
-                if IN.BUF.get_status() is IN.BUF.Status.ACQUIRING:
-                    return acq_time + node[0][2] >= min_delay
-                else:
+
+            #Reasoning and interpretation
+            root = Interpretation()
+            try:
+                root.focus.push(next(IN.BUF.get_observations()), None)
+                cntr = searching.Construe(root, kfactor)
+            except (StopIteration, ValueError):
+                pos += fr_len - fr_overlap
+                pbar.update(fr_len - fr_overlap)
+                if verbose:
+                    print('No evidence found in this fragment. Skipping.')
+                continue
+            t0 = time.time()
+            ltime = (cntr.last_time, t0)
+            while cntr.best is None:
+                IN.get_more_evidence()
+                acq_time = IN.get_acquisition_point()
+                def filt(node):
+                    """Filter function to enforce *min_delay*"""
+                    if IN.BUF.get_status() is IN.BUF.Status.ACQUIRING:
+                        return acq_time + node[0][2] >= min_delay
                     return True
-            cntr.step(filt)
-            t = time.time()
-            if cntr.last_time > ltime[0]:
-                ltime = (cntr.last_time, t)
-            if t-ltime[1] > max_delay:
-                cntr.prune()
-            if t-t0 > fr_tlimit:
-                cntr.best = (min(cntr.open) if len(cntr.open) > 0
-                                            else min(cntr.closed))
-        best_explanation = cntr.best.node
-        best_explanation.recover_all()
-        #End of reasoning
-        #We resolve possible conflicts on joining two fragments, selecting the
-        #interpretation higher coverage.
-        btime = _merge_annots(annots, best_explanation, pos) if annots else 0
-        #We generate and add the annotations for the current fragment
-        newanns = interp2ann(best_explanation, btime, pos, pos == initial_pos)
-        annots.update(newanns)
-        #We go to the next fragment after deleting the current used branch and
-        #clearing the reasoning cache.
-        del cntr
-        del root
-        reasoning.reset()
-        if verbose:
-            idur = time.time() - t0
-            print('Fragment finished in {0:.03f} seconds. Real-time factor: '
-                  '{1:.03f}. Created {2} interpretations.'.format(idur,
-                      sp2ms(acq_time)/(idur*1000.),
-                      Interpretation.counter-ictr))
-        ictr = Interpretation.counter
-        #We introduce an overlapping between consecutive fragments
-        pos += fr_len - fr_overlap
+                cntr.step(filt)
+                t = time.time()
+                if cntr.last_time > ltime[0]:
+                    ltime = (cntr.last_time, t)
+                if t-ltime[1] > max_delay:
+                    cntr.prune()
+                if t-t0 > fr_tlimit:
+                    cntr.best = (min(cntr.open) if len(cntr.open) > 0 else min(cntr.closed))
+            best_explanation = cntr.best.node
+            best_explanation.recover_all()
+            #End of reasoning
+            #We resolve possible conflicts on joining two fragments, selecting the
+            #interpretation higher coverage.
+            btime = _merge_annots(annots, best_explanation, pos) if annots else 0
+            #We generate and add the annotations for the current fragment
+            newanns = interp2ann(best_explanation, btime, pos, pos == initial_pos)
+            annots.update(newanns)
+            #We go to the next fragment after deleting the current used branch and
+            #clearing the reasoning cache.
+            del cntr
+            del root
+            reasoning.reset()
+            #We introduce an overlapping between consecutive fragments
+            pos += fr_len - fr_overlap
+            pbar.update(fr_len - fr_overlap)
     #Restore the previous knowledge base
     ap.set_knowledge_base(prev_knowledge)
     return _clean_artifacts_redundancy(annots)
