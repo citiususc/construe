@@ -4,6 +4,7 @@ scipy
 scikit-learn
 python-dateutil
 PyWavelets
+tqdm
 matplotlib
 networkx
 pygraphviz
