@@ -341,6 +341,13 @@ except AttributeError:
     _SCALERS[0].scale_ = _std0
     _SCALERS[1].scale_ = _std1
 
+#Fix for scikit-learn > 0.22
+try:
+    _SCALERS[0].n_features_in_ = 8
+    _SCALERS[1].n_features_in_ = 8
+except AttributeError:
+    pass
+
 # Trained classifiers. These classifiers were serialized using the pickle
 # module. They are instances of sklearn.svm.OneClassSVM, and have been
 # successfully tested with sklearn versions from 0.15 to 0.21.3
