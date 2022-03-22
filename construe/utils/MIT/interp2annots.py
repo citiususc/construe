@@ -65,7 +65,9 @@ def ann2interp(record, anns, fmt=False):
                                           if VALID_LEAD_NAMES[l2] == l), None)
                         if compatible is None:
                             raise ValueError('Unrecognized lead {0}'.format(l))
-                        obs.amplitude[compatible] = amp.pop(l)
+                    else:
+                        compatible = l
+                    obs.amplitude[compatible] = amp.pop(l)
             else:
                 leads = (record.leads if ann.code is C.TWAVE
                          else set(K.PWAVE_LEADS) & set(record.leads))
