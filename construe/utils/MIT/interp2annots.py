@@ -62,7 +62,8 @@ def ann2interp(record, anns, fmt=False):
                 for l in amp.keys():
                     if l not in record.leads:
                         compatible = next((l2 for l2 in VALID_LEAD_NAMES
-                                          if VALID_LEAD_NAMES[l2] == l), None)
+                                          if l2 in record.leads 
+                                             and VALID_LEAD_NAMES[l2] == l), None)
                         if compatible is None:
                             raise ValueError('Unrecognized lead {0}'.format(l))
                     else:
@@ -92,7 +93,8 @@ def ann2interp(record, anns, fmt=False):
                 for l in delin.keys():
                     if l not in record.leads:
                         compatible = next((l2 for l2 in VALID_LEAD_NAMES
-                                          if VALID_LEAD_NAMES[l2] == l), None)
+                                          if l2 in record.leads 
+                                             and VALID_LEAD_NAMES[l2] == l), None)
                         if compatible is None:
                             raise ValueError('Unrecognized lead {0}'.format(l))
                         delin[compatible] = delin.pop(l)
