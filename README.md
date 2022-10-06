@@ -54,6 +54,8 @@ To make easier the installation of Python dependencies, we recommend the [Anacon
  ~$ pip install -r requirements.txt
 ```
 
+**NOTE:** It is possible that Construe doesn't work with the latest versions of some of the dependencies. For this reason, we have included in the repository an [Anaconda Environment file named `construe_environment.yml`](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#creating-an-environment-from-an-environment-yml-file) with tested versions for all the dependencies.
+
 Once all the dependencies are satisfied, it is enough to download the project sources and execute the proper python or bash scripts, as explained below. Please note that all our tests are performed on Linux environments, so unexpected issues may arise on Windows or OS-X environments. Please let us know if this is the case.
 
 ## Getting started
