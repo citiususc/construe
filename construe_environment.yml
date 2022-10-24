@@ -10,7 +10,7 @@ dependencies:
   - brotli-bin=1.0.9=h5eee18b_7
   - ca-certificates=2022.07.19=h06a4308_0
   - cairo=1.16.0=h19f5f5c_2
-  - certifi=2022.9.14=py38h06a4308_0
+  - certifi=2022.9.24=py38h06a4308_0
   - cycler=0.11.0=pyhd3eb1b0_0
   - dbus=1.13.18=hb2f20db_0
   - expat=2.4.9=h6a678d5_0
@@ -116,7 +116,9 @@ dependencies:
   - tk=8.6.12=h1ccaba5_0
   - toml=0.10.2=pyhd3eb1b0_0
   - tornado=6.2=py38h5eee18b_0
+  - tqdm=4.64.1=py38h06a4308_0
   - wheel=0.37.1=pyhd3eb1b0_0
   - xz=5.2.6=h5eee18b_0
   - zlib=1.2.12=h5eee18b_3
   - zstd=1.5.2=ha4553b6_0
+prefix: /home/teijeiro/software/miniconda/envs/construe
